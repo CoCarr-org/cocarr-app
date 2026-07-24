@@ -194,12 +194,6 @@ export default function HomeScreen() {
               <View style={{paddingHorizontal:0,paddingVertical:18}}>
               <Image source={require('../../images/logo.png')} style={{width:72, height:38}}/>
             </View>
-        <TouchableOpacity style={{flexDirection:'row', alignItems:'center', gap:4,backgroundColor:'#1c1c1e',borderRadius:5,paddingVertical:8,paddingHorizontal:12,shadowOpacity:0.5,shadowRadius:1,shadowColor:'#454545',justifyContent:'center'}} onPress={()=>dispatch(setShowCityPicker(true))}>
-          <CustomText fontType='primary' weight='Bold' style={{color:'#959595', fontSize:10, fontWeight:'500',textAlign:'left',marginBottom:0,textTransform:'uppercase'}}>
-            {selectedCity ? selectedCity.name : 'Select City'}
-          </CustomText>
-          <Icon name="location-outline" size={14} color="#a3a3a3"/>
-        </TouchableOpacity>
         {/* Replaces the old "Host" tab — same control, same corner, as the
             host home screen. */}
         <ModeSwitcher />
@@ -208,6 +202,18 @@ export default function HomeScreen() {
 
       <PremiumMemberships/>
         <View style={{paddingHorizontal:16}}>
+
+          {/* City picker sits directly above the location card rather than in
+              the header: it narrows the same search the card describes, so the
+              two belong together. */}
+          <TouchableOpacity
+            style={{flexDirection:'row', alignItems:'center', alignSelf:'flex-start', gap:4,backgroundColor:'#1c1c1e',borderRadius:5,paddingVertical:8,paddingHorizontal:12,shadowOpacity:0.5,shadowRadius:1,shadowColor:'#454545',marginBottom:10}}
+            onPress={()=>dispatch(setShowCityPicker(true))}>
+            <CustomText fontType='primary' weight='Bold' style={{color:'#959595', fontSize:10, fontWeight:'500',textAlign:'left',marginBottom:0,textTransform:'uppercase'}}>
+              {selectedCity ? selectedCity.name : 'Select City'}
+            </CustomText>
+            <Icon name="location-outline" size={14} color="#a3a3a3"/>
+          </TouchableOpacity>
 
           <View style={{flexDirection:'column', borderRadius:12,borderCurve:'continuous',backgroundColor:'#1C1C1E',overflow:'hidden'}}>
             <TouchableHighlight underlayColor='#2C2C2E' onPress={()=>setShowLocationSearch(true)} style={{flexDirection:'row',alignItems:'center', justifyContent:'flex-start',backgroundColor:'#1C1C1E',borderBottomWidth:1,borderBottomColor:'#25252A',paddingHorizontal:16,paddingVertical:12}}>
