@@ -1,5 +1,4 @@
 import axios from 'axios';
-import LargeTitle from '../../components/LargeTitle';
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Alert, RefreshControl, ScrollView, Dimensions } from 'react-native';
 import { API_URL, BOOKING_BOOKED, BOOKING_ONGOING, BOOKING_FINISHED, BOOKING_CANCELLED, BRAND_COLOR } from '../../utils/constants';
@@ -152,7 +151,7 @@ export function RidesScreen({navigation}) {
 
   return (
     <View style={styles.container}>
-      <LargeTitle title="My Rides" />
+      {/* Title is the shared header now (TopBar / stack header). */}
       <TabView
         navigationState={{ index, routes }}
         renderScene={renderScene}

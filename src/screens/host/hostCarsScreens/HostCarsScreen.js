@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import LargeTitle from '../../../components/LargeTitle';
 import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Dimensions, ScrollView, RefreshControl } from 'react-native';
 import axios from 'axios';
 import { API_URL, BRAND_COLOR } from '../../../utils/constants';
@@ -66,20 +65,8 @@ export function HostCarsScreen() {
     }
   };
 
-  const HeaderBlock = () => {
-    return (
-      <View style={styles.headerBlock}>
-        <View style={styles.headerBlockLeft}>
-          {/* Back lives in the header above now; this bar is the city/date
-              filter only. */}
-          <TouchableOpacity onPress={() => navigation.navigate('DatePicker')} style={styles.headerBlockContent}>
-            <CustomText fontType='primary' weight='Medium' style={styles.blockSecText}>{selectedCity?.name}</CustomText>
-            <CustomText fontType='primary' weight='Regular' style={styles.headerPrimaryText}>{formatDate(startDateTime,'long')} - {formatDate(endDateTime,'long')}</CustomText>
-          </TouchableOpacity>
-        </View>
-      </View>
-    )
-  }
+  // (Removed the decorative city/date bar: the host list query ignores it,
+  //  and the tab already shows a "Cars" header.)
 
   
   useEffect(() => {
@@ -146,7 +133,7 @@ export function HostCarsScreen() {
 
   return (
     <View style={styles.container}>
-      <LargeTitle title="My Cars" />
+      {/* Title is the shared header now (TopBar / stack header). */}
       <TopPillBlock sort={sort} isFilterApplied={isFilterApplied} filters={filters} setShowSort={setShowSort} setShowFilter={setShowFilter} setFilters={setFilters}/>
       <FlatList 
         data={vehicles}
