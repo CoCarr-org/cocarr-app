@@ -46,17 +46,34 @@ export default function ModeSwitcher({ style }) {
     <>
       <TouchableOpacity
         onPress={() => setOpen(true)}
+        activeOpacity={0.8}
         style={[{
-          flexDirection: 'row', alignItems: 'center', gap: 6,
-          backgroundColor: '#1c1c1e', borderRadius: 20,
-          paddingVertical: 7, paddingHorizontal: 12,
+          flexDirection: 'row', alignItems: 'center', gap: 9,
+          backgroundColor: '#EDBF3114', borderRadius: 22,
+          borderWidth: 1, borderColor: '#EDBF3140',
+          paddingVertical: 7, paddingLeft: 7, paddingRight: 13,
+          shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 6, shadowOffset: { width: 0, height: 2 },
+          elevation: 3,
         }, style]}
       >
-        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: BRAND_COLOR }} />
-        <CustomText fontType='primary' weight='Bold' style={{ color: '#e3e3e3', fontSize: 10, textTransform: 'uppercase', letterSpacing: .3 }}>
-          {current === 'host' ? 'Hosting' : 'Renting'}
-        </CustomText>
-        <Icon name="swap-horizontal-outline" size={14} color="#959595" />
+        {/* Icon disc carries the mode, so the control still reads at a glance
+            when the label is clipped on narrow screens. */}
+        <View style={{
+          width: 28, height: 28, borderRadius: 14,
+          backgroundColor: BRAND_COLOR,
+          justifyContent: 'center', alignItems: 'center',
+        }}>
+          <Icon name={current === 'host' ? 'key' : 'car-sport'} size={15} color="#000" />
+        </View>
+        <View>
+          <CustomText fontType='primary' weight='Bold' style={{ color: '#6f6f76', fontSize: 8, textTransform: 'uppercase', letterSpacing: .6 }}>
+            Mode
+          </CustomText>
+          <CustomText fontType='primary' weight='Bold' style={{ color: '#f0f0f2', fontSize: 12, letterSpacing: -.1, marginTop: 1 }}>
+            {current === 'host' ? 'Hosting' : 'Renting'}
+          </CustomText>
+        </View>
+        <Icon name="chevron-down" size={14} color="#a08a3d" />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
