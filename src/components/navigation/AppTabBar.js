@@ -110,13 +110,15 @@ export default function AppTabBar({ state, descriptors, navigation }) {
         accessibilityRole="button"
         accessibilityLabel={current === 'host' ? 'Switch to renting' : 'Switch to hosting'}
         style={{
-          width: 62, height: 62, borderRadius: 31,
+          // Sized to the pill's height so the two align instead of the circle
+          // overhanging it.
+          width: 52, height: 52, borderRadius: 26,
           backgroundColor: '#EDBF3114',
           borderWidth: 1.5, borderColor: BRAND_COLOR,
           alignItems: 'center', justifyContent: 'center',
         }}
       >
-        <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 14, letterSpacing: -.1 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 12, letterSpacing: -.1 }}>
           {label}
         </CustomText>
       </TouchableOpacity>
