@@ -15,9 +15,10 @@ import { BRAND_COLOR } from '../../utils/constants';
 //
 // Profile is deliberately absent: it lives in TopBar, visible from every tab.
 
+// Single word each way: the button offers the mode you are NOT in.
 const MODE_LABEL = {
-  customer: { top: 'Host', bottom: '& Earn' },
-  host: { top: 'Rent', bottom: 'a Car' },
+  customer: 'Host',
+  host: 'Rent',
 };
 
 export default function AppTabBar({ state, descriptors, navigation }) {
@@ -111,11 +112,8 @@ export default function AppTabBar({ state, descriptors, navigation }) {
           alignItems: 'center', justifyContent: 'center',
         }}
       >
-        <CustomText fontType='primary' weight='Bold' style={{ color: '#e8e8ea', fontSize: 12, lineHeight: 14 }}>
-          {label.top}
-        </CustomText>
-        <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 12, lineHeight: 14 }}>
-          {label.bottom}
+        <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 14, letterSpacing: -.1 }}>
+          {label}
         </CustomText>
       </TouchableOpacity>
     </View>
