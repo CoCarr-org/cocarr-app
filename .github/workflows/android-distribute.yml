@@ -9,6 +9,19 @@ on:
       
   workflow_dispatch:
     inputs:
+      branch:
+        description: Branch to build
+        required: true
+        default: develop
+        type: choice
+        options:
+          - develop
+          - main
+          - other (use "Custom branch" below)
+      custom_branch:
+        description: Custom branch — overrides the dropdown when filled in
+        required: false
+        type: string
       release_notes:
         description: Notes shown to Firebase testers
         required: false
@@ -18,7 +31,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-distribute-${{ github.ref }}
+  group: android-distribute-${{ github.ref }}-${{ inputs.custom_branch || inputs.branch }}
   cancel-in-progress: false
 
 jobs:
@@ -35,10 +48,35 @@ jobs:
       FIREBASE_ANDROID_APP_ID: '1:265614983806:android:b8903891ee64b787fcce2f'
 
     steps:
+      # GitHub's dispatch dropdown can only hold a fixed list, so "Custom
+      # branch" is the escape hatch for feature branches. Precedence:
+      # custom_branch > dropdown > the ref that triggered the run (a push).
+      # Inputs are interpolated through env, never inlined into the script, so a
+      # branch name cannot inject shell.
+      - name: Resolve target ref
+        id: target
+        env:
+          PR_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          CUSTOM_BRANCH: ${{ inputs.custom_branch }}
+          BRANCH_CHOICE: ${{ inputs.branch }}
+          TRIGGER_REF: ${{ github.ref }}
+        run: |
+          REF="$PR_SHA"
+          [ -n "$REF" ] || REF="$(printf '%s' "$CUSTOM_BRANCH" | tr -d '[:space:]')"
+          case "$BRANCH_CHOICE" in other*) BRANCH_CHOICE="" ;; esac
+          [ -n "$REF" ] || REF="$BRANCH_CHOICE"
+          [ -n "$REF" ] || REF="$TRIGGER_REF"
+          if [ -z "$REF" ]; then
+            echo "::error::Could not resolve a branch to build."
+            exit 1
+          fi
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "Building from: $REF"
+
       - name: Check out source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha || github.ref }}
+          ref: ${{ steps.target.outputs.ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -82,7 +120,7 @@ jobs:
           # firebase-tools reads FIREBASE_TOKEN automatically for auth, so no
           # service-account file is needed here.
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-          RELEASE_NOTES: ${{ inputs.release_notes || format('develop build {0} ({1})', github.run_number, github.sha) }}
+          RELEASE_NOTES: ${{ inputs.release_notes || format('{0} build {1} ({2})', steps.target.outputs.ref, github.run_number, github.sha) }}
         run: |
           npx --yes firebase-tools@13 appdistribution:distribute \
             android/app/build/outputs/apk/release/app-release.apk \
