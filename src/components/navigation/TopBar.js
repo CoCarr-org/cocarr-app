@@ -56,7 +56,7 @@ export default function TopBar({ title, showBack = false }) {
             fontType='primary'
             weight='Bold'
             numberOfLines={1}
-            style={{ color: '#f0f0f2', fontSize: 18, letterSpacing: -.3, flexShrink: 1 }}
+            style={{ color: '#f0f0f2', fontSize: 16, letterSpacing: -.2, flexShrink: 1 }}
           >
             {title}
           </CustomText>

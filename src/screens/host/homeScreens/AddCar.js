@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Image, Switch, ToastAndroid, TouchableHighlight, ActivityIndicator, ScrollView, Platform, Alert, Modal, } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -329,7 +330,9 @@ const AddCar = ({ route }) => {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    // Own chrome (wizard header), so it wears the top inset itself now that the
+    // root navigator no longer provides one.
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#000' }}>
       {!loading ? (
         <View style={{ flex: 1 }}>
           <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingHorizontal:16,paddingVertical:12,backgroundColor:'#000',borderBottomWidth:1,borderBottomColor:'#101010'}}>
@@ -353,7 +356,7 @@ const AddCar = ({ route }) => {
           <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,textTransform:'uppercase',letterSpacing:.15}}>Loading...</CustomText>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -70,9 +70,8 @@ export function HostCarsScreen() {
     return (
       <View style={styles.headerBlock}>
         <View style={styles.headerBlockLeft}>
-            <TouchableOpacity style={{padding:4,paddingLeft:0}} onPress={() => navigation.goBack()}>
-            <Icon name="chevron-back" size={20} color="#a3a3a3" />
-          </TouchableOpacity>
+          {/* Back lives in the header above now; this bar is the city/date
+              filter only. */}
           <TouchableOpacity onPress={() => navigation.navigate('DatePicker')} style={styles.headerBlockContent}>
             <CustomText fontType='primary' weight='Medium' style={styles.blockSecText}>{selectedCity?.name}</CustomText>
             <CustomText fontType='primary' weight='Regular' style={styles.headerPrimaryText}>{formatDate(startDateTime,'long')} - {formatDate(endDateTime,'long')}</CustomText>

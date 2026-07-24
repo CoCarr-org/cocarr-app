@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, Platform, TouchableOpacity, ScrollView, Linking, ToastAndroid, Alert, Dimensions } from 'react-native';
 import axios from 'axios';
 import { API_URL, BRAND_COLOR } from '../../../utils/constants';
@@ -12,6 +13,7 @@ import RazorpayCheckout from 'react-native-razorpay';
 import CustomText from '../../../components/CustomText';
 
 export function CarsInfoScreen({route}) {
+  const insets = useSafeAreaInsets();
   const { vehicleId } = route.params;
   const [vehicle, setVehicle] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -197,7 +199,7 @@ export function CarsInfoScreen({route}) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
 
       <HeaderBlock vehicle={vehicle} navigation={navigation} startDateTime={startDateTime} endDateTime={endDateTime} />
 

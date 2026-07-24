@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, Platform, TouchableOpacity, ScrollView, Linking, ToastAndroid, Alert, Dimensions, Switch, KeyboardAvoidingView } from 'react-native';
 import axios from 'axios';
 import { API_URL, BRAND_COLOR } from '../../../utils/constants';
@@ -15,6 +16,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import Select from '../../../components/Select';
 
 export function HostCarInfoScreen({route}) {
+  const insets = useSafeAreaInsets();
   const { vehicleId } = route.params;
   const navigation = useNavigation();
   const [vehicle, setVehicle] = useState([]);
@@ -55,7 +57,7 @@ export function HostCarInfoScreen({route}) {
 
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
       {!loading ? <View style={{flex:1}}>
       <HeaderBlock vehicle={vehicle} navigation={navigation} />
     <View style={{flex:1}}>

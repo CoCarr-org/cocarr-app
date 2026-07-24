@@ -1,12 +1,14 @@
 import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 export const PaymentSuccessScreen = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
   const { bookingDetails } = route.params;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.successIcon}>
         <Icon name="checkmark-circle" size={80} color="#EDBF31" />
       </View>

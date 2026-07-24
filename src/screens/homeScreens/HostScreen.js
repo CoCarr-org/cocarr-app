@@ -1,4 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StatusBar, TouchableOpacity, Image, ScrollView, FlatList, ToastAndroid, RefreshControl, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -12,6 +13,7 @@ import { updateUserRole, setHostStatus } from '../../store/authSlice';
 // import Logo from '../../images/logo.png';
 // import { BottomSheet, BottomSheetView } from '@gorhom/bottom-sheet';
 export default function HostScreen() {
+  const insets = useSafeAreaInsets();
   const navigator = useNavigation();
   const { startDateTime, endDateTime, selectedCity } = useSelector((state) => state.booking);
   const userRole = useSelector((state) => state.auth.userRole);
@@ -86,6 +88,7 @@ export default function HostScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: '#000' }}
+      contentContainerStyle={{ paddingTop: insets.top }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={checkHostRegistered} />}
     >
       {/* This is a pushed route now (headerShown is false app-wide), so it needs

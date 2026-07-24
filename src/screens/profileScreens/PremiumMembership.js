@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, StatusBar, TouchableHighlight, ActivityIndicator, ToastAndroid, ScrollView, RefreshControl } from 'react-native';
 import axios from 'axios';
 import { API_URL, BRAND_COLOR } from '../../utils/constants';
@@ -11,6 +12,7 @@ import { SceneMap, TabBar, TabBarItem, TabView } from 'react-native-tab-view';
 import RazorpayCheckout from 'react-native-razorpay';
 
 export default function PremiumMembershipScreen() {
+  const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState([]);
   const [membership, setMembership] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -139,7 +141,7 @@ export default function PremiumMembershipScreen() {
   ]
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
         <StatusBar barStyle={showPaymentResult ? 'light-content' : 'dark-content'} backgroundColor={showPaymentResult ? '#000' : BRAND_COLOR}/>
       <View style={styles.headerContainer}>
       <TouchableHighlight underlayColor={BRAND_COLOR} style={styles.backButton} onPress={() => navigation.goBack()}>
