@@ -12,7 +12,6 @@ import { setSelectedCity, setShowCityLocation, setShowCityPicker } from '../../s
 import LocationChangeNotificationScreen from './LocationChangeNotificationScreen';
 import LocationInvalidScreen from './LocationInvalidScreen';
 import LocationSearchScreen from './LocationSearchScreen';
-import ModeSwitcher from '../../components/ModeSwitcher';
 import Carousel from 'react-native-reanimated-carousel';
 // import Logo from '../../images/logo.png';
 // import { BottomSheet, BottomSheetView } from '@gorhom/bottom-sheet';
@@ -190,15 +189,8 @@ export default function HomeScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor:'#000'}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       {/* <HomeIcon width={22} height={22} currentColor={color} /> */}
-      <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',marginBottom:24,paddingHorizontal:16}}>
-              <View style={{paddingHorizontal:0,paddingVertical:18}}>
-              <Image source={require('../../images/logo.png')} style={{width:72, height:38}}/>
-            </View>
-        {/* Replaces the old "Host" tab — same control, same corner, as the
-            host home screen. */}
-        <ModeSwitcher />
-
-      </View>
+      {/* Title and profile live in TopBar now. */}
+      <View style={{height:8}} />
 
       <PremiumMemberships/>
         <View style={{paddingHorizontal:16}}>

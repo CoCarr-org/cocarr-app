@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Alert, SafeAreaView } from 'react-native';
 import HostScreen from '../screens/homeScreens/HostScreen';
+import { HostProfile } from '../screens/host/hostProfileScreens/HostProfile.js';
 import { useDispatch, useSelector } from 'react-redux';
 import { CityPickerScreen } from '../screens/homeScreens/CityPickerScreen.js';
 import { API_URL } from '../utils/constants.js';
@@ -160,6 +161,8 @@ export function MainNavigator() {
 
         <Stack.Group>
           <Stack.Screen name="ProfileIndex" component={ProfileScreen} />
+          {/* Pushed by TopBar's avatar when in the host shell. */}
+          <Stack.Screen name="HostProfileScreen" component={HostProfile} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           <Stack.Screen name="Referral" component={ReferralPage}/>
           <Stack.Screen name="Offers" component={OffersScreen} />

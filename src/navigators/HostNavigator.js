@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { Svg, Path } from 'react-native-svg';
+import AppTabBar from '../components/navigation/AppTabBar';
+import TopBar from '../components/navigation/TopBar';
 import HostHomeScreen from '../screens/host/homeScreens/HostHomeScreen.js';
 import { HostBookingsScreen } from '../screens/host/bookingScreens/HostBookingsScreen.js';
 import { HostCarsScreen } from '../screens/host/hostCarsScreens/HostCarsScreen.js';
 import { HostInboxScreen } from '../screens/host/hostInboxScreens/HostInboxScreen.js';
-import { HostProfile } from '../screens/host/hostProfileScreens/HostProfile.js';
 
 const Tab = createBottomTabNavigator();
 
@@ -16,46 +16,14 @@ export function HostNavigator() {
 
 
   return (
-        <Tab.Navigator 
-          // tabBar={props => <CustomTabBar {...props} />} // Use CustomTabBar component
-          screenOptions={({ route }) => ({
-            tabBarLabelStyle: {
-            fontSize: 9, 
-            // fontWeight: '600',
-            textTransform: 'uppercase',
-            paddingBottom: 4,
-            letterSpacing:.15,
-            fontFamily:'Inter-SemiBold'
-          },
-          tabBarActiveTintColor: '#EDBF31',
-          tabBarInactiveTintColor: '#808080',
-          headerShown: false,
-          
-          tabBarStyle: (() => {
-            const routeName = getFocusedRouteNameFromRoute(route) ?? '';
-            const baseStyle = {
-              height: 68,
-              backgroundColor: '#000',
-              borderTopWidth: 0,
-              borderTopColor: '#252525',
-              paddingTop: 8,
-              paddingBottom: 4,
-              // shadowColor: '#fff',
-              elevation:2,
-              shadowOpacity:0.5,
-
-            };
-            return {display: 'flex' ,...baseStyle};
-            
-            // // Hide tab bar for screens that shouldn't show it
-            // // 'HostHome', 'HostBookings', 'HostCars', 'HostInbox', 'HostProfile'
-            // if (['AddCar','ScheduleInfo','CreateSchedule','CreateScheduleBlock','HostEarnings','HostBookingInfo','HostCarInfo'].includes(routeName)) {
-            //   return {display: 'none' ,...baseStyle};
-            // } else {
-            //   return {display: 'flex' ,...baseStyle};
-            // }
-          })(),
-        })}
+        <Tab.Navigator
+          // Same chrome as the renting shell: AppTabBar (pill + mode toggle),
+          // TopBar (page title + always-present profile avatar).
+          tabBar={(props) => <AppTabBar {...props} />}
+          screenOptions={{
+            headerShown: true,
+            header: ({ options, route }) => <TopBar title={options.title || route.name} />,
+          }}
       >
         <Tab.Screen 
           name="HostHome" 
@@ -103,14 +71,6 @@ export function HostNavigator() {
             </Svg>
             
             
-          }}
-        />
-        <Tab.Screen 
-          name="HostProfile" 
-          component={HostProfile} 
-          options={{
-            title: 'Profile',
-            tabBarIcon: ({color, size}) => <Icon name="settings-outline" size={20} color={color} />
           }}
         />
       </Tab.Navigator>

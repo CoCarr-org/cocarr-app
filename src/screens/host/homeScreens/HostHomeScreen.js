@@ -11,7 +11,6 @@ import CustomText from '../../../components/CustomText';
 import { setSelectedCity, setShowCityLocation, setShowCityPicker } from '../../../store/bookingSlice';
 import Carousel from 'react-native-reanimated-carousel';
 import FiveStar from '../../../components/host/FiveStar';
-import ModeSwitcher from '../../../components/ModeSwitcher';
 // import Logo from '../../images/logo.png';
 // import { BottomSheet, BottomSheetView } from '@gorhom/bottom-sheet';
 // Cars awaiting admin approval surface first so hosts notice them.
@@ -42,27 +41,9 @@ export default function HostHomeScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor:'#000'}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       {/* <HomeIcon width={22} height={22} currentColor={color} /> */}
-      <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',paddingHorizontal:16,paddingVertical:20}}>
-        <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}> 
-            <View style={{paddingRight:4}}>
-              <Image source={require('../../../images/logo.png')} style={{width:54, height:28}}/>
-            </View>
-            <View style={{paddingLeft:8,paddingVertical:4,borderLeftWidth:1,borderLeftColor:'#2c2c2e'}}>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3', fontSize:11, fontWeight:'500',textAlign:'left',marginBottom:0,textTransform:'uppercase'}}>Hi,{authInfo?.userName}</CustomText>
-              <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:11, textAlign:'left',marginBottom:0}}>Cocarr Host</CustomText>
-            </View>
-        </View>
-        {/* Same control, same corner, as the renting home screen. */}
-        <ModeSwitcher />
-        {/* <TouchableOpacity style={{flexDirection:'row', alignItems:'center', gap:4,backgroundColor:'#1c1c1e',borderRadius:5,paddingVertical:8,paddingHorizontal:12,shadowOpacity:0.5,shadowRadius:1,shadowColor:'#454545',justifyContent:'center'}} onPress={()=>dispatch(setShowCityPicker(true))}>
-          <View>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#959595', fontSize:10, fontWeight:'500',textAlign:'left',marginBottom:0,textTransform:'uppercase'}}>
-              {selectedCity ? selectedCity.name : 'Selected City'}
-            </CustomText>
-          </View>
-          <Icon name="location-outline" size={16} color="#a3a3a3" style={{borderRadius:50}}/>
-        </TouchableOpacity> */}
-
+      {/* Title and profile live in TopBar now; keep the greeting only. */}
+      <View style={{paddingHorizontal:16,paddingTop:4,paddingBottom:16}}>
+        <CustomText fontType='primary' weight='Medium' style={{color:'#757575', fontSize:12}}>Hi, {authInfo?.userName}</CustomText>
       </View>
 
       {/* <PremiumMemberships/> */}
