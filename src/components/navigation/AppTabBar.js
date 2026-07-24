@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, TouchableOpacity, Platform } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CustomText from '../CustomText';
 import { updateUserRole } from '../../store/authSlice';
 import { BRAND_COLOR } from '../../utils/constants';
@@ -23,6 +24,7 @@ const MODE_LABEL = {
 
 export default function AppTabBar({ state, descriptors, navigation }) {
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   const rootNavigation = useNavigation();
   const { userRole, isHost } = useSelector((s) => s.auth);
   const current = userRole === 'host' ? 'host' : 'customer';
@@ -44,7 +46,9 @@ export default function AppTabBar({ state, descriptors, navigation }) {
       flexDirection: 'row', alignItems: 'center', gap: 10,
       paddingHorizontal: 14,
       paddingTop: 8,
-      paddingBottom: Platform.OS === 'ios' ? 26 : 12,
+      // Real inset, not a guessed constant — 26 was wrong on every device that
+      // isn't a notched iPhone, and on Android it left a dead strip.
+      paddingBottom: Math.max(insets.bottom, 12),
       backgroundColor: '#000',
     }}>
       {/* The pill */}

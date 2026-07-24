@@ -14,6 +14,7 @@ import BootSplash from 'react-native-bootsplash';
 import Toast, { BaseToast } from 'react-native-toast-message';
 import { HostNavigator } from './src/navigators/HostNavigator';
 import { API_URL } from './src/utils/constants';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function RootNavigator() {
   const [initializing, setInitializing] = useState(false);
@@ -171,10 +172,15 @@ export default function App() {
 
   return (
     <Provider store={store}>
-      <PersistGate loading={<ActivityIndicator size="large" color="#EDBF31" />} persistor={persistor}>
-        <RootNavigator />
-        <Toast config={toastConfig} />
-      </PersistGate>
+      {/* Required by react-native-safe-area-context: useSafeAreaInsets() throws
+          without a provider above it, which is what TopBar and AppTabBar use to
+          size themselves around the notch and the home indicator. */}
+      <SafeAreaProvider>
+        <PersistGate loading={<ActivityIndicator size="large" color="#EDBF31" />} persistor={persistor}>
+          <RootNavigator />
+          <Toast config={toastConfig} />
+        </PersistGate>
+      </SafeAreaProvider>
     </Provider>
   );
 }

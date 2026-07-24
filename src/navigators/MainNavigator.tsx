@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Alert, SafeAreaView } from 'react-native';
+import { Alert, View } from 'react-native';
 import HostScreen from '../screens/homeScreens/HostScreen';
 import { HostProfile } from '../screens/host/hostProfileScreens/HostProfile.js';
 import { useDispatch, useSelector } from 'react-redux';
@@ -9,6 +9,7 @@ import axios from 'axios';
 import { setShowLastBooking } from '../store/bookingSlice.js';
 import { ReviewScreen } from '../screens/rideScreens/ReviewScreen.jsx';
 import { setHostStatus } from '../store/authSlice.js';
+import TopBar from '../components/navigation/TopBar';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator.js';
 import { HostBookingsScreen } from '../screens/host/bookingScreens/HostBookingsScreen.js';
@@ -108,8 +109,11 @@ export function MainNavigator() {
 
 
 
+  // Plain View here on purpose: TopBar already pads for the top inset and
+  // AppTabBar for the bottom one. Applying insets at this level too
+  // double-counted them — that was the gap under the tab bar.
   return (
-    <SafeAreaView style={{flex:1, backgroundColor:'#151515'}}>
+    <View style={{flex:1, backgroundColor:'#000'}}>
       
       <CityPickerScreen/>
       <ReviewScreen/>
@@ -160,9 +164,19 @@ export function MainNavigator() {
         
 
         <Stack.Group>
-          <Stack.Screen name="ProfileIndex" component={ProfileScreen} />
-          {/* Pushed by TopBar's avatar when in the host shell. */}
-          <Stack.Screen name="HostProfileScreen" component={HostProfile} />
+          {/* Both profile screens are pushed from TopBar's avatar, so they get
+              a header with a back control — the rest of the stack runs with
+              headerShown:false and they would otherwise be a dead end. */}
+          <Stack.Screen
+            name="ProfileIndex"
+            component={ProfileScreen}
+            options={{ headerShown: true, header: () => <TopBar title="Profile" showBack /> }}
+          />
+          <Stack.Screen
+            name="HostProfileScreen"
+            component={HostProfile}
+            options={{ headerShown: true, header: () => <TopBar title="Profile" showBack /> }}
+          />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} />
           <Stack.Screen name="Referral" component={ReferralPage}/>
           <Stack.Screen name="Offers" component={OffersScreen} />
@@ -184,6 +198,6 @@ export function MainNavigator() {
           {/* <Stack.Screen name="ProfileVerification" component={ProfileVerificationScreen}/> */}
         </Stack.Group>
       </Stack.Navigator>
-    </SafeAreaView>
+    </View>
   );
 }
