@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, TouchableHighlight, Dimensions, TextInput, ToastAndroid, Linking, ScrollView } from 'react-native';
 import axios from 'axios';
-import { API_URL, BOOKING_BOOKED, BOOKING_FINISHED, BOOKING_ONGOING, BRAND_COLOR } from '../../../utils/constants';
+import { API_URL, BOOKING_INITIATED, BOOKING_BOOKED, BOOKING_FINISHED, BOOKING_ONGOING, BOOKING_CANCELLED, BRAND_COLOR } from '../../../utils/constants';
 import { useDispatch, useSelector } from 'react-redux';
 import { formatDate, photoUrl, notify } from '../../../utils/utils';
 import HeaderBlock from '../../../components/CenterHeader';
@@ -173,10 +173,11 @@ const CancelRidePopup = ({onCancel,show}) => {
 }
 
 const STATUS_META = {
+  [BOOKING_INITIATED]: { label: 'Pending',   fg: '#c9a24b', bg: '#EDBF3115', bd: '#EDBF3133' },
   [BOOKING_BOOKED]:   { label: 'Upcoming',  fg: '#EDBF31', bg: '#EDBF3122', bd: '#EDBF3155' },
   [BOOKING_ONGOING]:  { label: 'Ongoing',   fg: '#6ee6b0', bg: '#3fce8f22', bd: '#3fce8f59' },
   [BOOKING_FINISHED]: { label: 'Completed', fg: '#a3a3a3', bg: '#26262a',   bd: '#3a3a40' },
-  cancelled:          { label: 'Cancelled', fg: '#ff8f8f', bg: '#ef444422', bd: '#ef444455' },
+  [BOOKING_CANCELLED]: { label: 'Cancelled', fg: '#ff8f8f', bg: '#ef444422', bd: '#ef444455' },
 };
 
 // Vehicle photo banner + car name/specs/registration + status badge.

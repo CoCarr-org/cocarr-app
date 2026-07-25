@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Alert, RefreshControl, ScrollView, Dimensions } from 'react-native';
-import { API_URL, BOOKING_BOOKED, BOOKING_ONGOING, BOOKING_FINISHED, BOOKING_CANCELLED, BRAND_COLOR } from '../../utils/constants';
+import { API_URL, BOOKING_INITIATED, BOOKING_BOOKED, BOOKING_ONGOING, BOOKING_FINISHED, BOOKING_CANCELLED, BRAND_COLOR } from '../../utils/constants';
 import { useSelector } from 'react-redux';
 import { formatDate, photoUrl } from '../../utils/utils';
 import HeaderBlock from '../../components/CenterHeader';
@@ -165,6 +165,7 @@ export function RidesScreen({navigation}) {
 }
 
 const STATUS_STYLE = {
+  [BOOKING_INITIATED]: { label: 'Pending',   fg: '#c9a24b', bg: '#EDBF3115', bd: '#EDBF3133' },
   [BOOKING_ONGOING]:   { label: 'Ongoing',   fg: '#6ee6b0', bg: '#3fce8f22', bd: '#3fce8f59' },
   [BOOKING_BOOKED]:    { label: 'Upcoming',  fg: BRAND_COLOR, bg: '#EDBF3122', bd: '#EDBF3166' },
   [BOOKING_FINISHED]:  { label: 'Completed', fg: '#a3a3a3', bg: '#26262a', bd: '#3a3a40' },
