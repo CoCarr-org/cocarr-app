@@ -297,29 +297,21 @@ const AvailabilityCard = ({ car, windows, navigation }) => {
             upcoming.slice(0, 5).map((w) => (
               <TouchableOpacity key={w.id} onPress={() => navigation.navigate('ScheduleInfo', { scheduleId: w.id })}
                 style={{ backgroundColor: '#151519', borderRadius: 10, padding: 12, marginBottom: 8 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#EDBF3115', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon name="arrow-up-circle-outline" size={15} color={BRAND_COLOR} />
-                    </View>
-                    <View>
-                      <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>From</CustomText>
-                      <CustomText fontType='primary' weight='Medium' style={{ color: '#e3e3e3', fontSize: 12 }}>{formatDateOnly(w.startTime)} · {formatTime(w.startTime)}</CustomText>
-                    </View>
+                {/* From → To on one line. */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ flex: 1 }}>
+                    <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>From</CustomText>
+                    <CustomText fontType='primary' weight='Medium' numberOfLines={1} style={{ color: '#e3e3e3', fontSize: 12, marginTop: 1 }}>{formatDateOnly(w.startTime)} · {formatTime(w.startTime)}</CustomText>
                   </View>
-                  {w.scheduleBlocks && w.scheduleBlocks.length > 0 ? (
-                    <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 10 }}>{w.scheduleBlocks.length} pause(s)</CustomText>
-                  ) : <Icon name="chevron-forward" size={13} color="#5a5a62" />}
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#3fce8f18', alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name="arrow-down-circle-outline" size={15} color="#6ee6b0" />
-                  </View>
-                  <View>
+                  <Icon name="arrow-forward" size={16} color="#5a5a62" style={{ marginHorizontal: 8 }} />
+                  <View style={{ flex: 1 }}>
                     <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>To</CustomText>
-                    <CustomText fontType='primary' weight='Medium' style={{ color: '#e3e3e3', fontSize: 12 }}>{formatDateOnly(w.endTime)} · {formatTime(w.endTime)}</CustomText>
+                    <CustomText fontType='primary' weight='Medium' numberOfLines={1} style={{ color: '#e3e3e3', fontSize: 12, marginTop: 1 }}>{formatDateOnly(w.endTime)} · {formatTime(w.endTime)}</CustomText>
                   </View>
                 </View>
+                {w.scheduleBlocks && w.scheduleBlocks.length > 0 && (
+                  <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 10, marginTop: 6 }}>{w.scheduleBlocks.length} pause(s)</CustomText>
+                )}
               </TouchableOpacity>
             ))
           )}
@@ -361,20 +353,22 @@ const SchedulingAssistant = ({ vehicles, schedulesByCar, navigation }) => {
 
   return (
     <View style={{ marginTop: 8, marginBottom: 8, paddingHorizontal: 16 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <View>
-          <CustomText fontType='primary' weight='Bold' style={{ color: '#f0f0f2', fontSize: 15, letterSpacing: -.2 }}>Availability</CustomText>
-          <CustomText fontType='primary' weight='Regular' style={{ color: '#6f6f76', fontSize: 11, marginTop: 1 }}>Manage each car's availability windows</CustomText>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('AddCar')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Icon name="add-circle-outline" size={15} color={BRAND_COLOR} />
-          <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 10, textTransform: 'uppercase', letterSpacing: .15 }}>Add car</CustomText>
-        </TouchableOpacity>
+      <View style={{ marginBottom: 12 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: '#f0f0f2', fontSize: 15, letterSpacing: -.2 }}>Availability</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{ color: '#6f6f76', fontSize: 11, marginTop: 1 }}>Manage each car's availability windows</CustomText>
       </View>
 
       {vehicles.map((car) => (
         <AvailabilityCard key={car.id} car={car} windows={schedulesByCar[car.id] || []} navigation={navigation} />
       ))}
+
+      {/* Add car sits at the end of the list as a clear dashed tile, rather than
+          a small link crowding the section header. */}
+      <TouchableOpacity onPress={() => navigation.navigate('AddCar')} activeOpacity={0.85}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#111112', borderRadius: 14, borderWidth: 1, borderColor: '#2a2a2e', borderStyle: 'dashed', paddingVertical: 16, marginTop: 2 }}>
+        <Icon name="add-circle-outline" size={20} color={BRAND_COLOR} />
+        <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 12, textTransform: 'uppercase', letterSpacing: .15 }}>Add a car</CustomText>
+      </TouchableOpacity>
     </View>
   );
 };

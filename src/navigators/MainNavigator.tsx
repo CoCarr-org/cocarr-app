@@ -161,7 +161,7 @@ export function MainNavigator() {
           {/* Wizard and tabbed detail draw their own chrome. */}
           <Stack.Screen name="AddCar" component={AddCar} options={{ headerShown: false }}/>
           <Stack.Screen name="HostCars" component={HostCarsScreen} options={{ title: 'Your Cars' }} />
-          <Stack.Screen name="HostCarInfo" component={HostCarInfoScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="HostCarInfo" component={HostCarInfoScreen} options={{ title: 'Car details' }}/>
           <Stack.Screen name="ScheduleInfo" component={ScheduleInfoScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="CreateSchedule" component={CreateScheduleScreen} options={{ title: 'New Schedule' }}/>
           <Stack.Screen name="CreateScheduleBlock" component={CreateScheduleBlockScreen} options={{ title: 'Block Dates' }}/>
@@ -180,8 +180,9 @@ export function MainNavigator() {
         <Stack.Group>
           {/* Profile screens are pushed from TopBar's avatar; the shared header
               gives them a back control and a title. */}
-          <Stack.Screen name="ProfileIndex" component={ProfileScreen} options={{ title: 'Profile' }} />
-          <Stack.Screen name="HostProfileScreen" component={HostProfile} options={{ title: 'Profile' }} />
+          {/* Profile screens carry an edit-profile action in the header. */}
+          <Stack.Screen name="ProfileIndex" component={ProfileScreen} options={{ headerShown: true, header: () => <TopBar title="Profile" showBack rightIcon="create-outline" rightRoute="EditProfile" /> }} />
+          <Stack.Screen name="HostProfileScreen" component={HostProfile} options={{ headerShown: true, header: () => <TopBar title="Profile" showBack rightIcon="create-outline" rightRoute="EditProfile" /> }} />
           <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
           <Stack.Screen name="Referral" component={ReferralPage} options={{ title: 'Refer & Earn' }}/>
           <Stack.Screen name="Offers" component={OffersScreen} options={{ title: 'Offers' }} />

@@ -46,18 +46,6 @@ export function ProfileScreen() {
 
   const options = [
     {
-      onPress: 'PremiumMembership',
-      icon: <Ionicons name="ticket-outline" size={16} color="#fff" />,
-      title: 'Premium Membership',
-      description: 'Get access to premium features',
-    },
-    {
-      onPress: 'Offers',
-      icon: <Ionicons name="pricetags-outline" size={16} color="#fff" />,
-      title: 'Offers & Discounts',
-      description: 'View available offers for your next ride',
-    },
-    {
       onPress: 'Referral',
       icon: <Ionicons name="people-outline" size={16} color="#fff" />,
       title: 'Refer & Earn',
@@ -85,12 +73,7 @@ export function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={{paddingVertical:12,paddingHorizontal:20,flexDirection:'row',justifyContent:'flex-end',alignItems:'center'}}>
-      {/* Edit profile is a compact icon button now, not a text pill. */}
-      <TouchableHighlight underlayColor='#2c2c2e' onPress={()=>navigation.navigate('EditProfile')} style={{backgroundColor:'#1c1c1e',borderRadius:20,width:38,height:38,justifyContent:'center',alignItems:'center'}}>
-                <Ionicons name="create-outline" size={18} color="#c3c3c3" />
-              </TouchableHighlight>
-      </View>
+      {/* Edit profile moved to the header action; wallet points to the app header. */}
       <View style={{flex:1}}>
         <ScrollView style={{paddingHorizontal:20}} showsVerticalScrollIndicator={false}>
 
@@ -110,22 +93,7 @@ export function ProfileScreen() {
         </View>
         
 
-        <TouchableHighlight underlayColor='#2c2c2e' onPress={()=>navigation.navigate('Wallet')} style={{backgroundColor:'#EDBF3129',borderRadius:10,paddingVertical:10,paddingHorizontal:16,marginBottom:24}}>
-               <View style={{flexDirection:'row',alignItems:'center',gap:12,justifyContent:'space-between'}}>
-                <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-
-                <View style={{backgroundColor:'#090909',borderRadius:48,width:48,height:48,justifyContent:'center',alignItems:'center'}}>
-                  <Ionicons name="wallet-outline" size={24} color={BRAND_COLOR} />
-                </View>
-                    <View style={{flexDirection:'column',alignItems:'flex-start'}}>
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#c3c3c3', fontSize:11,textAlign:'center',letterSpacing:-.05}}>Wallet Points</CustomText>
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#c3c3c3', fontSize:16,textAlign:'center',letterSpacing:-.05}}>{!isNaN(walletInfo?.walletPoints) ? walletInfo?.walletPoints : '-'}</CustomText>
-                    </View>
-                </View>
-                <Ionicons name="chevron-forward-outline" size={16} color={'#c3c3c3'} />
-               </View>
-              </TouchableHighlight>
-
+        {/* Wallet points moved to the app header. */}
         {options.map((option, index) => (
             <TouchableHighlight
               key={index}
