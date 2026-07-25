@@ -316,11 +316,11 @@ const AvailabilityCard = ({ car, windows, navigation }) => {
             ))
           )}
 
-          {/* Always present. */}
+          {/* Always present. Subtle tinted style (Add car carries the solid fill). */}
           <TouchableOpacity onPress={() => navigation.navigate('CreateSchedule', { vehicleId: car.id })}
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: BRAND_COLOR, borderRadius: 10, paddingVertical: 13, marginTop: 2 }}>
-            <Icon name="add-circle" size={16} color="#000" />
-            <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15 }}>Add availability</CustomText>
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#EDBF3122', borderWidth: 1, borderColor: '#EDBF3155', borderRadius: 10, paddingVertical: 13, marginTop: 2 }}>
+            <Icon name="add-circle" size={16} color={BRAND_COLOR} />
+            <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 11, textTransform: 'uppercase', letterSpacing: .15 }}>Add availability</CustomText>
           </TouchableOpacity>
         </View>
       ) : (
@@ -362,12 +362,11 @@ const SchedulingAssistant = ({ vehicles, schedulesByCar, navigation }) => {
         <AvailabilityCard key={car.id} car={car} windows={schedulesByCar[car.id] || []} navigation={navigation} />
       ))}
 
-      {/* Add car sits at the end of the list as a clear dashed tile, rather than
-          a small link crowding the section header. */}
+      {/* Add car carries the solid fill (Add availability is the subtle one). */}
       <TouchableOpacity onPress={() => navigation.navigate('AddCar')} activeOpacity={0.85}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#111112', borderRadius: 14, borderWidth: 1, borderColor: '#2a2a2e', borderStyle: 'dashed', paddingVertical: 16, marginTop: 2 }}>
-        <Icon name="add-circle-outline" size={20} color={BRAND_COLOR} />
-        <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 12, textTransform: 'uppercase', letterSpacing: .15 }}>Add a car</CustomText>
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: BRAND_COLOR, borderRadius: 14, paddingVertical: 16, marginTop: 2 }}>
+        <Icon name="add-circle" size={20} color="#000" />
+        <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: .15 }}>Add a car</CustomText>
       </TouchableOpacity>
     </View>
   );

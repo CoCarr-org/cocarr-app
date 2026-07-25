@@ -184,15 +184,21 @@ const renderItem = (item,navigation) => {
             ? <Image source={{ uri: photoUrl(cover) }} style={{ width:'100%', height:'100%' }} resizeMode='cover' />
             : <View style={{ flex:1, alignItems:'center', justifyContent:'center' }}><Ionicons name='car-outline' size={22} color='#5a5a62' /></View>}
         </View>
-        <View style={{ flex:1, justifyContent:'center' }}>
-          <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+        {/* Content aligned to the top of the row (status + name sit higher),
+            with a specs/plate line filling the space in between. */}
+        <View style={{ flex:1, justifyContent:'flex-start' }}>
+          <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:5 }}>
             <View style={{ flexDirection:'row', alignItems:'center', gap:5, backgroundColor:st.bg, borderWidth:1, borderColor:st.bd, borderRadius:100, paddingVertical:3, paddingHorizontal:9 }}>
               <View style={{ width:5, height:5, borderRadius:5, backgroundColor:st.fg }} />
               <CustomText fontType='primary' weight='Bold' style={{ color:st.fg, fontSize:9, letterSpacing:.15, textTransform:'uppercase' }}>{st.label}</CustomText>
             </View>
             <CustomText fontType='primary' weight='Medium' style={{ color:'#6f6f76', fontSize:10, textTransform:'uppercase' }}>#{item.bookingId}</CustomText>
           </View>
-          <CustomText fontType='primary' weight='SemiBold' numberOfLines={1} ellipsizeMode='tail' style={{ color:'#f0f0f2', fontSize:14 }}>{item.vehicle?.brand?.name} {item.vehicle?.vehicleName}</CustomText>
+          <CustomText fontType='primary' weight='SemiBold' numberOfLines={1} ellipsizeMode='tail' style={{ color:'#f0f0f2', fontSize:14, marginBottom:3 }}>{item.vehicle?.brand?.name} {item.vehicle?.vehicleName}</CustomText>
+          {/* Extra details between the name and the trip window. */}
+          <CustomText fontType='primary' weight='Regular' numberOfLines={1} style={{ color:'#8a8a8a', fontSize:11 }}>
+            {[item.vehicle?.vehicleFuelType, item.vehicle?.vehicleSeats && `${item.vehicle.vehicleSeats} seats`, item.vehicle?.vehicleNumber].filter(Boolean).join('  ·  ')}
+          </CustomText>
         </View>
       </View>
 

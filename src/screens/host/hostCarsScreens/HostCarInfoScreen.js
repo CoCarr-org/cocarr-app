@@ -359,29 +359,24 @@ const TabViewInfo = ({vehicle, onChanged}) => {
     }
   };
 
-  const renderTabBar = (props) => {
-    return (
-      <TabBar
-      {...props}
-      scrollEnabled
-      style={{backgroundColor:'#000',marginBottom:0,paddingVertical:16,paddingHorizontal:0}}
-      indicatorStyle={{backgroundColor:BRAND_COLOR,height:0}}
-      labelStyle={{color:'#fff',fontSize:8,fontWeight:'500',textTransform:'uppercase',letterSpacing:.15}}
-      activeColor='#fff'
-      renderTabBarItem={props => {
-        const active = props.navigationState.routes[props.navigationState.index].key === props.route.key ? true : false;
-          return (
-            <TouchableOpacity activeOpacity={0.8} onPress={() => setIndex(routes.findIndex(r => r.key === props.route.key))} style={{paddingVertical:8,paddingHorizontal:18,backgroundColor:!active ? '#1c1c1e' : '#EDBF313A',marginRight:12,borderRadius:24,marginLeft:props.route.key === 'overview' ? 16 : 0,marginLeft:props.route.key === 'info' ? 16 : 0}}>
-              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}>
-                  <Text style={{color:active ? BRAND_COLOR : '#757575',fontSize:10,fontWeight:'600',textTransform:'uppercase',letterSpacing:.15}}>{props.route.title}</Text>
-              </View>
-            </TouchableOpacity>
-          )
-        }}
-        inactiveColor='#757575'
-      />
-    )
-  }
+  // A plain horizontal pill row instead of TabBar's scrollEnabled mode — the
+  // latter mis-measures custom items and scrolled off to a huge width and
+  // re-scrolled on every selection. This is a simple controlled selector.
+  const renderTabBar = () => (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 14, gap: 10 }}
+      style={{ backgroundColor: '#000', flexGrow: 0 }}>
+      {routes.map((r, i) => {
+        const active = i === index;
+        return (
+          <TouchableOpacity key={r.key} activeOpacity={0.8} onPress={() => setIndex(i)}
+            style={{ paddingVertical: 8, paddingHorizontal: 16, borderRadius: 24, backgroundColor: active ? '#EDBF313A' : '#1c1c1e' }}>
+            <Text style={{ color: active ? BRAND_COLOR : '#757575', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: .15 }}>{r.title}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
   return (
    <TabView
       navigationState={{ index, routes }}
@@ -389,9 +384,9 @@ const TabViewInfo = ({vehicle, onChanged}) => {
       onIndexChange={setIndex}
       overdrag={true}
       style={{backgroundColor:'#000',flex:1}}
-      renderTabBar={(props)=>renderTabBar(props)}
+      renderTabBar={renderTabBar}
     />
-  ) 
+  )
 }
 
 

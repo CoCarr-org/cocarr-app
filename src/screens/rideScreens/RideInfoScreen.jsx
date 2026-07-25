@@ -99,39 +99,34 @@ export default function RideInfoScreen({ route,navigation }) {
       {/* Vehicle image carousel, with the car info below it (like the car
           detail screen) rather than overlaid on the photo. */}
       <VehicleGallery vehicle={booking.vehicle} />
+      {/* Breathing room between the car info and the tab section. */}
+      <View style={{ height: 14 }} />
       <TabViewInfo booking={booking}/>
-      {booking.status === BOOKING_BOOKED ? <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingVertical:16}}>
-          <TouchableHighlight 
-            style={[
-              styles.cancelButton,
-              {marginRight:8}
-              // {flex:1}
-            ]} 
-            onPress={()=>setShowCancelRide(booking)}
-            >
-            {/* <CustomText fontType='primary' weight='Bold' style={{ fontSize:12, fontWeight:'500',textTransform:'uppercase',color:'#ff3f33BA',textAlign:'center'}}>{'Cancel'}</CustomText> */}
-            <Ionicons name='close-circle-outline' size={24} color={'#ff3f33BA'}/>
-          </TouchableHighlight>
+      {booking.status === BOOKING_BOOKED ? (
+        <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 10, paddingHorizontal: 16, paddingVertical: 14 }}>
+          {/* Cancel — outline danger, icon + label. */}
+          <TouchableOpacity onPress={() => setShowCancelRide(booking)} activeOpacity={0.85}
+            style={{ alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 12, borderWidth: 1, borderColor: '#ff3f3355', backgroundColor: '#ff3f3312', paddingVertical: 12, paddingHorizontal: 14 }}>
+            <Ionicons name='close-circle-outline' size={20} color={'#ff6b6b'} />
+            <CustomText fontType='primary' weight='Bold' style={{ color: '#ff8f8f', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>Cancel</CustomText>
+          </TouchableOpacity>
 
-          {!booking.isRescheduled || (new Date(booking.startTime) < new Date())  ? <TouchableHighlight 
-            style={[
-              styles.extendButton,
-              {backgroundColor:'#EDBF3135',paddingVertical:12}
-            ]} 
-            onPress={onReschedule}
-            >
-            <Ionicons name='time-outline' size={24} color={BRAND_COLOR}/>
-          </TouchableHighlight> : null}
-          <TouchableHighlight 
-            style={[
-              styles.extendButton,
-              {backgroundColor:'#EDBF3135',paddingVertical:16,flex:1,marginRight:0,marginLeft:8}
-            ]} 
-            onPress={onStartRide}
-            >
-            <CustomText fontType='primary' weight='Bold' style={{ fontSize:12, fontWeight:'500',textTransform:'uppercase',color:BRAND_COLOR,textAlign:'center'}}>{'Start Ride'}</CustomText>
-          </TouchableHighlight>
-      </View> : null}
+          {(!booking.isRescheduled || (new Date(booking.startTime) < new Date())) ? (
+            <TouchableOpacity onPress={onReschedule} activeOpacity={0.85}
+              style={{ alignItems: 'center', justifyContent: 'center', gap: 4, borderRadius: 12, borderWidth: 1, borderColor: '#EDBF3155', backgroundColor: '#EDBF3112', paddingVertical: 12, paddingHorizontal: 14 }}>
+              <Ionicons name='time-outline' size={20} color={BRAND_COLOR} />
+              <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>Reschedule</CustomText>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Start ride — solid primary, fills remaining width. */}
+          <TouchableOpacity onPress={onStartRide} activeOpacity={0.85}
+            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, backgroundColor: BRAND_COLOR, paddingVertical: 12 }}>
+            <Ionicons name='play-circle' size={20} color='#000' />
+            <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: .15 }}>Start Ride</CustomText>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
         {booking.status === 'ongoing' ? <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingVertical:16}}>
           <TouchableHighlight 
