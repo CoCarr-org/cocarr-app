@@ -152,7 +152,15 @@ const renderItem = (booking,navigation) => {
                     <CustomText fontType='primary' weight='Regular' style={{color:'#e3e3e3', fontSize:11}}>To: {formatDate(booking.endTime)}</CustomText>
                   </View>
                   <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between',paddingVertical:4,paddingHorizontal:12,borderTopWidth:1,borderTopColor:'#252525'}}>
-                    <CustomText fontType='primary' weight='Regular' style={{color:BRAND_COLOR, fontSize:10,backgroundColor:'#EDBF313A',paddingHorizontal:12,paddingVertical:4,borderRadius:4}}>{booking.deliveryType === 'self' ? 'Rider Pickup' : 'Doorstep Delivery'}</CustomText>
+                    <View style={{flexDirection:'row', alignItems:'center', gap:6, flexShrink:1, flexWrap:'wrap'}}>
+                      <CustomText fontType='primary' weight='Regular' style={{color:BRAND_COLOR, fontSize:10,backgroundColor:'#EDBF313A',paddingHorizontal:12,paddingVertical:4,borderRadius:4}}>{booking.deliveryType === 'self' ? 'Rider Pickup' : 'Doorstep Delivery'}</CustomText>
+                      {booking.damages && booking.damages.length > 0 && (
+                        <View style={{flexDirection:'row', alignItems:'center', gap:4, backgroundColor:'#ff3b3020', borderWidth:1, borderColor:'#ff3b3040', paddingHorizontal:10, paddingVertical:4, borderRadius:4}}>
+                          <Ionicons name='alert-circle' size={12} color='#ff6b60'/>
+                          <CustomText fontType='primary' weight='SemiBold' style={{color:'#ff6b60', fontSize:9, textTransform:'uppercase', letterSpacing:.2}}>Damage Reported</CustomText>
+                        </View>
+                      )}
+                    </View>
                     <FiveStar onPress={booking.hostReview ? ()=>{} : ()=>navigation.navigate('HostBookingInfo',{bookingId:booking.id})} size={16} rating={booking.hostReview?.totalRating ? booking.hostReview.totalRating : 0}/>
                   </View>
                     

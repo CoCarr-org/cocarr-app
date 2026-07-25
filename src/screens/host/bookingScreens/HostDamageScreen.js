@@ -241,22 +241,31 @@ export function HostDamageScreen({ route }) {
             <CustomText fontType="primary" weight="SemiBold" style={styles.photoCount}>{data.damageImage.length}/{MAX_PHOTOS}</CustomText>
           </View>
 
-          <View style={styles.photoGrid}>
-            {data.damageImage.length < MAX_PHOTOS && (
-              <TouchableOpacity activeOpacity={0.8} onPress={selectImages} style={[styles.photoTile, styles.addTile]}>
-                <Icon name="camera-outline" size={24} color="#8a8a8a" />
-                <CustomText fontType="primary" weight="SemiBold" style={styles.addTileText}>Add Photos</CustomText>
-              </TouchableOpacity>
-            )}
-            {data.damageImage.map((image, index) => (
-              <View key={index} style={styles.photoTile}>
-                <Image source={{ uri: image.uri }} style={styles.photoImg} />
-                <TouchableOpacity onPress={() => handleRemoveImage(index)} style={styles.removeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Icon name="close" size={14} color="#fff" />
+          {data.damageImage.length === 0 ? (
+            // Empty state: a full-width dropzone instead of a lone tiny square.
+            <TouchableOpacity activeOpacity={0.8} onPress={selectImages} style={styles.dropzone}>
+              <Icon name="camera-outline" size={28} color="#8a8a8a" />
+              <CustomText fontType="primary" weight="SemiBold" style={styles.dropzoneTitle}>Add photos</CustomText>
+              <CustomText fontType="primary" weight="Regular" style={styles.dropzoneSub}>Up to {MAX_PHOTOS} photos as evidence</CustomText>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.photoGrid}>
+              {data.damageImage.map((image, index) => (
+                <View key={index} style={styles.photoTile}>
+                  <Image source={{ uri: image.uri }} style={styles.photoImg} />
+                  <TouchableOpacity onPress={() => handleRemoveImage(index)} style={styles.removeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Icon name="close" size={14} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {data.damageImage.length < MAX_PHOTOS && (
+                <TouchableOpacity activeOpacity={0.8} onPress={selectImages} style={styles.addTile}>
+                  <Icon name="add" size={26} color="#8a8a8a" />
+                  <CustomText fontType="primary" weight="SemiBold" style={styles.addTileText}>Add</CustomText>
                 </TouchableOpacity>
-              </View>
-            ))}
-          </View>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -323,11 +332,20 @@ const styles = StyleSheet.create({
 
   photoHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   photoCount: { color: BRAND_COLOR, fontSize: 12 },
+  dropzone: {
+    marginTop: 6, borderWidth: 1, borderColor: '#3a3a40', borderStyle: 'dashed',
+    borderRadius: 12, backgroundColor: '#101012', paddingVertical: 26,
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+  },
+  dropzoneTitle: { color: '#d3d3d3', fontSize: 13, marginTop: 4 },
+  dropzoneSub: { color: '#757575', fontSize: 11 },
+
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
   photoTile: { width: '31.5%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#141416', overflow: 'hidden' },
   addTile: {
+    width: '31.5%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#101012',
     borderWidth: 1, borderColor: '#3a3a40', borderStyle: 'dashed',
-    alignItems: 'center', justifyContent: 'center', gap: 6,
+    alignItems: 'center', justifyContent: 'center', gap: 2,
   },
   addTileText: { color: '#8a8a8a', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.2 },
   photoImg: { width: '100%', height: '100%' },

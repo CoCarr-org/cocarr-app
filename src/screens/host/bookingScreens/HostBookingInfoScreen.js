@@ -212,13 +212,17 @@ const BookingHeader = ({ booking }) => {
 const TabViewInfo = ({booking,setShowReview}) => {
 
   const [index, setIndex] = useState(0);
-  const [routes] = useState([
+  const hasDamage = booking.damages && booking.damages.length > 0;
+  // Surface a dedicated Damage tab (like Review / Photos) only when there's
+  // something to show.
+  const routes = [
     { key: 'overview', title: 'Overview' },
     { key: 'rideInfo', title: 'Ride Info' },
     { key: 'payment', title: 'Payment Info' },
     { key: 'review', title: 'Review' },
     { key: 'documents', title: 'Photos' },
-  ]);
+    ...(hasDamage ? [{ key: 'damage', title: 'Damage' }] : []),
+  ];
 
   const renderScene = SceneMap({
     overview: ()=><Overview booking={booking} setShowReview={setShowReview}/>,
@@ -226,7 +230,8 @@ const TabViewInfo = ({booking,setShowReview}) => {
     rideInfo: ()=><RideInfo booking={booking}/>,
     payment: ()=><Payment booking={booking}/>,
     review: ()=><Review booking={booking}/>,
-    documents: ()=><Documents booking={booking}/>
+    documents: ()=><Documents booking={booking}/>,
+    damage: ()=><DamageInfo booking={booking}/>,
   });
 
   // Plain horizontal pill row (not TabBar's scrollEnabled mode, which
@@ -411,56 +416,63 @@ const Overview = ({booking,setShowReview}) => {
             </View>
             </TouchableOpacity>
           </View> : null}
+      </ScrollView>
+  )
+}
 
-          {booking.damages && booking.damages.length > 0 ? <View style={{flexDirection:'column',alignItems:'flex-start',justifyContent:'space-between',borderWidth:1,borderColor:'#FDBF3115',paddingHorizontal:16,paddingVertical:16,borderRadius:8,backgroundColor:'#FF8a3113',marginHorizontal:16,marginTop:16}}>
-          
+// Reported-damage details as its own tab (mirrors the Review / Photos tabs).
+const DamageInfo = ({booking}) => {
+  const damages = booking.damages || [];
+  const titleCase = (s='') => String(s).split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  return (
+    <ScrollView style={{flex:1}}>
+      {damages.map((damage,di)=>(
+        <View key={di} style={{flexDirection:'column',alignItems:'flex-start',justifyContent:'space-between',borderWidth:1,borderColor:'#FDBF3115',paddingHorizontal:16,paddingVertical:16,borderRadius:8,backgroundColor:'#FF8a3113',marginHorizontal:16,marginTop:16}}>
           <View style={{flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',rowGap:16}}>
               <View style={{width:'100%',flexDirection:'row',alignItems:'center',justifyContent:'flex-start'}}>
                 <MaterialIcons name='error' size={20} color='#ff0000'/>
-              <CustomText fontType='primary' weight='SemiBold' style={{color:'#ff0000',fontSize:12,textTransform:'uppercase',letterSpacing:.15,marginLeft:8}}>Damage Reported</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:'#ff0000',fontSize:12,textTransform:'uppercase',letterSpacing:.15,marginLeft:8}}>Damage Reported</CustomText>
               </View>
               <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',width:'100%'}}>
-                    <View>  
+                    <View>
                       <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.15}}>Damaged Part</CustomText>
-                      <CustomText fontType='primary' weight='Regular' style={styles.bookingDetail}>{booking.damages[0].damagedPart.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</CustomText>
+                      <CustomText fontType='primary' weight='Regular' style={styles.bookingDetail}>{titleCase(damage.damagedPart)}</CustomText>
                     </View>
               </View>
               <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',width:'50%'}}>
                     <View>
                       <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.15}}>Damage Type</CustomText>
-                      <CustomText fontType='primary' weight='Regular' style={styles.bookingDetail}>{booking.damages[0].damageType.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}</CustomText>
+                      <CustomText fontType='primary' weight='Regular' style={styles.bookingDetail}>{titleCase(damage.damageType)}</CustomText>
                     </View>
               </View>
-
               <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',width:'50%'}}>
                     <View>
                       <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.15}}>Status</CustomText>
-                      <CustomText fontType='primary' weight='Regular' style={styles.bookingDetail}>{booking.damages[0].damageStatus.charAt(0).toUpperCase() + booking.damages[0].damageStatus.slice(1)}</CustomText>
+                      <CustomText fontType='primary' weight='Regular' style={styles.bookingDetail}>{titleCase(damage.damageStatus)}</CustomText>
                     </View>
               </View>
               <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',width:'100%'}}>
                     <View>
                       <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.15}}>Damage Description</CustomText>
-                      <CustomText fontType='primary' weight='Regular' style={styles.bookingDetail}>{booking.damages[0].damageDescription}</CustomText>
+                      <CustomText fontType='primary' weight='Regular' style={styles.bookingDetail}>{damage.damageDescription}</CustomText>
                     </View>
               </View>
-              <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',width:'100%'}}>
+              {damage.damageImage ? <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',width:'100%'}}>
                     <View>
                       <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.15}}>Damage Images</CustomText>
-                      <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',gap:12,marginTop:8}}>
-
+                      <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',flexWrap:'wrap',gap:12,marginTop:8}}>
                       {
-                        booking.damages[0].damageImage.split(',').map((image,index)=>(
+                        String(damage.damageImage).split(',').filter(Boolean).map((image,index)=>(
                           <Image source={{uri:photoUrl(image)}} style={{width:'48%',height:100,borderRadius:6}} key={index}/>
                         ))
                       }
                       </View>
                     </View>
-              </View>
+              </View> : null}
           </View>
-          
-          </View> : null}
-      </ScrollView>
+        </View>
+      ))}
+    </ScrollView>
   )
 }
 
