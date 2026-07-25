@@ -60,14 +60,18 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute 
               resizeMode="contain"
             />
           )}
-          <CustomText
-            fontType='primary'
-            weight='Bold'
-            numberOfLines={1}
-            style={{ color: '#f0f0f2', fontSize: 16, letterSpacing: -.2, flexShrink: 1 }}
-          >
-            {title}
-          </CustomText>
+          {/* Title only on pushed sub-pages. On the tab shells the logo alone
+              identifies the app — the page title there was redundant. */}
+          {showBack && (
+            <CustomText
+              fontType='primary'
+              weight='Bold'
+              numberOfLines={1}
+              style={{ color: '#f0f0f2', fontSize: 16, letterSpacing: -.2, flexShrink: 1 }}
+            >
+              {title}
+            </CustomText>
+          )}
         </View>
 
         {/* Pushed screen: a single right action (e.g. edit profile). */}
