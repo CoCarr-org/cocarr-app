@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Alert, RefreshControl, ScrollView, TouchableHighlight } from 'react-native';
-import { API_URL, BOOKING_BOOKED, BRAND_COLOR } from '../../../utils/constants';
+import { API_URL, BOOKING_INITIATED, BOOKING_BOOKED, BRAND_COLOR } from '../../../utils/constants';
 import { useSelector } from 'react-redux';
 import { formatDate, photoUrl } from '../../../utils/utils';
 import HeaderBlock from '../../../components/CenterHeader';
@@ -135,7 +135,17 @@ export function HostBookingsScreen() {
 
 
 
+// Booking status pill palette — same tokens as HostBookingInfo / Rides.
+const STATUS_STYLE = {
+  [BOOKING_INITIATED]: { label: 'Pending',   fg: '#c9a24b', bg: '#EDBF3115', bd: '#EDBF3133' },
+  [BOOKING_BOOKED]:    { label: 'Upcoming',  fg: BRAND_COLOR, bg: '#EDBF3122', bd: '#EDBF3166' },
+  [BOOKING_ONGOING]:   { label: 'Ongoing',   fg: '#6ee6b0', bg: '#3fce8f22', bd: '#3fce8f59' },
+  [BOOKING_FINISHED]:  { label: 'Completed', fg: '#a3a3a3', bg: '#26262a', bd: '#3a3a40' },
+  [BOOKING_CANCELLED]: { label: 'Cancelled', fg: '#ff8f8f', bg: '#ef444422', bd: '#ef444455' },
+};
+
 const renderItem = (booking,navigation) => {
+  const st = STATUS_STYLE[booking.status] || STATUS_STYLE[BOOKING_FINISHED];
   return (
     <View>
       <TouchableOpacity key={booking.id} style={{marginLeft:0, backgroundColor:'#1c1c1e',borderRadius:10,overflow:'hidden',marginBottom:12}} onPress={()=>navigation.navigate('HostBookingInfo', {bookingId:booking.id})}>
@@ -145,6 +155,9 @@ const renderItem = (booking,navigation) => {
                   <View style={{flexDirection:'column', justifyContent:'space-between', alignItems:'flex-start',paddingLeft:12}}>
                     <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:10}}>{booking.vehicle?.vehicleNumber}</CustomText>
                     <CustomText  fontType='primary' weight='Regular' style={{color:'#e3e3e3', fontSize:11,textTransform:'uppercase'}}>#{booking.bookingId}</CustomText>
+                  </View>
+                  <View style={{marginLeft:'auto', backgroundColor:st.bg, borderWidth:1, borderColor:st.bd, borderRadius:100, paddingVertical:4, paddingHorizontal:10}}>
+                    <CustomText fontType='primary' weight='Bold' style={{color:st.fg, fontSize:9, textTransform:'uppercase', letterSpacing:.3}}>{st.label}</CustomText>
                   </View>
                   </View>
                   <View style={{flexDirection:'column', justifyContent:'space-between', alignItems:'flex-start',paddingVertical:10,paddingHorizontal:12}}>
