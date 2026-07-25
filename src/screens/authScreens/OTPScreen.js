@@ -1,30 +1,61 @@
-import React, { useState, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
-  KeyboardAvoidingView, 
-  Platform, 
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
   SafeAreaView,
   Image,
   Dimensions
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 import axios from 'axios';
+import Icon from 'react-native-vector-icons/Ionicons';
 import auth from '@react-native-firebase/auth';
 import { login } from '../../store/authSlice';
-import { API_URL } from '../../utils/constants';
+import { API_URL, BRAND_COLOR } from '../../utils/constants';
 
 const { width } = Dimensions.get('window');
 const inputWidth = (width - 100 - 60) / 4; // 100 for padding, 60 for hyphens (20 * 3)
+
+// Resend cooldown. MSG91's send API doesn't hard-enforce an interval, but its
+// OTP widget defaults to a ~30s resend timer — matching that avoids spamming
+// and sets the user's expectation.
+const RESEND_SECONDS = 30;
 
 export function OTPScreen({ navigation, route }) {
   const [otp, setOtp] = useState(['', '', '', '']);
   const dispatch = useDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [resendIn, setResendIn] = useState(RESEND_SECONDS);
+  const [resending, setResending] = useState(false);
+
+  // Count down to the next allowed resend.
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  const resendOtp = async () => {
+    if (resendIn > 0 || resending) return;
+    try {
+      setResending(true);
+      await axios.post(`${API_URL}/user/send-otp`, { mobile: `${route.params.mobileNumber}` });
+      setOtp(['', '', '', '']);
+      inputs.current[0]?.focus();
+      setResendIn(RESEND_SECONDS);
+    } catch (error) {
+      console.log('Resend OTP failed:', error?.response?.data || error?.message);
+      Alert.alert('Error', 'Could not resend the code. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  };
 
   // Create refs for each TextInput
   const inputs = useRef([]);
@@ -113,16 +144,21 @@ export function OTPScreen({ navigation, route }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.topContainer}>
-          <Image 
-            source={require('../../images/logo.png')} 
+          {/* Back to the mobile-number step. */}
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
+            <Icon name="chevron-back" size={24} color="#e3e3e3" />
+          </TouchableOpacity>
+
+          <Image
+            source={require('../../images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
 
           <Text style={styles.title}>Enter OTP to Verify</Text>
-          
+
           <Text style={styles.subtitle}>Sent to {route.params.mobileNumber}</Text>
-          
+
           <View style={styles.otpContainer}>
             {otp.map((digit, index) => (
               <React.Fragment key={index}>
@@ -140,6 +176,17 @@ export function OTPScreen({ navigation, route }) {
                 {index < 3 && <Text style={styles.hyphen}>-</Text>}
               </React.Fragment>
             ))}
+          </View>
+
+          {/* Resend, gated by the cooldown. */}
+          <View style={styles.resendRow}>
+            {resendIn > 0 ? (
+              <Text style={styles.resendMuted}>Didn't get the code? Resend in {resendIn}s</Text>
+            ) : (
+              <TouchableOpacity onPress={resendOtp} disabled={resending} accessibilityRole="button">
+                <Text style={styles.resendLink}>{resending ? 'Sending…' : 'Resend code'}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
         
@@ -175,10 +222,29 @@ const styles = StyleSheet.create({
   topContainer: {
     flex: 1,
   },
+  backButton: {
+    width: 40,
+    height: 40,
+    marginLeft: -8,
+    marginBottom: 12,
+    justifyContent: 'center',
+  },
   logo: {
     height: 40,
     width: 80,
     marginBottom: 48,
+  },
+  resendRow: {
+    marginTop: 22,
+  },
+  resendMuted: {
+    color: '#959595',
+    fontSize: 12,
+  },
+  resendLink: {
+    color: BRAND_COLOR,
+    fontSize: 13,
+    fontWeight: '600',
   },
   bottomContainer: {
     paddingBottom: 24,
