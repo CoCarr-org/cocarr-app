@@ -481,8 +481,9 @@ const Images = ({ vehicle }) => {
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 16 }}>
-      <View style={{ flex: 1, rowGap: 12, columnGap: '2%', flexWrap: 'wrap', flexDirection: 'row' }}>
+    // Scrollable so a long grid never overlaps the Edit/Save button below it.
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <View style={{ rowGap: 12, columnGap: '2%', flexWrap: 'wrap', flexDirection: 'row' }}>
         {images && images.length > 0 && images.map((image, index) => (
           <View key={index} style={{ width: '48%', height: 120, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
             {image.isCover && (
@@ -513,7 +514,7 @@ const Images = ({ vehicle }) => {
       <TouchableOpacity onPress={() => edit ? handleSubmit() : setEdit(true)} style={{backgroundColor:'#EDBF3135',borderRadius:5,paddingVertical:16,paddingHorizontal:12,color:'#fff',fontSize:14,width:'100%',justifyContent:'center',alignItems:'center',marginTop:20}}>
         <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 11, textTransform: 'uppercase', letterSpacing: -0.15, textAlign: 'center' }}>{edit ? 'Save Images' : 'Edit Images'}</CustomText>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 };
 
@@ -1034,8 +1035,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent:'flex-start',
     backgroundColor: '#050505',
-    paddingTop: 24,
-    
+    // No top padding: the nav header sits above this now, so the old 24px left
+    // a dead gap under it.
   },
   headerBlock: {
     flexDirection: 'row',

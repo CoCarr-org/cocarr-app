@@ -96,21 +96,9 @@ export default function RideInfoScreen({ route,navigation }) {
   return (
     <View style={styles.container}>
       <HeaderBlock title="Ride Info" navigation={navigation} showBackButton={true} customSecondaryText={`#${booking.bookingId}`} />
-      <View style={styles.bookingInfo}>
-        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',position:'relative'}}>
-          <LinearGradient style={{position:'absolute',width:'100%',height:'100%',justifyContent:'flex-end',alignItems:'flex-start',left:0,top:0,}} colors={['rgba(0,0,0,0)','rgba(0,0,0,1)']} start={{x:0,y:0}} end={{x:0,y:1}}>
-            </LinearGradient>
-          <Image source={{ uri: booking.vehicle.images[0].url }} style={styles.vehicleImage} />
-          <LinearGradient style={{position:'absolute',width:'100%',height:'100%',justifyContent:'flex-end',alignItems:'flex-start',left:0,bottom:0,}} colors={['rgba(0,0,0,1)','rgba(0,0,0,0)']} start={{x:0,y:1}} end={{x:0,y:0}}>
-            <View style={{flexDirection:'column',justifyContent:'flex-start',paddingHorizontal:16,paddingBottom:12}}>
-            <CustomText fontType='primary' weight='Medium' style={styles.bookingTitle}>{booking.vehicle.brand.name} {booking.vehicle.vehicleName}</CustomText>
-            <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3',fontSize:10,textTransform:'uppercase',letterSpacing:.15,textAlign:'left'}}>{booking.vehicle.vehicleFuelType} · {booking.vehicle.vehicleSeats} Seater · {booking.vehicle.vehicleYear}</CustomText>
-
-          </View>
-            </LinearGradient>
-        </View>
-
-      </View>
+      {/* Vehicle image carousel, with the car info below it (like the car
+          detail screen) rather than overlaid on the photo. */}
+      <VehicleGallery vehicle={booking.vehicle} />
       <TabViewInfo booking={booking}/>
       {booking.status === BOOKING_BOOKED ? <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingVertical:16}}>
           <TouchableHighlight 
@@ -188,6 +176,45 @@ const PaymentResultPopup = ({response}) => {
 }
 
 
+
+// Swipeable vehicle image carousel with the car name/specs below it.
+const VehicleGallery = ({ vehicle }) => {
+  const images = (vehicle?.images || []).filter((i) => !i.isDeleted);
+  const [idx, setIdx] = useState(0);
+  const width = Dimensions.get('window').width;
+  return (
+    <View>
+      {images.length > 0 ? (
+        <View>
+          <ScrollView
+            horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / width))}
+          >
+            {images.map((im, i) => (
+              <Image key={im.id || i} source={{ uri: photoUrl(im.url) }} style={{ width, height: 200, backgroundColor: '#1c1c1e' }} resizeMode="cover" />
+            ))}
+          </ScrollView>
+          {images.length > 1 && (
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: -18 }}>
+              {images.map((_, i) => (
+                <View key={i} style={{ width: i === idx ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === idx ? BRAND_COLOR : '#5a5a62' }} />
+              ))}
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={{ width: '100%', height: 200, backgroundColor: '#1c1c1e', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="car-outline" size={40} color="#3a3a40" />
+        </View>
+      )}
+
+      <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: '#f0f0f2', fontSize: 18, letterSpacing: -.3 }}>{vehicle.brand?.name} {vehicle.vehicleName}</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{ color: '#a3a3a3', fontSize: 10, textTransform: 'uppercase', letterSpacing: .15, marginTop: 3 }}>{vehicle.vehicleFuelType} · {vehicle.vehicleSeats} Seater · {vehicle.vehicleYear}</CustomText>
+      </View>
+    </View>
+  );
+};
 
 const TabViewInfo = ({booking}) => {
 
@@ -448,22 +475,19 @@ const RideInfo = ({booking}) => {
 }
 
 const Documents = ({booking}) => {
-  const startImages = booking?.images?.filter(image => image.isStartImage === true);
-  const endImages = booking?.images?.filter(image => image.isEndImage === true);
-
-  console.log('startImages',startImages)
-  console.log('endImages',endImages)
+  const startImages = (booking?.images || []).filter(image => image.isStartImage === true);
+  const endImages = (booking?.images || []).filter(image => image.isEndImage === true);
   return (
     <ScrollView style={{flex:1}}>
               <View style={{paddingBottom:16,marginHorizontal:16,marginTop:24}}>
           
               <View style={{flexDirection:'column',justifyContent:'space-between'}}>
                       <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.15,marginBottom:12}}>Ride Start Images</CustomText>
-                    <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',gap:12}}>
+                    <View style={{flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'flex-start',gap:12}}>
                       {
                         startImages.map((image,index)=>(
-                          <View style={{width:'48%'}}>
-                            <Image source={{uri:image.url}} style={{width:'100%',height:100,borderRadius:6}} key={index}/>
+                          <View key={image.id || index} style={{width:'48%'}}>
+                            <Image source={{uri:photoUrl(image.url)}} style={{width:'100%',height:100,borderRadius:6}}/>
                           </View>
                         ))
                       }
@@ -475,11 +499,11 @@ const Documents = ({booking}) => {
                     <View style={{flexDirection:'row',flexWrap:'wrap',alignItems:'center',justifyContent:'flex-start',gap:12}}>
                       {
                         endImages.map((image,index)=>(
-                          <View style={{width:'48%',position:'relative'}}>
+                          <View key={image.id || index} style={{width:'48%',position:'relative'}}>
                             <View >
                                 <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.15,paddingBottom:8}}>{image.type}</CustomText>
                             </View>
-                            <Image source={{uri:image.url}} style={{width:'100%',height:100,borderRadius:6}} key={index}/>
+                            <Image source={{uri:photoUrl(image.url)}} style={{width:'100%',height:100,borderRadius:6}}/>
                           </View>
                         ))
                       }
