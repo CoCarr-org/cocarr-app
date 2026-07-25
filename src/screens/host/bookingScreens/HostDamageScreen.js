@@ -89,28 +89,21 @@ export function HostDamageScreen({route}) {
     }
   };
 
-  const selectImages = async() => {
-
-    const hasPermission = await requestCameraPermission();
-      
-      if (!hasPermission) {
-        notify('Camera permission denied');
-        return;
-      }
-
-    launchImageLibrary({ mediaType: 'photo', selectionLimit: 10,quality:0.5 }, (response) => {
+  const selectImages = async () => {
+    // This is the photo LIBRARY picker — it needs no camera permission. The old
+    // camera-permission gate rejected on iOS (PermissionsAndroid is Android-only),
+    // so images could never be added and the whole report was un-submittable.
+    launchImageLibrary({ mediaType: 'photo', selectionLimit: 10, quality: 0.5 }, (response) => {
       if (response.didCancel) {
         console.log('User cancelled image picker');
       } else if (response.errorCode) {
         console.log('ImagePicker Error: ', response.errorMessage);
-      } else {
-        setData({
-          ...data,
-          damageImage: [
-            ...data.damageImage,
-            ...response.assets
-          ]
-        });
+        notify('Could not open the photo library');
+      } else if (response.assets?.length) {
+        setData((prev) => ({
+          ...prev,
+          damageImage: [...prev.damageImage, ...response.assets],
+        }));
       }
     });
   };
@@ -178,7 +171,7 @@ export function HostDamageScreen({route}) {
 
   return (
     <View style={{flex:1,backgroundColor:'#000',height:'100%'}}>
-        <CenterHeader title={'End Ride'} customSecondaryText={booking.bookingId} navigation={navigation}/>
+        <CenterHeader title={'Report Damage'} customSecondaryText={booking.bookingId} navigation={navigation}/>
 
             <View style={{flex:1,justifyContent:'space-between',paddingVertical:24,paddingHorizontal:16}}>
                 <GestureHandlerRootView style={{flex:1}}>
@@ -235,8 +228,8 @@ export function HostDamageScreen({route}) {
       </ScrollView>
       </GestureHandlerRootView>
 
-        <TouchableOpacity disabled={submitting || !data.damageType || !data.damageDescription || !data.damageImage || !data.damagePart} onPress={onSubmit} style={{backgroundColor:(submitting || !data.damageType || !data.damageDescription || !data.damageImage || !data.damagePart) ? '#4C4C4E' : BRAND_COLOR,borderRadius:5,paddingVertical:12,paddingHorizontal:12,color:'#fff',fontSize:14,width:'100%',marginTop:12,justifyContent:'center',alignItems:'center'}}>
-          <CustomText fontType='primary' weight='Bold' style={{color:'#000', fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>End Booking Now</CustomText>
+        <TouchableOpacity disabled={submitting || !data.damageType || !data.damageDescription || data.damageImage.length === 0 || !data.damagePart} onPress={onSubmit} style={{backgroundColor:(submitting || !data.damageType || !data.damageDescription || data.damageImage.length === 0 || !data.damagePart) ? '#4C4C4E' : BRAND_COLOR,borderRadius:5,paddingVertical:12,paddingHorizontal:12,color:'#fff',fontSize:14,width:'100%',marginTop:12,justifyContent:'center',alignItems:'center'}}>
+          <CustomText fontType='primary' weight='Bold' style={{color:'#000', fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>{submitting ? 'Submitting…' : 'Submit Damage Report'}</CustomText>
         </TouchableOpacity>
         
       </View>
