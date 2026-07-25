@@ -48,10 +48,9 @@ export default function HostHomeScreen() {
 
       {/* <PremiumMemberships/> */}
 
-        
-        <MyCars navigation={navigator} refreshing={refreshing}/>
-
-        <ActiveAvailability navigation={navigator} refreshing={refreshing}/>
+        {/* Cars and their scheduling are one list now — each car card expands to
+            its availability windows, mirroring the web host dashboard. */}
+        <CarsAndSchedules navigation={navigator} refreshing={refreshing}/>
 
 {/* Bookings live on their own tab now, so the home feed no longer lists them. */}
 
@@ -181,162 +180,142 @@ const OfferSlider = ({navigation}) => {
 }
 
 
-const MyCars = ({navigation,refreshing}) => {
+const STATUS = (car) => car.isDraft ? 'draft' : car.isAdminApproved ? 'live' : 'pending';
 
-  const [cars, setCars] = useState([])
+// Combined cars + scheduling, mirroring the web host dashboard: one vertical
+// list of cars, each card expandable to show that car's upcoming availability
+// windows and an "Add schedule" action. Replaces the old split of a horizontal
+// car strip on top and a separate schedule list at the bottom.
+const CarsAndSchedules = ({ navigation, refreshing }) => {
+  const [cars, setCars] = useState([]);
+  const [schedulesByCar, setSchedulesByCar] = useState({});
+  const [openCar, setOpenCar] = useState(null);
 
-  const getMyCars = async () => {
+  const load = async () => {
     try {
-      // if(refreshing){
-        const response = await axios.get(`${API_URL}/host/vehicles?limit=6&sortBy=-createdAt`)
-        console.log('response',response.data.vehicles)
-        setCars(sortByApproval(response.data.vehicles))
-      // }
+      const [carsRes, schedRes] = await Promise.all([
+        axios.get(`${API_URL}/host/vehicles?limit=20&sortBy=-createdAt`),
+        axios.get(`${API_URL}/host/schedule?limit=100&sortBy=startTime`),
+      ]);
+      setCars(sortByApproval(carsRes.data.vehicles || []));
+      const grouped = {};
+      for (const s of (schedRes.data.schedules || [])) {
+        const vid = s.vehicleId || s.vehicle?.id;
+        if (!vid) continue;
+        (grouped[vid] = grouped[vid] || []).push(s);
+      }
+      setSchedulesByCar(grouped);
     } catch (error) {
-      console.log('error',error)
+      console.log('Error loading cars/schedules:', error?.response?.data || error?.message);
     }
-    
-  }
+  };
 
-  useEffect(() => {
-    getMyCars()
-  }, [refreshing])
+  useEffect(() => { load(); }, [refreshing]);
+
+  const Badge = ({ status }) => {
+    const map = {
+      draft:   { bg:'#26262a', bd:'#3a3a40', dot:'#b9b9c2', fg:'#b9b9c2', label:'Not Completed' },
+      pending: { bg:'#EDBF3122', bd:'#EDBF3166', dot:BRAND_COLOR, fg:BRAND_COLOR, label:'Pending Approval' },
+      live:    { bg:'#3fce8f22', bd:'#3fce8f59', dot:'#6ee6b0', fg:'#6ee6b0', label:'Live' },
+    }[status];
+    return (
+      <View style={{ flexDirection:'row', alignItems:'center', gap:5, backgroundColor:map.bg, borderWidth:1, borderColor:map.bd, borderRadius:100, paddingVertical:2, paddingHorizontal:8 }}>
+        <View style={{ width:5, height:5, borderRadius:5, backgroundColor:map.dot }} />
+        <CustomText fontType='primary' weight='Bold' style={{ color:map.fg, fontSize:9, letterSpacing:.15 }}>{map.label}</CustomText>
+      </View>
+    );
+  };
 
   return (
-    <View style={{flexDirection:'column', justifyContent:'space-between', paddingVertical:24,paddingHorizontal:0}}>
-      <View style={{flexDirection:'column', justifyContent:'space-between',  marginBottom:8,paddingHorizontal:16}}> 
-      <CustomText fontType='primary' weight='Bold' style={{color:'#757575', fontSize:11,letterSpacing:.15,marginBottom:1,textTransform:'uppercase'}}>My Cars</CustomText>
-
+    <View style={{ paddingHorizontal:16, paddingVertical:16 }}>
+      <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color:'#757575', fontSize:11, letterSpacing:.15, textTransform:'uppercase' }}>My Cars &amp; Schedules</CustomText>
+        <TouchableOpacity onPress={() => navigation.navigate('AddCar')} style={{ flexDirection:'row', alignItems:'center', gap:4 }}>
+          <Icon name="add-circle-outline" size={16} color={BRAND_COLOR} />
+          <CustomText fontType='primary' weight='Bold' style={{ color:BRAND_COLOR, fontSize:10, textTransform:'uppercase', letterSpacing:.15 }}>Add car</CustomText>
+        </TouchableOpacity>
       </View>
-          <ScrollView alwaysBounceHorizontal={true} horizontal showsHorizontalScrollIndicator={false} style={{flexDirection:'row'}}>
-          <TouchableHighlight style={{marginRight: 16,marginLeft:0, backgroundColor:'#141414',borderRadius:10,paddingVertical:12,paddingHorizontal:16,height:180,width:160,flexDirection:'row',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#252525',borderStyle:'dashed',marginLeft:16}} onPress={()=>navigation.navigate('AddCar')}>
-                  <View style={{flexDirection:'column', justifyContent:'center', alignItems:'center',paddingVertical:10,paddingHorizontal:12}}>
-                    <Icon name="add-circle-outline" size={24} style={{marginBottom:4}} color="#959595" />
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#959595', fontSize:10,textTransform:'uppercase',letterSpacing:.15 }}>Add new car</CustomText>
+
+      {cars.length === 0 && (
+        <TouchableOpacity onPress={() => navigation.navigate('AddCar')} style={{ backgroundColor:'#141414', borderRadius:12, borderWidth:1, borderColor:'#252525', borderStyle:'dashed', paddingVertical:28, alignItems:'center' }}>
+          <Icon name="add-circle-outline" size={26} color="#959595" style={{ marginBottom:6 }} />
+          <CustomText fontType='primary' weight='SemiBold' style={{ color:'#959595', fontSize:11, textTransform:'uppercase', letterSpacing:.15 }}>List your first car</CustomText>
+        </TouchableOpacity>
+      )}
+
+      {cars.map((car) => {
+        const status = STATUS(car);
+        const canSchedule = status === 'live';
+        const upcoming = schedulesByCar[car.id] || [];
+        const isOpen = openCar === car.id;
+        return (
+          <View key={car.id} style={{ backgroundColor:'#1c1c1e', borderRadius:12, marginBottom:12, overflow:'hidden', borderWidth:1, borderColor:'#232327' }}>
+            {/* Card body → detail (or resume onboarding for a draft). */}
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => car.isDraft ? navigation.navigate('AddCar', { vehicleId: car.id }) : navigation.navigate('HostCarInfo', { vehicleId: car.id })}
+              style={{ flexDirection:'row', padding:12, gap:12 }}
+            >
+              <View style={{ width:88, height:66, borderRadius:8, backgroundColor:'#2c2c2e', overflow:'hidden' }}>
+                {car.images && car.images[0] && (
+                  <Image source={{ uri: photoUrl(car.images[0].url) }} style={{ width:'100%', height:'100%' }} resizeMode="cover" />
+                )}
+              </View>
+              <View style={{ flex:1, justifyContent:'center' }}>
+                <View style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                  <Badge status={status} />
+                  <CustomText fontType='primary' weight='Medium' style={{ color:'#a3a3a3', fontSize:11 }}>{car.vehicleNumber}</CustomText>
+                </View>
+                <CustomText fontType='primary' weight='SemiBold' numberOfLines={1} style={{ color:'#e3e3e3', fontSize:13 }}>{car.brand?.name} {car.vehicleName}</CustomText>
+              </View>
+            </TouchableOpacity>
+
+            {/* Schedule assistance — only for approved cars, as on web. */}
+            {canSchedule ? (
+              <>
+                <TouchableOpacity onPress={() => setOpenCar(isOpen ? null : car.id)} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', paddingHorizontal:12, paddingVertical:11, borderTopWidth:1, borderTopColor:'#232327' }}>
+                  <CustomText fontType='primary' weight='Bold' style={{ color:'#e3e3e3', fontSize:11, letterSpacing:.15 }}>📅  Schedule</CustomText>
+                  <View style={{ flexDirection:'row', alignItems:'center', gap:6 }}>
+                    <CustomText fontType='primary' weight='Medium' style={{ color:'#8a8a8a', fontSize:11 }}>{upcoming.length ? `${upcoming.length} upcoming` : 'None set'}</CustomText>
+                    <Icon name={isOpen ? 'chevron-up' : 'chevron-down'} size={14} color="#8a8a8a" />
                   </View>
-                </TouchableHighlight>
-              {cars.map((car,index) => (
-                <TouchableOpacity key={index} style={{marginRight: 16,marginLeft:0, backgroundColor:'#1c1c1e',borderRadius:10,width:160, height:180,position:'relative'}} onPress={()=>{
-                  if(car.isDraft === true){
-                    navigation.navigate('AddCar', {vehicleId:car.id})
-                  }else{
-                    navigation.navigate('HostCarInfo', {vehicleId:car.id})
-                    // navigation.navigate('HostCars', {params:{vehicleId:car.id},screen:'HostCarInfo'})
-                  }
-                }}>
-                  {car.images && car.images.length > 0 ? <Image source={{uri:photoUrl(car.images[0].url)}} style={{width:160, height:100, borderRadius:10,borderBottomLeftRadius:0,borderBottomRightRadius:0,backgroundColor:'#2c2c2e',position:'relative',top:0,left:0,right:0,bottom:0}}/> : <View style={{width:160, height:100, borderRadius:10,borderBottomLeftRadius:0,borderBottomRightRadius:0,backgroundColor:'#2c2c2e',position:'relative',top:0,left:0,right:0,bottom:0}}>
-                    </View>
-                    }
-                  <View style={{flexDirection:'column', justifyContent:'space-between', alignItems:'flex-start',paddingVertical:10,paddingHorizontal:12}}>
-                    {/* Status sits below the photo, not over it, so it stays
-                        readable against any image. */}
-                    {car.isDraft === true ? (
-                      <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#26262a',borderWidth:1,borderColor:'#3a3a40',borderRadius:100,paddingVertical:2,paddingHorizontal:8,marginBottom:5}}>
-                        <View style={{width:5,height:5,borderRadius:5,backgroundColor:'#b9b9c2'}} />
-                        <CustomText fontType='primary' weight='Bold' style={{color:'#b9b9c2', fontSize:9,letterSpacing:.15}}>Not Completed</CustomText>
-                      </View>
-                    ) : car.isAdminApproved === false ? (
-                      <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#EDBF3122',borderWidth:1,borderColor:'#EDBF3166',borderRadius:100,paddingVertical:2,paddingHorizontal:8,marginBottom:5}}>
-                        <View style={{width:5,height:5,borderRadius:5,backgroundColor:BRAND_COLOR}} />
-                        <CustomText fontType='primary' weight='Bold' style={{color:BRAND_COLOR, fontSize:9,letterSpacing:.15}}>Pending Approval</CustomText>
-                      </View>
+                </TouchableOpacity>
+
+                {isOpen && (
+                  <View style={{ paddingHorizontal:12, paddingBottom:12 }}>
+                    {upcoming.length === 0 ? (
+                      <CustomText fontType='primary' weight='Regular' style={{ color:'#757575', fontSize:12, paddingVertical:6 }}>No upcoming availability windows for this car.</CustomText>
                     ) : (
-                      <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#3fce8f22',borderWidth:1,borderColor:'#3fce8f59',borderRadius:100,paddingVertical:2,paddingHorizontal:8,marginBottom:5}}>
-                        <View style={{width:5,height:5,borderRadius:5,backgroundColor:'#6ee6b0'}} />
-                        <CustomText fontType='primary' weight='Bold' style={{color:'#6ee6b0', fontSize:9,letterSpacing:.15}}>Live</CustomText>
-                      </View>
+                      upcoming.slice(0, 6).map((s) => (
+                        <TouchableOpacity key={s.id} onPress={() => navigation.navigate('ScheduleInfo', { scheduleId: s.id })} style={{ flexDirection:'row', alignItems:'center', justifyContent:'space-between', backgroundColor:'#151519', borderRadius:8, paddingVertical:10, paddingHorizontal:12, marginBottom:8 }}>
+                          <View>
+                            <CustomText fontType='primary' weight='Medium' style={{ color:'#e3e3e3', fontSize:12 }}>{formatDateOnly(s.startTime)} → {formatDateOnly(s.endTime)}</CustomText>
+                            <CustomText fontType='primary' weight='Regular' style={{ color:'#8a8a8a', fontSize:10 }}>{formatTime(s.startTime)} – {formatTime(s.endTime)}{s.scheduleBlocks && s.scheduleBlocks.length > 0 ? `  ·  ${s.scheduleBlocks.length} pause(s)` : ''}</CustomText>
+                          </View>
+                          <Icon name="chevron-forward" size={14} color="#5a5a62" />
+                        </TouchableOpacity>
+                      ))
                     )}
-                    <CustomText fontType='primary' weight='Regular' style={{color:'#e3e3e3', fontSize:11}}>{car.brand?.name} {car.vehicleName}</CustomText>
-                    <View style={{flexDirection:'row', alignItems:'flex-end', justifyContent:'flex-end',marginTop:4}}>
-                      <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:11}}>{car.vehicleNumber}</CustomText>
-                    </View>
+                    <TouchableOpacity onPress={() => navigation.navigate('CreateSchedule', { vehicleId: car.id })} style={{ flexDirection:'row', alignItems:'center', justifyContent:'center', gap:6, backgroundColor:'#EDBF3122', borderRadius:8, paddingVertical:11, marginTop:2 }}>
+                      <Icon name="add-circle-outline" size={16} color={BRAND_COLOR} />
+                      <CustomText fontType='primary' weight='Bold' style={{ color:BRAND_COLOR, fontSize:10, textTransform:'uppercase', letterSpacing:.15 }}>Add schedule</CustomText>
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
-              ))
-            }
-          </ScrollView>
-         
-        </View>
-  )
-}
-
-
-
-const ActiveAvailability = ({navigation,refreshing}) => {
-
-  const [availabilities, setAvailabilities] = useState([])
-  const [status, setStatus] = useState(`${BOOKING_ONGOING}`)
-
-  const getMyAvailabilitySchedule = async () => {
-    try {
-        const response = await axios.get(`${API_URL}/host/schedule?limit=4&sortBy=-createdAt`)
-        setAvailabilities(response.data.schedules)
-    } catch (error) {
-      console.log('error',error)
-    }
-    
-  }
-
-  useEffect(() => {
-    getMyAvailabilitySchedule()
-  }, [status,refreshing])
-
-
-  return (
-    <View style={{flexDirection:'column', justifyContent:'space-between', paddingVertical:24,paddingHorizontal:16}}>
-      <View style={{flexDirection:'column', justifyContent:'space-between', marginBottom:16}}> 
-          <CustomText fontType='primary' weight='Bold' style={{color:'#757575', fontSize:11,letterSpacing:.15,marginBottom:1,textTransform:'uppercase'}}>
-            Car Availability Schedules
-          </CustomText>
-
-      </View>
-
-
-      
-          <View style={{flexDirection:'column',backgroundColor:'#1c1c1e',borderRadius:8,paddingVertical:0,paddingHorizontal:0,overflow:'hidden'}}>
-              {availabilities.map((availability,index) => (
-                <TouchableOpacity key={index} style={{marginLeft:0, overflow:'hidden',flex:1,borderBottomWidth:1,borderBottomColor:'#252525'}} onPress={()=>navigation.navigate('ScheduleInfo', {scheduleId:availability.id})}>
-                  <View style={{flexDirection:'column', justifyContent:'space-between',paddingVertical:10,paddingHorizontal:12,borderBottomWidth:0,borderBottomColor:'#252525', backgroundColor:'#151519',width:'100%'}}>
-                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',paddingVertical:6,paddingHorizontal:12}}>
-                      <View style={{flexDirection:'column', alignItems:'flex-start', justifyContent:'flex-start',backgroundColor:'#151519',zIndex:1,paddingRight:4}}> 
-                        <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:12}}>{formatDateOnly(availability.startTime)}</CustomText>
-                        <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:10}}>{formatTime(availability.startTime)}</CustomText>
-                      </View>
-                      <View style={{flexDirection:'column', alignItems:'center', justifyContent:'center',backgroundColor:'#151519',zIndex:1,paddingHorizontal:12}}>
-                      <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:12}}>{availability.vehicle?.vehicleNumber ? availability.vehicle?.vehicleNumber : 'N/A'}</CustomText>
-                      <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:12}}>{availability.vehicle?.vehicleName ? availability.vehicle?.vehicleName : 'N/A'}</CustomText>
-                      <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:11}}>{availability.scheduleBlocks && availability.scheduleBlocks.length > 0 ? `${availability.scheduleBlocks.length} Pause(s)` : ''}</CustomText>
-
-                      </View>
-                      <View style={{backgroundColor:'#2c2c2e',height:2,width:'90%',position:'absolute',left:'5%',top:'60%',zIndex:-1}}>
-                        
-                      </View>
-                      <View style={{flexDirection:'column', alignItems:'flex-end', justifyContent:'flex-end',backgroundColor:'#151519',zIndex:1,paddingLeft:4}}> 
-                        <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:12}}>{formatDateOnly(availability.endTime)}</CustomText>
-                        <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:10}}>{formatTime(availability.endTime)}</CustomText>
-                      </View>
-                    </View>
-                    {/* <View style={{flexDirection:'row', justifyContent:'space-between'}}> 
-                      <FontAwesome name="dot-circle-o" size={12} style={{marginRight:4}} color={BRAND_COLOR}/>
-                      <FontAwesome name="dot-circle-o" size={12} style={{marginRight:4}} color={BRAND_COLOR}/>
-                    </View> */}
-                  </View>
-                    
-                </TouchableOpacity>
-              ))
-            }
-                <TouchableOpacity style={{marginLeft:0, overflow:'hidden',flex:1,backgroundColor:'#EDBF313A',paddingVertical:6,paddingHorizontal:8}} onPress={()=>navigation.navigate('CreateSchedule')}>
-                  <View style={{flexDirection:'row', alignItems:'center', justifyContent:'center',paddingVertical:10,paddingHorizontal:12}}>
-                    <Icon name="add-circle-outline" size={16} style={{marginRight:4}} color={BRAND_COLOR}/>
-                    <CustomText fontType='primary' weight='Bold' style={{color:BRAND_COLOR, fontSize:10,textTransform:'uppercase',letterSpacing:.15,textAlign:'center'}}>Add another schedule</CustomText>
-                  </View>
-                    
-                </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <View style={{ paddingHorizontal:12, paddingVertical:10, borderTopWidth:1, borderTopColor:'#232327' }}>
+                <CustomText fontType='primary' weight='Regular' style={{ color:'#5a5a62', fontSize:11 }}>
+                  {status === 'draft' ? 'Finish onboarding to enable scheduling.' : 'Scheduling unlocks once this car is approved.'}
+                </CustomText>
+              </View>
+            )}
           </View>
-         
-        </View>
-  )
-}
+        );
+      })}
+    </View>
+  );
+};
 
 
 const FeaturedCars = () => {
