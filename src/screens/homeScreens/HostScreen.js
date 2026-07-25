@@ -1,4 +1,5 @@
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StatusBar, TouchableOpacity, Image, ScrollView, FlatList, ToastAndroid, RefreshControl, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -7,16 +8,18 @@ import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { formatDate, notify } from '../../utils/utils';
 import { styles } from '../../style';
-import { updateUserRole } from '../../store/authSlice';
+import { updateUserRole, setHostStatus } from '../../store/authSlice';
 
 // import Logo from '../../images/logo.png';
 // import { BottomSheet, BottomSheetView } from '@gorhom/bottom-sheet';
 export default function HostScreen() {
+  const insets = useSafeAreaInsets();
   const navigator = useNavigation();
   const { startDateTime, endDateTime, selectedCity } = useSelector((state) => state.booking);
   const userRole = useSelector((state) => state.auth.userRole);
   const dispatch = useDispatch();
   const [loading, setLoading] = useState(true); // Always start with loading shown
+  const [signingUp, setSigningUp] = useState(false);
 
   const bottomSheetRef = useRef(null);
 
@@ -25,49 +28,53 @@ export default function HostScreen() {
     console.log('handleSheetChanges', index);
   }, []);
 
+  // This screen is the host SIGN-UP pitch, reached from the mode switcher when
+  // the account isn't a host yet. It used to be a tab that ran /host/check on
+  // every focus and replaced itself with the host shell — so an existing host
+  // could never actually read it, and a tab press swapped the whole navigator.
+  // Now it only reports status; entering the host shell is a state change.
   const checkHostRegistered = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API_URL}/host/check`);
+      dispatch(setHostStatus({ isHost: !!response.data.isHost }));
+      // Already registered (e.g. signed up on the web): go straight in.
       if (response.data.isHost) {
         dispatch(updateUserRole({ userRole: 'host' }));
-        navigator.replace('HostTab');
-      } else {
-        setLoading(false);
+        navigator.goBack();
       }
     } catch (error) {
-      setLoading(false);
-      console.log(error);
+      console.log('Host check failed:', error?.response?.data ?? error?.message);
       notify('Something went wrong');
+    } finally {
+      setLoading(false);
     }
     // eslint-disable-next-line
   }, [dispatch, navigator]);
 
-  // Run check when user lands on this page (every focus)
-  useFocusEffect(
-    useCallback(() => {
-      checkHostRegistered();
-      // no cleanup as we want to check every focus
-    }, [checkHostRegistered])
-  );
+  // Check once on mount. Deliberately NOT useFocusEffect: re-running on every
+  // focus is what made this screen impossible to stay on.
+  useEffect(() => {
+    checkHostRegistered();
+    // eslint-disable-next-line
+  }, []);
 
   async function handleHostSignup() {
-    // setLoading(true);
+    if (signingUp) return;
+    setSigningUp(true);
     try {
       const checkResponse = await axios.get(`${API_URL}/host/check`);
-      if (checkResponse.data.isHost) {
-        dispatch(updateUserRole({ userRole: 'host' }));
-        navigator.replace('HostTab');
-      } else {
-        const response = await axios.post(`${API_URL}/host/`);
-        dispatch(updateUserRole({ userRole: 'host' }));
-        navigator.replace('HostTab');
-      }
+      if (!checkResponse.data.isHost) await axios.post(`${API_URL}/host/`);
+      dispatch(setHostStatus({ isHost: true }));
+      dispatch(updateUserRole({ userRole: 'host' }));
+      // No navigate/replace: MainNavigator swaps the shell off userRole, and
+      // this screen unmounts with it.
     } catch (error) {
-      console.log(error?.response?.data ?? error);
+      console.log('Host signup failed:', error?.response?.data ?? error?.message);
       notify('Something went wrong');
+    } finally {
+      setSigningUp(false);
     }
-    // setLoading(false);
   }
 
   if (loading) {
@@ -81,11 +88,15 @@ export default function HostScreen() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: '#000' }}
+      contentContainerStyle={{ paddingTop: insets.top }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={checkHostRegistered} />}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40, paddingHorizontal: 24 }}>
-        <View style={{ paddingHorizontal: 0, paddingVertical: 32 }}>
-        </View>
+      {/* This is a pushed route now (headerShown is false app-wide), so it needs
+          its own way back to the renting shell. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }}>
+        <TouchableOpacity onPress={() => navigator.goBack()} style={{ padding: 6 }}>
+          <Icon name="chevron-back" size={22} color="#e3e3e3" />
+        </TouchableOpacity>
       </View>
 
       <View
@@ -112,9 +123,10 @@ export default function HostScreen() {
             <Text style={[styles.textXs, styles.textGray, styles.textCenter]}>Upload your car RC number, car images and get verified to earn</Text>
             <TouchableOpacity
               onPress={handleHostSignup}
-              style={[styles.flexRow, styles.justifyCenter, styles.itemsCenter, styles.p2, styles.mt2, styles.brandColor, styles.roundedFull]}
+              disabled={signingUp}
+              style={[styles.flexRow, styles.justifyCenter, styles.itemsCenter, styles.p2, styles.mt2, styles.brandColor, styles.roundedFull, signingUp && { opacity: 0.6 }]}
             >
-              <Text style={[styles.buttonPrimaryMd, styles.mt2]}>Start Now</Text>
+              <Text style={[styles.buttonPrimaryMd, styles.mt2]}>{signingUp ? 'Setting up…' : 'Start Now'}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -17,68 +17,69 @@ import FiveStar from '../../../components/host/FiveStar';
 const rankCar = (v) => (v.isDraft ? 2 : v.isAdminApproved ? 1 : 0);
 const sortByApproval = (list) => [...(list || [])].sort((a, b) => rankCar(a) - rankCar(b));
 
+const greetingFor = () => {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+};
+
 export default function HostHomeScreen() {
-  const navigator = useNavigation()
+  const navigator = useNavigation();
   const authInfo = useSelector((state) => state.auth);
-  const { startDateTime, endDateTime,selectedCity,selectedLocation } = useSelector((state) => state.booking);
-  const dispatch = useDispatch();
-  const [detectingLocation, setDetectingLocation] = useState(false);
-  const [showLocationSearch, setShowLocationSearch] = useState(false);
-  const [showLocationValid, setShowLocationValid] = useState(false);
-  const [showCityChange, setShowCityChange] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const onRefresh = () => {
+  // Shared fetch — the dashboard tiles and the scheduling assistant read from
+  // the same vehicles/schedules/bookings/wallet, so pull them once here.
+  const [vehicles, setVehicles] = useState([]);
+  const [schedulesByCar, setSchedulesByCar] = useState({});
+  const [bookings, setBookings] = useState([]);
+  const [wallet, setWallet] = useState(null);
+
+  const load = useCallback(async () => {
+    try {
+      const [carsRes, schedRes, bookingsRes, walletRes] = await Promise.all([
+        axios.get(`${API_URL}/host/vehicles?limit=30&sortBy=-createdAt`),
+        axios.get(`${API_URL}/host/schedule?limit=100&sortBy=startTime`),
+        axios.get(`${API_URL}/host/bookings?populate=true&sortBy=-createdAt&offset=0&limit=25`).catch(() => ({ data: {} })),
+        axios.get(`${API_URL}/wallet/my-wallet`).catch(() => ({ data: null })),
+      ]);
+      setVehicles(sortByApproval(carsRes.data.vehicles || []));
+      const grouped = {};
+      for (const s of (schedRes.data.schedules || [])) {
+        const vid = s.vehicleId || s.vehicle?.id;
+        if (vid) (grouped[vid] = grouped[vid] || []).push(s);
+      }
+      setSchedulesByCar(grouped);
+      setBookings(bookingsRes.data?.bookings || bookingsRes.data?.data || []);
+      setWallet(walletRes.data?.wallet || walletRes.data?.data || walletRes.data || null);
+    } catch (error) {
+      console.log('Host home load error:', error?.response?.data || error?.message);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }
-
-
-  
+    await load();
+    setRefreshing(false);
+  };
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor:'#000'}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-      {/* <HomeIcon width={22} height={22} currentColor={color} /> */}
-      <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',paddingHorizontal:16,paddingVertical:20}}>
-        <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}> 
-            <View style={{paddingRight:4}}>
-              <Image source={require('../../../images/logo.png')} style={{width:54, height:28}}/>
-            </View>
-            <View style={{paddingLeft:8,paddingVertical:4,borderLeftWidth:1,borderLeftColor:'#2c2c2e'}}>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3', fontSize:11, fontWeight:'500',textAlign:'left',marginBottom:0,textTransform:'uppercase'}}>Hi,{authInfo?.userName}</CustomText>
-              <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:11, textAlign:'left',marginBottom:0}}>Cocarr Host</CustomText>
-            </View>
-        </View>
-        {/* <TouchableOpacity style={{flexDirection:'row', alignItems:'center', gap:4,backgroundColor:'#1c1c1e',borderRadius:5,paddingVertical:8,paddingHorizontal:12,shadowOpacity:0.5,shadowRadius:1,shadowColor:'#454545',justifyContent:'center'}} onPress={()=>dispatch(setShowCityPicker(true))}>
-          <View>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#959595', fontSize:10, fontWeight:'500',textAlign:'left',marginBottom:0,textTransform:'uppercase'}}>
-              {selectedCity ? selectedCity.name : 'Selected City'}
-            </CustomText>
-          </View>
-          <Icon name="location-outline" size={16} color="#a3a3a3" style={{borderRadius:50}}/>
-        </TouchableOpacity> */}
-
+      {/* Title and profile live in TopBar; a greeting sets the dashboard tone. */}
+      <View style={{paddingHorizontal:16,paddingTop:4,paddingBottom:12}}>
+        <CustomText fontType='primary' weight='Medium' style={{color:'#757575', fontSize:12}}>{greetingFor()},</CustomText>
+        <CustomText fontType='primary' weight='Bold' style={{color:'#f0f0f2', fontSize:18, letterSpacing:-.3}}>{authInfo?.userName || 'Host'}</CustomText>
       </View>
 
-      {/* <PremiumMemberships/> */}
+      {/* Dashboard at a glance — mirrors the web host dashboard KPI tiles. */}
+      <HostDashboard vehicles={vehicles} bookings={bookings} wallet={wallet} navigation={navigator} />
 
-        
-        <MyCars navigation={navigator} refreshing={refreshing}/>
+      {/* Scheduling assistant — pick a car, manage its availability. Distinct
+          from the Cars tab, which is the full management list. */}
+      <SchedulingAssistant vehicles={vehicles} schedulesByCar={schedulesByCar} navigation={navigator} />
 
-        <ActiveAvailability navigation={navigator} refreshing={refreshing}/>
-
-{/* Bookings live on their own tab now, so the home feed no longer lists them. */}
-
-{/*
-            
-          <WhyChooseCocarr/>
-
-          <OfferSlider/> */}
-
-          <FaqBlock/>
-
+      <FaqBlock/>
     </ScrollView>
   );
 }
@@ -197,162 +198,180 @@ const OfferSlider = ({navigation}) => {
 }
 
 
-const MyCars = ({navigation,refreshing}) => {
+const STATUS = (car) => car.isDraft ? 'draft' : car.isAdminApproved ? 'live' : 'pending';
 
-  const [cars, setCars] = useState([])
+const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
-  const getMyCars = async () => {
-    try {
-      // if(refreshing){
-        const response = await axios.get(`${API_URL}/host/vehicles?limit=6&sortBy=-createdAt`)
-        console.log('response',response.data.vehicles)
-        setCars(sortByApproval(response.data.vehicles))
-      // }
-    } catch (error) {
-      console.log('error',error)
-    }
-    
-  }
+// ── Dashboard tiles ───────────────────────────────────────────────────────────
+// Mirrors the web host dashboard KPI row: live cars, active bookings, wallet,
+// average rating.
+const HostDashboard = ({ vehicles, bookings, wallet, navigation }) => {
+  const liveCars = vehicles.filter((v) => !v.isDraft);
+  const draftCount = vehicles.length - liveCars.length;
+  const activeBookings = bookings.filter((b) => b.status === 'booked' || b.status === 'ongoing').length;
+  const ratedCars = liveCars.filter((v) => v.rating > 0);
+  const avgRating = ratedCars.length
+    ? (ratedCars.reduce((a, v) => a + Number(v.rating || 0), 0) / ratedCars.length).toFixed(1)
+    : null;
+  const totalRides = vehicles.reduce((a, v) => a + (Number(v.totalRides) || 0), 0);
+  const balance = wallet?.balance ?? wallet?.points ?? wallet?.walletPoints;
 
-  useEffect(() => {
-    getMyCars()
-  }, [refreshing])
+  const tiles = [
+    { icon: 'car-sport', label: 'Live cars', value: String(liveCars.length), sub: draftCount ? `${draftCount} in draft` : 'All published', onPress: () => navigation.navigate('HostCars', { statusFilter: 'live' }) },
+    { icon: 'calendar', label: 'Active bookings', value: String(activeBookings), sub: `${bookings.length} shown`, onPress: () => navigation.navigate('HostBooking', { status: 'ongoing' }) },
+    { icon: 'wallet', label: 'Earnings', value: balance != null ? inr(balance) : '—', sub: 'View breakdown', onPress: () => navigation.navigate('HostEarnings') },
+    { icon: 'star', label: 'Avg rating', value: avgRating || 'New', sub: `${totalRides} rides` },
+  ];
 
   return (
-    <View style={{flexDirection:'column', justifyContent:'space-between', paddingVertical:24,paddingHorizontal:0}}>
-      <View style={{flexDirection:'column', justifyContent:'space-between',  marginBottom:8,paddingHorizontal:16}}> 
-      <CustomText fontType='primary' weight='Bold' style={{color:'#757575', fontSize:11,letterSpacing:.15,marginBottom:1,textTransform:'uppercase'}}>My Cars</CustomText>
-
+    <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        {tiles.map((t) => {
+          const Wrapper = t.onPress ? TouchableOpacity : View;
+          return (
+            <Wrapper key={t.label} onPress={t.onPress} activeOpacity={0.85}
+              style={{ width: '47.8%', backgroundColor: '#141416', borderRadius: 14, borderWidth: 1, borderColor: '#232327', padding: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <View style={{ width: 30, height: 30, borderRadius: 8, backgroundColor: '#EDBF3115', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name={t.icon} size={15} color={BRAND_COLOR} />
+                </View>
+                {t.onPress && <Icon name="chevron-forward" size={14} color="#5a5a62" />}
+              </View>
+              <CustomText fontType='primary' weight='Bold' style={{ color: '#f0f0f2', fontSize: 20, letterSpacing: -.4 }}>{t.value}</CustomText>
+              <CustomText fontType='primary' weight='SemiBold' style={{ color: '#b3b3b8', fontSize: 11, marginTop: 2 }}>{t.label}</CustomText>
+              <CustomText fontType='primary' weight='Regular' style={{ color: '#6f6f76', fontSize: 10, marginTop: 1 }}>{t.sub}</CustomText>
+            </Wrapper>
+          );
+        })}
       </View>
-          <ScrollView alwaysBounceHorizontal={true} horizontal showsHorizontalScrollIndicator={false} style={{flexDirection:'row'}}>
-          <TouchableHighlight style={{marginRight: 16,marginLeft:0, backgroundColor:'#141414',borderRadius:10,paddingVertical:12,paddingHorizontal:16,height:180,width:160,flexDirection:'row',alignItems:'center',justifyContent:'center',borderWidth:1,borderColor:'#252525',borderStyle:'dashed',marginLeft:16}} onPress={()=>navigation.navigate('AddCar')}>
-                  <View style={{flexDirection:'column', justifyContent:'center', alignItems:'center',paddingVertical:10,paddingHorizontal:12}}>
-                    <Icon name="add-circle-outline" size={24} style={{marginBottom:4}} color="#959595" />
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#959595', fontSize:10,textTransform:'uppercase',letterSpacing:.15 }}>Add new car</CustomText>
-                  </View>
-                </TouchableHighlight>
-              {cars.map((car,index) => (
-                <TouchableOpacity key={index} style={{marginRight: 16,marginLeft:0, backgroundColor:'#1c1c1e',borderRadius:10,width:160, height:180,position:'relative'}} onPress={()=>{
-                  if(car.isDraft === true){
-                    navigation.navigate('AddCar', {vehicleId:car.id})
-                  }else{
-                    navigation.navigate('HostCarInfo', {vehicleId:car.id})
-                    // navigation.navigate('HostCars', {params:{vehicleId:car.id},screen:'HostCarInfo'})
-                  }
-                }}>
-                  {car.images && car.images.length > 0 ? <Image source={{uri:photoUrl(car.images[0].url)}} style={{width:160, height:100, borderRadius:10,borderBottomLeftRadius:0,borderBottomRightRadius:0,backgroundColor:'#2c2c2e',position:'relative',top:0,left:0,right:0,bottom:0}}/> : <View style={{width:160, height:100, borderRadius:10,borderBottomLeftRadius:0,borderBottomRightRadius:0,backgroundColor:'#2c2c2e',position:'relative',top:0,left:0,right:0,bottom:0}}>
-                    </View>
-                    }
-                  <View style={{flexDirection:'column', justifyContent:'space-between', alignItems:'flex-start',paddingVertical:10,paddingHorizontal:12}}>
-                    {/* Status sits below the photo, not over it, so it stays
-                        readable against any image. */}
-                    {car.isDraft === true ? (
-                      <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#26262a',borderWidth:1,borderColor:'#3a3a40',borderRadius:100,paddingVertical:2,paddingHorizontal:8,marginBottom:5}}>
-                        <View style={{width:5,height:5,borderRadius:5,backgroundColor:'#b9b9c2'}} />
-                        <CustomText fontType='primary' weight='Bold' style={{color:'#b9b9c2', fontSize:9,letterSpacing:.15}}>Not Completed</CustomText>
-                      </View>
-                    ) : car.isAdminApproved === false ? (
-                      <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#EDBF3122',borderWidth:1,borderColor:'#EDBF3166',borderRadius:100,paddingVertical:2,paddingHorizontal:8,marginBottom:5}}>
-                        <View style={{width:5,height:5,borderRadius:5,backgroundColor:BRAND_COLOR}} />
-                        <CustomText fontType='primary' weight='Bold' style={{color:BRAND_COLOR, fontSize:9,letterSpacing:.15}}>Pending Approval</CustomText>
-                      </View>
-                    ) : (
-                      <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#3fce8f22',borderWidth:1,borderColor:'#3fce8f59',borderRadius:100,paddingVertical:2,paddingHorizontal:8,marginBottom:5}}>
-                        <View style={{width:5,height:5,borderRadius:5,backgroundColor:'#6ee6b0'}} />
-                        <CustomText fontType='primary' weight='Bold' style={{color:'#6ee6b0', fontSize:9,letterSpacing:.15}}>Live</CustomText>
-                      </View>
-                    )}
-                    <CustomText fontType='primary' weight='Regular' style={{color:'#e3e3e3', fontSize:11}}>{car.brand?.name} {car.vehicleName}</CustomText>
-                    <View style={{flexDirection:'row', alignItems:'flex-end', justifyContent:'flex-end',marginTop:4}}>
-                      <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:11}}>{car.vehicleNumber}</CustomText>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))
-            }
-          </ScrollView>
-         
-        </View>
-  )
-}
+    </View>
+  );
+};
 
-
-
-const ActiveAvailability = ({navigation,refreshing}) => {
-
-  const [availabilities, setAvailabilities] = useState([])
-  const [status, setStatus] = useState(`${BOOKING_ONGOING}`)
-
-  const getMyAvailabilitySchedule = async () => {
-    try {
-        const response = await axios.get(`${API_URL}/host/schedule?limit=4&sortBy=-createdAt`)
-        setAvailabilities(response.data.schedules)
-    } catch (error) {
-      console.log('error',error)
-    }
-    
-  }
-
-  useEffect(() => {
-    getMyAvailabilitySchedule()
-  }, [status,refreshing])
-
+// ── Scheduling assistant ──────────────────────────────────────────────────────
+// "Availability" — one card per car listing its availability windows (from → to),
+// with an always-present Schedule action. Non-approved cars show a locked note.
+const AvailabilityCard = ({ car, windows, navigation }) => {
+  const status = STATUS(car);
+  const canSchedule = status === 'live';
+  const now = Date.now();
+  // Upcoming (not-yet-ended) windows, soonest first.
+  const upcoming = [...windows]
+    .filter((w) => new Date(w.endTime).getTime() > now)
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  const dotColor = status === 'live' ? '#6ee6b0' : status === 'pending' ? BRAND_COLOR : '#b9b9c2';
 
   return (
-    <View style={{flexDirection:'column', justifyContent:'space-between', paddingVertical:24,paddingHorizontal:16}}>
-      <View style={{flexDirection:'column', justifyContent:'space-between', marginBottom:16}}> 
-          <CustomText fontType='primary' weight='Bold' style={{color:'#757575', fontSize:11,letterSpacing:.15,marginBottom:1,textTransform:'uppercase'}}>
-            Car Availability Schedules
+    <View style={{ backgroundColor: '#141416', borderRadius: 16, borderWidth: 1, borderColor: '#232327', marginBottom: 12, overflow: 'hidden' }}>
+      {/* Header */}
+      <TouchableOpacity activeOpacity={0.85}
+        onPress={() => car.isDraft ? navigation.navigate('AddCar', { vehicleId: car.id }) : navigation.navigate('HostCarInfo', { vehicleId: car.id })}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 }}>
+        <View style={{ width: 52, height: 52, borderRadius: 12, backgroundColor: '#2c2c2e', overflow: 'hidden' }}>
+          {car.images && car.images[0]
+            ? <Image source={{ uri: photoUrl(car.images[0].url) }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Icon name="car-outline" size={20} color="#5a5a62" /></View>}
+        </View>
+        <View style={{ flex: 1 }}>
+          <CustomText fontType='primary' weight='SemiBold' numberOfLines={1} style={{ color: '#e8e8ea', fontSize: 14 }}>{car.brand?.name} {car.vehicleName}</CustomText>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+            <View style={{ width: 5, height: 5, borderRadius: 5, backgroundColor: dotColor }} />
+            <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 11 }}>{car.vehicleNumber}</CustomText>
+          </View>
+        </View>
+        <Icon name="chevron-forward" size={16} color="#5a5a62" />
+      </TouchableOpacity>
+
+      {canSchedule ? (
+        <View style={{ paddingHorizontal: 14, paddingBottom: 12, borderTopWidth: 1, borderTopColor: '#1f1f23', paddingTop: 12 }}>
+          <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 8 }}>
+            {upcoming.length > 1 ? `Availability windows · ${upcoming.length}` : 'Availability window'}
           </CustomText>
 
+          {upcoming.length === 0 ? (
+            <View style={{ backgroundColor: '#151519', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 12 }}>
+              <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 12 }}>No availability windows yet.</CustomText>
+              <CustomText fontType='primary' weight='Regular' style={{ color: '#5a5a62', fontSize: 11, marginTop: 2 }}>Add one so renters can book this car.</CustomText>
+            </View>
+          ) : (
+            upcoming.slice(0, 5).map((w) => (
+              <TouchableOpacity key={w.id} onPress={() => navigation.navigate('ScheduleInfo', { scheduleId: w.id })}
+                style={{ backgroundColor: '#151519', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                {/* From → To on one line. */}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{ flex: 1 }}>
+                    <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>From</CustomText>
+                    <CustomText fontType='primary' weight='Medium' numberOfLines={1} style={{ color: '#e3e3e3', fontSize: 12, marginTop: 1 }}>{formatDateOnly(w.startTime)} · {formatTime(w.startTime)}</CustomText>
+                  </View>
+                  <Icon name="arrow-forward" size={16} color="#5a5a62" style={{ marginHorizontal: 8 }} />
+                  <View style={{ flex: 1 }}>
+                    <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>To</CustomText>
+                    <CustomText fontType='primary' weight='Medium' numberOfLines={1} style={{ color: '#e3e3e3', fontSize: 12, marginTop: 1 }}>{formatDateOnly(w.endTime)} · {formatTime(w.endTime)}</CustomText>
+                  </View>
+                </View>
+                {w.scheduleBlocks && w.scheduleBlocks.length > 0 && (
+                  <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 10, marginTop: 6 }}>{w.scheduleBlocks.length} pause(s)</CustomText>
+                )}
+              </TouchableOpacity>
+            ))
+          )}
+
+          {/* Always present. */}
+          <TouchableOpacity onPress={() => navigation.navigate('CreateSchedule', { vehicleId: car.id })}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: BRAND_COLOR, borderRadius: 10, paddingVertical: 13, marginTop: 2 }}>
+            <Icon name="add-circle" size={16} color="#000" />
+            <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15 }}>Add availability</CustomText>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1a1a1c', borderRadius: 10, padding: 12 }}>
+            <Icon name="lock-closed-outline" size={15} color="#6f6f76" />
+            <CustomText fontType='primary' weight='Regular' style={{ color: '#8a8a8a', fontSize: 12, flex: 1 }}>
+              {status === 'draft' ? 'Finish onboarding to schedule availability.' : 'Scheduling unlocks once this car is approved.'}
+            </CustomText>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
+
+
+const SchedulingAssistant = ({ vehicles, schedulesByCar, navigation }) => {
+  if (vehicles.length === 0) {
+    return (
+      <View style={{ paddingHorizontal: 16, marginTop: 12, marginBottom: 16 }}>
+        <TouchableOpacity onPress={() => navigation.navigate('AddCar')}
+          style={{ backgroundColor: '#141414', borderRadius: 12, borderWidth: 1, borderColor: '#252525', borderStyle: 'dashed', paddingVertical: 26, alignItems: 'center' }}>
+          <Icon name="add-circle-outline" size={26} color="#959595" style={{ marginBottom: 6 }} />
+          <CustomText fontType='primary' weight='SemiBold' style={{ color: '#959595', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15 }}>List your first car</CustomText>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={{ marginTop: 8, marginBottom: 8, paddingHorizontal: 16 }}>
+      <View style={{ marginBottom: 12 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: '#f0f0f2', fontSize: 15, letterSpacing: -.2 }}>Availability</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{ color: '#6f6f76', fontSize: 11, marginTop: 1 }}>Manage each car's availability windows</CustomText>
       </View>
 
+      {vehicles.map((car) => (
+        <AvailabilityCard key={car.id} car={car} windows={schedulesByCar[car.id] || []} navigation={navigation} />
+      ))}
 
-      
-          <View style={{flexDirection:'column',backgroundColor:'#1c1c1e',borderRadius:8,paddingVertical:0,paddingHorizontal:0,overflow:'hidden'}}>
-              {availabilities.map((availability,index) => (
-                <TouchableOpacity key={index} style={{marginLeft:0, overflow:'hidden',flex:1,borderBottomWidth:1,borderBottomColor:'#252525'}} onPress={()=>navigation.navigate('ScheduleInfo', {scheduleId:availability.id})}>
-                  <View style={{flexDirection:'column', justifyContent:'space-between',paddingVertical:10,paddingHorizontal:12,borderBottomWidth:0,borderBottomColor:'#252525', backgroundColor:'#151519',width:'100%'}}>
-                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',paddingVertical:6,paddingHorizontal:12}}>
-                      <View style={{flexDirection:'column', alignItems:'flex-start', justifyContent:'flex-start',backgroundColor:'#151519',zIndex:1,paddingRight:4}}> 
-                        <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:12}}>{formatDateOnly(availability.startTime)}</CustomText>
-                        <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:10}}>{formatTime(availability.startTime)}</CustomText>
-                      </View>
-                      <View style={{flexDirection:'column', alignItems:'center', justifyContent:'center',backgroundColor:'#151519',zIndex:1,paddingHorizontal:12}}>
-                      <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:12}}>{availability.vehicle?.vehicleNumber ? availability.vehicle?.vehicleNumber : 'N/A'}</CustomText>
-                      <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:12}}>{availability.vehicle?.vehicleName ? availability.vehicle?.vehicleName : 'N/A'}</CustomText>
-                      <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:11}}>{availability.scheduleBlocks && availability.scheduleBlocks.length > 0 ? `${availability.scheduleBlocks.length} Pause(s)` : ''}</CustomText>
-
-                      </View>
-                      <View style={{backgroundColor:'#2c2c2e',height:2,width:'90%',position:'absolute',left:'5%',top:'60%',zIndex:-1}}>
-                        
-                      </View>
-                      <View style={{flexDirection:'column', alignItems:'flex-end', justifyContent:'flex-end',backgroundColor:'#151519',zIndex:1,paddingLeft:4}}> 
-                        <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:12}}>{formatDateOnly(availability.endTime)}</CustomText>
-                        <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3', fontSize:10}}>{formatTime(availability.endTime)}</CustomText>
-                      </View>
-                    </View>
-                    {/* <View style={{flexDirection:'row', justifyContent:'space-between'}}> 
-                      <FontAwesome name="dot-circle-o" size={12} style={{marginRight:4}} color={BRAND_COLOR}/>
-                      <FontAwesome name="dot-circle-o" size={12} style={{marginRight:4}} color={BRAND_COLOR}/>
-                    </View> */}
-                  </View>
-                    
-                </TouchableOpacity>
-              ))
-            }
-                <TouchableOpacity style={{marginLeft:0, overflow:'hidden',flex:1,backgroundColor:'#EDBF313A',paddingVertical:6,paddingHorizontal:8}} onPress={()=>navigation.navigate('CreateSchedule')}>
-                  <View style={{flexDirection:'row', alignItems:'center', justifyContent:'center',paddingVertical:10,paddingHorizontal:12}}>
-                    <Icon name="add-circle-outline" size={16} style={{marginRight:4}} color={BRAND_COLOR}/>
-                    <CustomText fontType='primary' weight='Bold' style={{color:BRAND_COLOR, fontSize:10,textTransform:'uppercase',letterSpacing:.15,textAlign:'center'}}>Add another schedule</CustomText>
-                  </View>
-                    
-                </TouchableOpacity>
-          </View>
-         
-        </View>
-  )
-}
+      {/* Add car sits at the end of the list as a clear dashed tile, rather than
+          a small link crowding the section header. */}
+      <TouchableOpacity onPress={() => navigation.navigate('AddCar')} activeOpacity={0.85}
+        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#111112', borderRadius: 14, borderWidth: 1, borderColor: '#2a2a2e', borderStyle: 'dashed', paddingVertical: 16, marginTop: 2 }}>
+        <Icon name="add-circle-outline" size={20} color={BRAND_COLOR} />
+        <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 12, textTransform: 'uppercase', letterSpacing: .15 }}>Add a car</CustomText>
+      </TouchableOpacity>
+    </View>
+  );
+};
 
 
 const FeaturedCars = () => {

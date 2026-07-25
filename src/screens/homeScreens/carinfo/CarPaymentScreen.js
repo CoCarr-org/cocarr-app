@@ -208,7 +208,7 @@ export function CarsPaymentScreen({route}) {
   return (
     <View style={styles.container}>
 
-      <HeaderBlock vehicle={vehicle} navigation={navigation} startDateTime={startDateTime} endDateTime={endDateTime} />
+      {/* Header (back + title) is the shared stack header now. */}
 
       <ScrollView style={{flex:1,}}>
         <View style={{flexDirection:'column',gap:12,paddingHorizontal:16,backgroundColor:'#101012',borderRadius:10,paddingVertical:12,marginVertical:8,marginHorizontal:16}}>

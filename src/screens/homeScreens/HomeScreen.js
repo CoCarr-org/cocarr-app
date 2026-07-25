@@ -189,23 +189,32 @@ export default function HomeScreen() {
   return (
     <ScrollView style={{ flex: 1, backgroundColor:'#000'}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
       {/* <HomeIcon width={22} height={22} currentColor={color} /> */}
-      <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',marginBottom:24,paddingHorizontal:16}}>
-              <View style={{paddingHorizontal:0,paddingVertical:18}}>
-              <Image source={require('../../images/logo.png')} style={{width:72, height:38}}/>
-            </View>
-        <TouchableOpacity style={{flexDirection:'row', alignItems:'center', gap:4,backgroundColor:'#1c1c1e',borderRadius:5,paddingVertical:8,paddingHorizontal:12,shadowOpacity:0.5,shadowRadius:1,shadowColor:'#454545',justifyContent:'center'}} onPress={()=>dispatch(setShowCityPicker(true))}>
-          <CustomText fontType='primary' weight='Bold' style={{color:'#959595', fontSize:10, fontWeight:'500',textAlign:'left',marginBottom:0,textTransform:'uppercase'}}>
-            {selectedCity ? selectedCity.name : 'Select City'}
-          </CustomText>
-          <Icon name="location-outline" size={14} color="#a3a3a3"/>
-        </TouchableOpacity>
-
-      </View>
+      {/* Title and profile live in TopBar now. */}
+      <View style={{height:8}} />
 
       <PremiumMemberships/>
         <View style={{paddingHorizontal:16}}>
 
           <View style={{flexDirection:'column', borderRadius:12,borderCurve:'continuous',backgroundColor:'#1C1C1E',overflow:'hidden'}}>
+
+            {/* City is the first row of the search card, above Selected
+                Location — it narrows the same search, so it belongs in the same
+                box and uses the same row layout as the rows below it. */}
+            <TouchableHighlight underlayColor='#2C2C2E' onPress={()=>dispatch(setShowCityPicker(true))} style={{flexDirection:'row',alignItems:'center', justifyContent:'flex-start',backgroundColor:'#1C1C1E',borderBottomWidth:1,borderBottomColor:'#25252A',paddingHorizontal:16,paddingVertical:12}}>
+
+              <View style={{flexDirection:'row',justifyContent:'space-between',width:'100%',alignItems:'center'}}>
+
+                <View style={{flexDirection:'row',alignItems:'center', justifyContent:'flex-start',flex:1,marginRight:24}}>
+                    <Icon name="location-outline" size={24} color="#EDBF31"/>
+                    <View style={{marginLeft:12,justifyContent:'center'}}>
+                      <CustomText fontType='primary' weight='Bold' style={{color:'#959595', fontSize:10, fontWeight:'500',textAlign:'left',marginBottom:0,textTransform:'uppercase'}}>City</CustomText>
+                      <CustomText numberOfLines={1} ellipsizeMode='tail' fontType='primary' weight='Medium' style={{color:'#fff', fontSize:12, fontWeight:'500'}}>{selectedCity ? selectedCity.name : 'Select City'}</CustomText>
+                    </View>
+                </View>
+                <Icon name="chevron-forward" size={18} color="#5a5a62"/>
+              </View>
+            </TouchableHighlight>
+
             <TouchableHighlight underlayColor='#2C2C2E' onPress={()=>setShowLocationSearch(true)} style={{flexDirection:'row',alignItems:'center', justifyContent:'flex-start',backgroundColor:'#1C1C1E',borderBottomWidth:1,borderBottomColor:'#25252A',paddingHorizontal:16,paddingVertical:12}}>
 
               <View style={{flexDirection:'row',justifyContent:'space-between',width:'100%',alignItems:'center'}}>

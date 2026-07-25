@@ -1,25 +1,15 @@
 import React, { useEffect } from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Alert, SafeAreaView } from 'react-native';
-import Icon from 'react-native-vector-icons/Ionicons';
-import { HomeStackNavigator } from './HomeStackNavigator';
-import { RidesStackNavigator } from './RidesStackNavigator';
-import { ProfileStackNavigator } from './ProfileStackNavigator';
-import { SettingsScreen } from '../screens/SettingsScreen';
-import { getFocusedRouteNameFromRoute, useNavigation } from '@react-navigation/native';
+import { Alert, View } from 'react-native';
 import HostScreen from '../screens/homeScreens/HostScreen';
-import HomeIcon from '../images/home.js';
-import { Image, Path, Svg } from 'react-native-svg';
+import { HostProfile } from '../screens/host/hostProfileScreens/HostProfile.js';
 import { useDispatch, useSelector } from 'react-redux';
 import { CityPickerScreen } from '../screens/homeScreens/CityPickerScreen.js';
 import { API_URL } from '../utils/constants.js';
 import axios from 'axios';
 import { setShowLastBooking } from '../store/bookingSlice.js';
 import { ReviewScreen } from '../screens/rideScreens/ReviewScreen.jsx';
-import { store } from '../store/store.js';
-import { updateToken } from '../store/authSlice.js';
-import { getAuth } from '@react-native-firebase/auth';
-import {CustomTabBar} from '../components/navigation/CustomTabBar'; // Import CustomTabBar component
+import { setHostStatus } from '../store/authSlice.js';
+import TopBar from '../components/navigation/TopBar';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator.js';
 import { HostBookingsScreen } from '../screens/host/bookingScreens/HostBookingsScreen.js';
@@ -51,6 +41,7 @@ import { CarsInfoScreen } from '../screens/homeScreens/carinfo/CarInfoScreen.js'
 import { HostStartBookingScreen } from '../screens/host/bookingScreens/HostStartBookingScreen.js';
 import { DatePickerScreen } from '../screens/homeScreens/DatePickerScreen.js';
 import { HostBankPage } from '../screens/host/hostProfileScreens/HostBankPage.js';
+import HostEarningsPage from '../screens/host/hostProfileScreens/HostEarningsPage.js';
 import { setupNotificationListeners } from '../components/NotificationSetup.js';
 import { CarsPaymentScreen } from '../screens/homeScreens/carinfo/CarPaymentScreen.js';
 import { StartBookingScreen } from '../screens/rideScreens/StartBookingScreen.js';
@@ -63,8 +54,6 @@ const Stack = createNativeStackNavigator();
 
 
 export function MainNavigator() {
-  const navigation = useNavigation();
-  const bookingInfo = useSelector(state => state.booking);
   const auth = useSelector(state => state.auth);
   const dispatch = useDispatch();
 
@@ -87,83 +76,134 @@ export function MainNavigator() {
 
 
 
+  // Mode is NOT navigated to — the shell below is rendered from `userRole`, and
+  // React Navigation unmounts the other one. The old effect called
+  // navigation.navigate() here while HostScreen simultaneously called
+  // navigation.replace(), so every switch ran two transitions at once.
+
+  // `isHost` is a server fact, so re-check it once per authenticated session.
+  // This is also what stops a stale persisted userRole:'host' from rendering the
+  // host shell for an account that never registered as one.
   useEffect(() => {
-    if(auth.userRole === 'host') navigation.navigate('HostTab');
-    else navigation.navigate('HomeTab');
-  }, [auth.userRole]);
+    if (!auth.isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axios.get(`${API_URL}/host/check`);
+        if (!cancelled) dispatch(setHostStatus({ isHost: !!res.data?.isHost }));
+      } catch (error) {
+        // Offline or transient failure: leave the last known value alone rather
+        // than dropping a host back to customer mode on a flaky network.
+        console.log('Host status check skipped:', error?.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [auth.isAuthenticated, dispatch]);
 
   useEffect(() => {
     if(auth.isAuthenticated) setupNotificationListeners()
   },[auth.isAuthenticated])
 
+  const isHostMode = auth.userRole === 'host';
 
 
 
 
+
+  // Plain View here on purpose: TopBar already pads for the top inset and
+  // AppTabBar for the bottom one. Applying insets at this level too
+  // double-counted them — that was the gap under the tab bar.
   return (
-    <SafeAreaView style={{flex:1, backgroundColor:'#151515'}}>
+    <View style={{flex:1, backgroundColor:'#000'}}>
       
       <CityPickerScreen/>
       <ReviewScreen/>
-      <Stack.Navigator screenOptions={{headerShown:false}}>
+      {/* One header for every pushed sub-page: safe-area aware, back chevron,
+          screen title. `back` is only defined once there's somewhere to return
+          to, so the shell (first screen) and any reset-to root render no header.
+          Screens that draw their own chrome (wizards, modals, tabbed detail
+          pages) opt out with headerShown:false in their own options. Titles
+          come from each screen's `title`. */}
+      <Stack.Navigator
+        screenOptions={{
+          headerShown: true,
+          header: ({ options, route, back }) =>
+            back ? <TopBar title={options.title || route.name} showBack /> : null,
+        }}
+      >
 
-        <Stack.Screen name="HomeTab" component={TabNavigator} />
-        <Stack.Screen name="HostTab" component={HostNavigator} />
+        {/* Exactly one shell exists at a time. Switching modes changes which
+            Stack.Screen is declared, and React Navigation resets to it — no
+            navigate/replace call is involved anywhere. The shell manages its own
+            insets (TopBar + AppTabBar), so it opts out of the shared header. */}
+        {isHostMode ? (
+          <Stack.Screen name="HostTab" component={HostNavigator} options={{ headerShown: false }} />
+        ) : (
+          <Stack.Screen name="HomeTab" component={TabNavigator} options={{ headerShown: false }} />
+        )}
 
-        <Stack.Group>
-          <Stack.Screen name="HostBookings" component={HostBookingsScreen} />
-          <Stack.Screen name="HostReview" component={HostReviewScreen} options={{presentation: 'fullScreenModal',statusBarColor:'#1c1c1c'}}/>
-          <Stack.Screen name="HostBookingInfo" component={HostBookingInfoScreen} />
-          <Stack.Screen name="HostEndBooking" component={HostEndBookingScreen}/>
-          <Stack.Screen name="HostStartBooking" component={HostStartBookingScreen}/>
-          <Stack.Screen name="HostBankPage" component={HostBankPage}/>
-          <Stack.Screen name="HostDamageScreen" component={HostDamageScreen}/>
-          <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen}/>
-        </Stack.Group>
-        
-        <Stack.Group>
-          <Stack.Screen name="AddCar" component={AddCar}/>
-          <Stack.Screen name="HostCars" component={HostCarsScreen} />
-          <Stack.Screen name="HostCarInfo" component={HostCarInfoScreen}/>
-          <Stack.Screen name="ScheduleInfo" component={ScheduleInfoScreen}/>
-          <Stack.Screen name="CreateSchedule" component={CreateScheduleScreen}/>
-          <Stack.Screen name="CreateScheduleBlock" component={CreateScheduleBlockScreen}/>
-        </Stack.Group>
-
-        <Stack.Group>
-          <Stack.Screen name="HomeIndex" component={HostHomeScreen} />
-          <Stack.Screen name="DatePicker" component={DatePickerScreen} />
-          <Stack.Screen name="PremiumMembership" component={PremiumMembershipScreen}/>
-          <Stack.Screen name="CarsListing" component={CarsListingScreen} />
-          <Stack.Screen name="BookingOffers" options={{presentation: 'fullScreenModal',title:'Offers',headerShown:false}} component={BookingOfferScreen} />
-          <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} /> 
-          <Stack.Screen name="RescheduleScreen" component={RescheduleScreen}/>
-        </Stack.Group>
-        
+        {/* Host sign-up. Draws its own back control. */}
+        <Stack.Screen name="BecomeHost" component={HostScreen} options={{ headerShown: false }} />
 
         <Stack.Group>
-          <Stack.Screen name="ProfileIndex" component={ProfileScreen} />
-          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-          <Stack.Screen name="Referral" component={ReferralPage}/>
-          <Stack.Screen name="Offers" component={OffersScreen} />
-          <Stack.Screen name="Wallet" component={WalletPage}/>
+          <Stack.Screen name="HostBookings" component={HostBookingsScreen} options={{ title: 'Bookings' }} />
+          <Stack.Screen name="HostReview" component={HostReviewScreen} options={{presentation: 'fullScreenModal', headerShown: false}}/>
+          <Stack.Screen name="HostBookingInfo" component={HostBookingInfoScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="HostEndBooking" component={HostEndBookingScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="HostStartBooking" component={HostStartBookingScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="HostBankPage" component={HostBankPage} options={{ headerShown: false }}/>
+          <Stack.Screen name="HostEarnings" component={HostEarningsPage} options={{ title: 'Earnings' }}/>
+          <Stack.Screen name="HostDamageScreen" component={HostDamageScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} options={{ title: 'Terms & Conditions' }}/>
+        </Stack.Group>
+
+        <Stack.Group>
+          {/* Wizard and tabbed detail draw their own chrome. */}
+          <Stack.Screen name="AddCar" component={AddCar} options={{ headerShown: false }}/>
+          <Stack.Screen name="HostCars" component={HostCarsScreen} options={{ title: 'Your Cars' }} />
+          <Stack.Screen name="HostCarInfo" component={HostCarInfoScreen} options={{ title: 'Car details' }}/>
+          <Stack.Screen name="ScheduleInfo" component={ScheduleInfoScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="CreateSchedule" component={CreateScheduleScreen} options={{ title: 'New Schedule' }}/>
+          <Stack.Screen name="CreateScheduleBlock" component={CreateScheduleBlockScreen} options={{ title: 'Block Dates' }}/>
+        </Stack.Group>
+
+        <Stack.Group>
+          <Stack.Screen name="HomeIndex" component={HostHomeScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="DatePicker" component={DatePickerScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PremiumMembership" component={PremiumMembershipScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="CarsListing" component={CarsListingScreen} options={{ title: 'Cars' }} />
+          <Stack.Screen name="BookingOffers" options={{presentation: 'fullScreenModal', headerShown:false}} component={BookingOfferScreen} />
+          <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="RescheduleScreen" component={RescheduleScreen} options={{ title: 'Reschedule' }}/>
+        </Stack.Group>
+
+        <Stack.Group>
+          {/* Profile screens are pushed from TopBar's avatar; the shared header
+              gives them a back control and a title. */}
+          {/* Profile screens carry an edit-profile action in the header. */}
+          <Stack.Screen name="ProfileIndex" component={ProfileScreen} options={{ headerShown: true, header: () => <TopBar title="Profile" showBack rightIcon="create-outline" rightRoute="EditProfile" /> }} />
+          <Stack.Screen name="HostProfileScreen" component={HostProfile} options={{ headerShown: true, header: () => <TopBar title="Profile" showBack rightIcon="create-outline" rightRoute="EditProfile" /> }} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="Referral" component={ReferralPage} options={{ title: 'Refer & Earn' }}/>
+          <Stack.Screen name="Offers" component={OffersScreen} options={{ title: 'Offers' }} />
+          <Stack.Screen name="Wallet" component={WalletPage} options={{ title: 'Wallet' }} />
         </Stack.Group>
         <Stack.Group>
-          <Stack.Screen name="CarInfo" component={CarsInfoScreen} />
-          <Stack.Screen name="StartBooking" component={StartBookingScreen}/>
-          <Stack.Screen name="EndBooking" component={EndBookingScreen}/>
-          <Stack.Screen name="CarPayment" component={CarsPaymentScreen} />
+          {/* Car detail carries a hero image behind its own header. */}
+          <Stack.Screen name="CarInfo" component={CarsInfoScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="StartBooking" component={StartBookingScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="EndBooking" component={EndBookingScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="CarPayment" component={CarsPaymentScreen} options={{ title: 'Booking Summary' }} />
         </Stack.Group>
         <Stack.Group>
-          <Stack.Screen name="RidesIndex" component={RidesScreen} />
-          <Stack.Screen name="RideInfo" component={RideInfoScreen} />
+          <Stack.Screen name="RidesIndex" component={RidesScreen} options={{ title: 'My Trips' }} />
+          <Stack.Screen name="RideInfo" component={RideInfoScreen} options={{ headerShown: false }} />
         </Stack.Group>
         <Stack.Group>
-          <Stack.Screen name="KycVerification" component={KycVerificationScreen}/>
-          <Stack.Screen name="LicenseVerification" component={LicenseVerificationScreen}/>
-          {/* <Stack.Screen name="ProfileVerification" component={ProfileVerificationScreen}/> */}
+          <Stack.Screen name="KycVerification" component={KycVerificationScreen} options={{ title: 'Verify KYC' }}/>
+          <Stack.Screen name="LicenseVerification" component={LicenseVerificationScreen} options={{ title: 'Verify Licence' }}/>
         </Stack.Group>
       </Stack.Navigator>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -13,7 +13,15 @@ const initialState = {
         licenseVerified:false,
         kycVerified:false,
         walletPoints:0,
-        userRole:'customer' // customer or host
+        // Which shell the app renders. A device-local preference — the person
+        // chooses it with the mode switcher.
+        userRole:'customer', // customer or host
+        // Whether this account is actually registered as a host. Owned by the
+        // server (/host/check), never chosen by the user. Kept separate from
+        // userRole because they answer different questions: "may I host?" vs
+        // "am I looking at the host app right now?". Conflating the two is what
+        // made the old flow bounce people between shells.
+        isHost:false,
 };
 
 const authSlice = createSlice({
@@ -36,7 +44,12 @@ const authSlice = createSlice({
                 licenseVerified:action.payload.user?.licenseVerified,
                 kycVerified:action.payload.user?.kycVerified,
                 walletPoints:action.payload.user?.walletPoints,
-                userRole:action.payload.user?.userRole
+                // The OTP login payload carries no userRole, so reading it
+                // straight off the payload used to overwrite the value with
+                // `undefined` on every single login. Fall back to the current
+                // value, then to the 'customer' default.
+                userRole:action.payload.user?.userRole || state.userRole || 'customer',
+                isHost:action.payload.user?.isHost ?? state.isHost ?? false,
       }
     },
     updateFcmToken: (state, action) => {
@@ -47,6 +60,17 @@ const authSlice = createSlice({
     updateUserRole: (state, action) => {
       return {...state,
                 userRole:action.payload.userRole
+      }
+    },
+    // Result of GET /host/check. If the account is not a host, the host shell
+    // must not be reachable, so drop back to customer mode in the same action —
+    // otherwise a persisted userRole:'host' would render a shell the account
+    // has no data for.
+    setHostStatus: (state, action) => {
+      const isHost = !!action.payload.isHost;
+      return {...state,
+                isHost,
+                userRole: isHost ? state.userRole : 'customer'
       }
     },
     updateWalletPoints: (state, action) => {
@@ -69,23 +93,13 @@ const authSlice = createSlice({
                 token:action.payload.token
       }
     },
-    logout: (state) => {
-      console.log('logout');
-      return {
-        uid:null,
-        isAuthenticated:false,
-        fcmToken:null,
-        token:false,
-        userName:null,
-        isPremium:false,
-        profilePhoto:null,
-        email:null,
-        licenseVerified:false,
-        kycVerified:false
-      }
-    },
+    // Reset to initialState rather than listing fields by hand: the old version
+    // omitted userRole (and isHost), so signing out as a host left the flag
+    // persisted and the next account to sign in on the device booted straight
+    // into the host shell.
+    logout: () => ({ ...initialState }),
   },
 });
 
-export const { login, logout, updateToken,updateProfile,updateWalletPoints,updateUserRole,updateFcmToken } = authSlice.actions;
+export const { login, logout, updateToken,updateProfile,updateWalletPoints,updateUserRole,updateFcmToken,setHostStatus } = authSlice.actions;
 export default authSlice.reducer;

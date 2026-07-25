@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform, Image, TouchableHighlight, ToastAndroid } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
-import { logout, updateUserRole } from '../../../store/authSlice';
+import { logout } from '../../../store/authSlice';
 import auth from '@react-native-firebase/auth';
 import Ionicons  from 'react-native-vector-icons/Ionicons'
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
@@ -48,12 +48,6 @@ export function HostProfile() {
 
   const options = [
     {
-      onPress: 'HostEarnings',
-      icon: <FontAwesome name="rupee" size={16} color="#fff" />,
-      title: 'Earnings',
-      description: 'View earnings here for your rides',
-    },
-    {
       onPress: 'HostBankPage',
       icon: <MaterialCommunityIcons name="bank-outline" size={16} color="#fff" />,
       title: 'Bank Details',
@@ -87,11 +81,8 @@ export function HostProfile() {
 
   return (
     <View style={styles.container}>
-      <View style={{paddingVertical:12,paddingHorizontal:24,flexDirection:'row',justifyContent:'flex-end',alignItems:'center'}}>
-      <TouchableHighlight underlayColor='#2c2c2e' onPress={()=>navigation.navigate('EditProfile')} style={{backgroundColor:'#1c1c1e',borderRadius:24,paddingVertical:8,paddingHorizontal:16}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:'#c3c3c3', fontSize:11,textAlign:'center',letterSpacing:-.05}}>Edit Profile</CustomText>
-              </TouchableHighlight>
-      </View>
+      {/* Edit profile moved to the header action; wallet points to the app
+          header (renters only). */}
       <View style={{flex:1}}>
         <ScrollView style={{paddingHorizontal:20}} showsVerticalScrollIndicator={false}>
 
@@ -111,58 +102,9 @@ export function HostProfile() {
         </View>
         
 
-        <TouchableHighlight underlayColor='#2c2c2e' onPress={()=>navigation.navigate('Wallet')} style={{backgroundColor:'#EDBF3129',borderRadius:10,paddingVertical:10,paddingHorizontal:16,marginBottom:24}}>
-               <View style={{flexDirection:'row',alignItems:'center',gap:12,justifyContent:'space-between'}}>
-                <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-
-                <View style={{backgroundColor:'#090909',borderRadius:48,width:48,height:48,justifyContent:'center',alignItems:'center'}}>
-                  <Ionicons name="wallet-outline" size={24} color={BRAND_COLOR} />
-                </View>
-                    <View style={{flexDirection:'column',alignItems:'flex-start'}}>
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#c3c3c3', fontSize:11,textAlign:'center',letterSpacing:-.05}}>Wallet Points</CustomText>
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#c3c3c3', fontSize:16,textAlign:'center',letterSpacing:-.05}}>{!isNaN(walletInfo?.walletPoints) ? walletInfo?.walletPoints : '-'}</CustomText>
-                    </View>
-                </View>
-                <Ionicons name="chevron-forward-outline" size={16} color={'#c3c3c3'} />
-               </View>
-              </TouchableHighlight>
-
-
-              <TouchableHighlight
-              onPress={()=>dispatch(updateUserRole({userRole:'customer'}))}
-              underlayColor='#090909'
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                borderBottomWidth: 1,
-                borderBottomColor: '#0c0c0e',
-                paddingVertical: 16,
-              }}
-            >
-              <View style={{flexDirection:'row',alignItems:'center',gap:12}}>
-
-              <View
-                style={{
-                  backgroundColor: '#1C1C1E',
-                  borderRadius: 40,
-                  width: 40,
-                  height: 40,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }}
-                >
-                <Ionicons name="swap-vertical-outline" size={16} color="#fff" />
-              </View>
-              <View style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                <CustomText fontType='primary' weight='Medium' style={{ color: '#fff', fontSize: 12 }}>
-                  Switch to Rider
-                </CustomText>
-                <CustomText fontType='primary' weight='Regular' style={{ color: '#959595', fontSize: 11 }}>
-                  Change to User Mode to book a car
-                </CustomText>
-              </View>
-                </View>
-            </TouchableHighlight>
+              {/* Wallet points and "Switch to Rider" both removed here — wallet
+                  lives in the app header (renters only), mode switching in the
+                  tab bar's round toggle. */}
 
         {options.map((option, index) => (
             <TouchableHighlight

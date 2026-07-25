@@ -171,7 +171,8 @@ const {id} = route.params;
       };
 
   return   <View style={{flex:1,backgroundColor:'#000'}}>
-    <Header title='Reschedule Ride' customSecondaryText={`#${booking?.bookingId ? booking?.bookingId?.toUpperCase() : '-'}`}/>
+    {/* Header (back + "Reschedule") is the shared stack header — the previous
+        in-screen Header had no navigation prop so its back button did nothing. */}
    { isLoading ? <ActivityIndicator size="large" color={BRAND_COLOR} /> :  <ScrollView contentContainerStyle={{paddingHorizontal:16}}>
 
         <View style={{flexDirection:'row',backgroundColor:'#101012',borderRadius:10,paddingVertical:12,marginVertical:8,paddingHorizontal:16}}>

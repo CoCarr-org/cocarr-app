@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, Platform, TouchableOpacity, ScrollView, Linking, ToastAndroid, Alert, Dimensions, Switch, KeyboardAvoidingView } from 'react-native';
 import axios from 'axios';
 import { API_URL, BRAND_COLOR } from '../../../utils/constants';
@@ -29,13 +30,15 @@ export function HostCarInfoScreen({route}) {
     fetchVehicle();
   }, []);
 
-
-
+  const refresh = () => fetchVehicle();
 
   const fetchVehicle = async () => {
     try {
       const response = await axios.get(`${API_URL}/host/vehicles/${vehicleId}`);
       setVehicle(response.data);
+      // Put the car's name in the nav header once it's known.
+      const name = [response.data?.brand?.name, response.data?.vehicleName].filter(Boolean).join(' ');
+      if (name) navigation.setOptions({ title: name });
       setLoading(false);
     } catch (err) {
       console.log('error',err.message)
@@ -55,12 +58,14 @@ export function HostCarInfoScreen({route}) {
 
 
   return (
+    // Nav header (back + title) is provided by the stack now — no manual top
+    // inset, which is what caused the content to sit under the status bar.
     <View style={styles.container}>
       {!loading ? <View style={{flex:1}}>
-      <HeaderBlock vehicle={vehicle} navigation={navigation} />
+      <HeaderBlock vehicle={vehicle} />
     <View style={{flex:1}}>
 
-      <TabViewInfo vehicle={vehicle}/>
+      <TabViewInfo vehicle={vehicle} onChanged={refresh} />
       </View>
       </View> : <ActivityIndicator size="large" color="#EDBF31" /> }
     </View>
@@ -68,21 +73,88 @@ export function HostCarInfoScreen({route}) {
 }
 
 
-const HeaderBlock = ({vehicle,navigation}) => {
-  return (
-    <View style={styles.headerBlock}>
-      <View style={styles.headerBlockLeft}>
-          <TouchableOpacity style={{padding:4,paddingLeft:0}} onPress={() => navigation.goBack()}>
-          <Icon name="chevron-back" size={20} color="#a3a3a3" />
-        </TouchableOpacity>
-        <View>
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#a3a3a3',fontSize:9,letterSpacing:.15,textTransform:'uppercase'}}>{vehicle.brand?.name}</CustomText>
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#a3a3a3',fontSize:11,letterSpacing:.15,textTransform:'uppercase'}}>{vehicle.vehicleName}</CustomText>
-        </View>
+// Swipeable image carousel with dots.
+const ImageCarousel = ({ images }) => {
+  const [idx, setIdx] = useState(0);
+  const width = Dimensions.get('window').width - 32; // 16px margin each side
+  if (!images.length) {
+    return (
+      <View style={{ height: 200, backgroundColor: '#1c1c1e', borderRadius: 18, marginHorizontal: 16, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name="car-outline" size={40} color="#3a3a40" />
       </View>
-        <TouchableOpacity style={{padding:4}}>
-          <Icon name="share-outline" size={20} color="#a3a3a3" />
-        </TouchableOpacity>
+    );
+  }
+  return (
+    <View style={{ marginHorizontal: 16 }}>
+      <ScrollView
+        horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => setIdx(Math.round(e.nativeEvent.contentOffset.x / width))}
+        style={{ borderRadius: 18 }}
+      >
+        {images.map((im, i) => (
+          <Image key={im.id || i} source={{ uri: photoUrl(im.url) }} style={{ width, height: 200, backgroundColor: '#1c1c1e' }} resizeMode="cover" />
+        ))}
+      </ScrollView>
+      {images.length > 1 && (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+          {images.map((_, i) => (
+            <View key={i} style={{ width: i === idx ? 18 : 6, height: 6, borderRadius: 3, backgroundColor: i === idx ? BRAND_COLOR : '#3a3a40' }} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
+
+// Fresh hero: image carousel, then name, rating, status badge, plate and specs.
+const HeaderBlock = ({vehicle}) => {
+  const imgs = (vehicle.images || []).filter((i) => !i.isDeleted);
+  const status = vehicle.isDraft ? { label: 'Not Completed', bg: '#26262a', bd: '#3a3a40', fg: '#b9b9c2', dot: '#b9b9c2' }
+    : vehicle.isAdminApproved ? { label: 'Live', bg: '#3fce8f22', bd: '#3fce8f59', fg: '#6ee6b0', dot: '#6ee6b0' }
+    : { label: 'Pending Approval', bg: '#EDBF3122', bd: '#EDBF3166', fg: BRAND_COLOR, dot: BRAND_COLOR };
+  const rating = Number(vehicle.rating || 0);
+
+  const chips = [
+    vehicle.vehicleFuelType && { icon: 'water-outline', text: vehicle.vehicleFuelType },
+    vehicle.vehicleSeats && { icon: 'people-outline', text: `${vehicle.vehicleSeats} seats` },
+    vehicle.vehicleTransmission && { icon: 'cog-outline', text: vehicle.vehicleTransmission },
+    vehicle.vehicleYear && { icon: 'calendar-outline', text: String(vehicle.vehicleYear) },
+  ].filter(Boolean);
+
+  return (
+    <View style={{ paddingTop: 12 }}>
+      <ImageCarousel images={imgs} />
+
+      <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: status.bg, borderWidth: 1, borderColor: status.bd, borderRadius: 100, paddingVertical: 3, paddingHorizontal: 9 }}>
+            <View style={{ width: 5, height: 5, borderRadius: 5, backgroundColor: status.dot }} />
+            <CustomText fontType='primary' weight='Bold' style={{ color: status.fg, fontSize: 9, letterSpacing: .15 }}>{status.label}</CustomText>
+          </View>
+          <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 12 }}>{vehicle.vehicleNumber}</CustomText>
+        </View>
+
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+          <CustomText fontType='primary' weight='Bold' numberOfLines={1} style={{ color: '#f0f0f2', fontSize: 20, letterSpacing: -.4, flex: 1, marginRight: 12 }}>{vehicle.brand?.name} {vehicle.vehicleName}</CustomText>
+          {/* Average rating */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#141416', borderWidth: 1, borderColor: '#232327', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 9 }}>
+            <Icon name="star" size={13} color={BRAND_COLOR} />
+            <CustomText fontType='primary' weight='Bold' style={{ color: '#e8e8ea', fontSize: 12 }}>{rating > 0 ? rating.toFixed(1) : 'New'}</CustomText>
+            {vehicle.totalReviews > 0 && <CustomText fontType='primary' weight='Regular' style={{ color: '#8a8a8a', fontSize: 11 }}>({vehicle.totalReviews})</CustomText>}
+          </View>
+        </View>
+
+        {chips.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+            {chips.map((c) => (
+              <View key={c.text} style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#141416', borderWidth: 1, borderColor: '#232327', borderRadius: 8, paddingVertical: 6, paddingHorizontal: 10 }}>
+                <Icon name={c.icon} size={13} color={BRAND_COLOR} />
+                <CustomText fontType='primary' weight='Medium' style={{ color: '#c3c3c3', fontSize: 11, textTransform: 'capitalize' }}>{c.text}</CustomText>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
     </View>
   )
 }
@@ -262,29 +334,36 @@ const Availability = ({ vehicle }) => {
   );
 };
 
-const TabViewInfo = ({vehicle}) => {
+const TabViewInfo = ({vehicle, onChanged}) => {
 
   const [index, setIndex] = useState(0);
   const [routes] = useState([
     { key: 'info', title: 'Info' },
+    { key: 'pickup', title: 'Pickup' },
     { key: 'images', title: 'Images' },
-    // { key: 'plan', title: 'Pricing Plan' },
     { key: 'preferences', title: 'Preferences' },
-    { key: 'schedule', title: 'Availability' }
+    { key: 'schedule', title: 'Availability' },
+    { key: 'damages', title: 'Damages' },
   ]);
 
-  const renderScene = SceneMap({
-    info: ()=><Info vehicle={vehicle}/>,
-    images: ()=><Images vehicle={vehicle}/>,
-    // plan: ()=><PricingPlan vehicle={vehicle}/>,
-    preferences: ()=><Preferences vehicle={vehicle}/>,
-    schedule: ()=><Availability vehicle={vehicle}/>
-  });
+  // A switch (not SceneMap) so scenes can receive the onChanged refresh handler.
+  const renderScene = ({ route }) => {
+    switch (route.key) {
+      case 'info': return <Info vehicle={vehicle} />;
+      case 'pickup': return <PickupSection vehicle={vehicle} onChanged={onChanged} />;
+      case 'images': return <Images vehicle={vehicle} />;
+      case 'preferences': return <Preferences vehicle={vehicle} />;
+      case 'schedule': return <Availability vehicle={vehicle} />;
+      case 'damages': return <Damages vehicle={vehicle} />;
+      default: return null;
+    }
+  };
 
   const renderTabBar = (props) => {
     return (
       <TabBar
       {...props}
+      scrollEnabled
       style={{backgroundColor:'#000',marginBottom:0,paddingVertical:16,paddingHorizontal:0}}
       indicatorStyle={{backgroundColor:BRAND_COLOR,height:0}}
       labelStyle={{color:'#fff',fontSize:8,fontWeight:'500',textTransform:'uppercase',letterSpacing:.15}}
@@ -519,33 +598,157 @@ const Info = ({vehicle}) => {
     {title:'Fuel Type',value:vehicle.vehicleFuelType},
     {title:'Seats',value:vehicle.vehicleSeats},
     {title:'Transmission',value:vehicle.vehicleTransmission},
-    {title:'City',value:vehicle.pickupPoint?.city?.name},
-    {title:'Pickup Point',value: vehicle.pickupPoint ? `https://www.google.com/maps/search/?api=1&query=${vehicle.pickupPoint.lat},${vehicle.pickupPoint.long}` : ''},
-    {title:'Status',value:vehicle.status},
+    // City + Pickup live in their own Pickup section now.
   ]
-  return (
-    <View style={{flex:1}}>
-          <View style={{paddingHorizontal:16}}>
-        
-            <View style={{marginTop:28,flexDirection:'row',alignItems:'flex-start',justifyContent:'space-between',flexWrap:'wrap',rowGap:24}}>
+  const rows = info.filter((i) => i.value !== null && i.value !== undefined && i.value !== '');
 
-                {info.map((item,index)=>(
-                  <View key={item.title || index} style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',width:'50%'}}>
-                      <View>
-                        <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.15}}>{item.title}</CustomText>
-                        {item.title !== 'Pickup Point' ? <CustomText fontType='primary' weight='Regular' style={{color:'#e3e3e3',fontSize:14,textTransform:'capitalize'}}>{item.value}</CustomText> : <TouchableOpacity onPress={() => Linking.openURL(item.value)}><CustomText fontType='primary' weight='Regular' style={{color:'#e3e3e3',fontSize:14,textTransform:'capitalize',textDecorationLine:'underline'}}>Open Map</CustomText></TouchableOpacity>}
-                      </View>
-                  </View>
-                ))}
-            </View>
-        </View>
-      {/* <TouchableOpacity onPress={() => setShow(true)} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:16,paddingHorizontal:12,color:'#000',fontSize:14,width:'100%',marginTop:20}}>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',letterSpacing:-0.15,textAlign:'center'}}>Edit Info</CustomText>
-      </TouchableOpacity> */}
-      {/* <UpdateInfo vehicle={vehicle} show={show} setShow={setShow}/> */}
-    </View>
+  return (
+    <ScrollView style={{flex:1}} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <View style={{ backgroundColor: '#141416', borderRadius: 14, borderWidth: 1, borderColor: '#232327', overflow: 'hidden' }}>
+        {rows.map((item, index) => (
+          <View key={item.title} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 13, paddingHorizontal: 14, borderTopWidth: index === 0 ? 0 : 1, borderTopColor: '#1f1f23' }}>
+            <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 12 }}>{item.title}</CustomText>
+            <CustomText fontType='primary' weight='SemiBold' numberOfLines={1} style={{ color: '#e8e8ea', fontSize: 13, textTransform: 'capitalize', maxWidth: '60%', textAlign: 'right' }}>{String(item.value)}</CustomText>
+          </View>
+        ))}
+      </View>
+      <CustomText fontType='primary' weight='Regular' style={{ color: '#5a5a62', fontSize: 11, marginTop: 10, paddingHorizontal: 4 }}>
+        These details come from the vehicle RC and can't be edited.
+      </CustomText>
+    </ScrollView>
   )
 }
+
+// Pickup location — its own section, editable (address + map link).
+const PickupSection = ({ vehicle, onChanged }) => {
+  const pickup = vehicle.pickupPoint || {};
+  const [edit, setEdit] = useState(false);
+  const [address, setAddress] = useState(pickup.address || '');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    if (!address.trim()) { notify('Enter a pickup address'); return; }
+    try {
+      setSaving(true);
+      await axios.put(`${API_URL}/host/vehicles/${vehicle.id}`, { type: 'pickup', pickup: { address: address.trim() } });
+      notify('Pickup location updated');
+      setEdit(false);
+      onChanged && onChanged();
+    } catch (error) {
+      notify(error?.response?.data?.error?.message || 'Could not update pickup location');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const mapUrl = pickup.lat != null && pickup.long != null
+    ? `https://www.google.com/maps/search/?api=1&query=${pickup.lat},${pickup.long}` : null;
+
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <View style={{ backgroundColor: '#141416', borderRadius: 14, borderWidth: 1, borderColor: '#232327', padding: 14 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Icon name="location-outline" size={16} color={BRAND_COLOR} />
+            <CustomText fontType='primary' weight='Bold' style={{ color: '#e8e8ea', fontSize: 13 }}>Pickup location</CustomText>
+          </View>
+          {!edit && (
+            <TouchableOpacity onPress={() => setEdit(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Icon name="create-outline" size={14} color={BRAND_COLOR} />
+              <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 10, textTransform: 'uppercase', letterSpacing: .15 }}>Edit</CustomText>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 10, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 4 }}>City</CustomText>
+        <CustomText fontType='primary' weight='Medium' style={{ color: '#e3e3e3', fontSize: 13, marginBottom: 14 }}>{pickup.city?.name || '—'}</CustomText>
+
+        <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 10, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 4 }}>Address</CustomText>
+        {edit ? (
+          <TextInput
+            value={address} onChangeText={setAddress} multiline placeholder="Pickup address" placeholderTextColor="#5a5a62"
+            style={{ backgroundColor: '#1c1c1e', borderRadius: 8, color: '#e3e3e3', fontSize: 13, padding: 12, minHeight: 60, textAlignVertical: 'top' }}
+          />
+        ) : (
+          <CustomText fontType='primary' weight='Medium' style={{ color: '#e3e3e3', fontSize: 13 }}>{pickup.address || '—'}</CustomText>
+        )}
+
+        {mapUrl && !edit && (
+          <TouchableOpacity onPress={() => Linking.openURL(mapUrl)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 14 }}>
+            <Icon name="map-outline" size={15} color={BRAND_COLOR} />
+            <CustomText fontType='primary' weight='SemiBold' style={{ color: BRAND_COLOR, fontSize: 12, textDecorationLine: 'underline' }}>Open in maps</CustomText>
+          </TouchableOpacity>
+        )}
+
+        {edit && (
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+            <TouchableOpacity onPress={() => { setEdit(false); setAddress(pickup.address || ''); }} style={{ flex: 1, borderRadius: 8, borderWidth: 1, borderColor: '#2c2c2e', paddingVertical: 12, alignItems: 'center' }}>
+              <CustomText fontType='primary' weight='Bold' style={{ color: '#c3c3c3', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15 }}>Cancel</CustomText>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={save} disabled={saving} style={{ flex: 1, borderRadius: 8, backgroundColor: BRAND_COLOR, paddingVertical: 12, alignItems: 'center', opacity: saving ? 0.6 : 1 }}>
+              <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15 }}>{saving ? 'Saving…' : 'Save'}</CustomText>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </ScrollView>
+  );
+};
+
+// Damages recorded against this car, collected from its bookings.
+const Damages = ({ vehicle }) => {
+  const [damages, setDamages] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    axios.get(`${API_URL}/host/bookings?populate=true&vehicleId=${vehicle.id}&offset=0&limit=100`)
+      .then((r) => {
+        if (!active) return;
+        const list = [];
+        for (const b of (r.data?.bookings || r.data?.data || [])) {
+          for (const d of (b.damages || [])) list.push({ ...d, bookingId: b.bookingId || b.id });
+        }
+        setDamages(list);
+      })
+      .catch((e) => console.log('Damages load error:', e?.response?.data || e?.message))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [vehicle.id]);
+
+  if (loading) {
+    return <View style={{ paddingTop: 40, alignItems: 'center' }}><ActivityIndicator color={BRAND_COLOR} /></View>;
+  }
+
+  return (
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      {damages.length === 0 ? (
+        <View style={{ alignItems: 'center', paddingVertical: 50 }}>
+          <Icon name="shield-checkmark-outline" size={30} color="#3a3a40" style={{ marginBottom: 8 }} />
+          <CustomText fontType='primary' weight='Medium' style={{ color: '#757575', fontSize: 13 }}>No damages reported for this car.</CustomText>
+        </View>
+      ) : (
+        damages.map((d, i) => (
+          <View key={d.id || i} style={{ backgroundColor: '#141416', borderRadius: 12, borderWidth: 1, borderColor: '#232327', padding: 14, marginBottom: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Icon name="alert-circle-outline" size={16} color="#ef6b6b" />
+                <CustomText fontType='primary' weight='Bold' style={{ color: '#e8e8ea', fontSize: 13 }}>{d.amount != null ? `₹${Number(d.amount).toLocaleString('en-IN')}` : 'Damage'}</CustomText>
+              </View>
+              {d.status ? (
+                <View style={{ backgroundColor: '#26262a', borderRadius: 100, paddingVertical: 3, paddingHorizontal: 9 }}>
+                  <CustomText fontType='primary' weight='Bold' style={{ color: '#b9b9c2', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>{d.status}</CustomText>
+                </View>
+              ) : null}
+            </View>
+            {d.description ? <CustomText fontType='primary' weight='Regular' style={{ color: '#a3a3a3', fontSize: 12, marginBottom: 4 }}>{d.description}</CustomText> : null}
+            <CustomText fontType='primary' weight='Regular' style={{ color: '#6f6f76', fontSize: 11 }}>Booking #{d.bookingId}</CustomText>
+          </View>
+        ))
+      )}
+    </ScrollView>
+  );
+};
 
 
 const UpdateInfo = ({ vehicle,show,setShow }) => {

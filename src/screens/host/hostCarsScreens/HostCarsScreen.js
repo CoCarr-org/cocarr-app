@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import LargeTitle from '../../../components/LargeTitle';
 import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Dimensions, ScrollView, RefreshControl } from 'react-native';
 import axios from 'axios';
 import { API_URL, BRAND_COLOR } from '../../../utils/constants';
 import Ionicons from 'react-native-vector-icons/Ionicons'
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import FontAwesomeOld from 'react-native-vector-icons/FontAwesome';
 import { useSelector } from 'react-redux';
@@ -28,7 +27,13 @@ export function HostCarsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const navigation = useNavigation();
-  const filter = useState('all')
+  const route = useRoute();
+  // Live / Pending / All status filter. Seeded from the KPI tile on the host
+  // home (navigate('HostCars', { statusFilter: 'live' })).
+  const [statusFilter, setStatusFilter] = useState(route.params?.statusFilter || 'all');
+  useEffect(() => {
+    if (route.params?.statusFilter) setStatusFilter(route.params.statusFilter);
+  }, [route.params?.statusFilter]);
   const [filters, setFilters] = useState({maxPrice:0,minPrice:0,distance:0,deliveryType:[],userRating:0,vehicleType:[],vehicleFuelType:[],vehicleSeats:[],vehicleTransmissionType:[]})
   const bottomSheetRef = useRef(null);
   const [showSort, setShowSort] = useState(false);
@@ -66,21 +71,8 @@ export function HostCarsScreen() {
     }
   };
 
-  const HeaderBlock = () => {
-    return (
-      <View style={styles.headerBlock}>
-        <View style={styles.headerBlockLeft}>
-            <TouchableOpacity style={{padding:4,paddingLeft:0}} onPress={() => navigation.goBack()}>
-            <Icon name="chevron-back" size={20} color="#a3a3a3" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate('DatePicker')} style={styles.headerBlockContent}>
-            <CustomText fontType='primary' weight='Medium' style={styles.blockSecText}>{selectedCity?.name}</CustomText>
-            <CustomText fontType='primary' weight='Regular' style={styles.headerPrimaryText}>{formatDate(startDateTime,'long')} - {formatDate(endDateTime,'long')}</CustomText>
-          </TouchableOpacity>
-        </View>
-      </View>
-    )
-  }
+  // (Removed the decorative city/date bar: the host list query ignores it,
+  //  and the tab already shows a "Cars" header.)
 
   
   useEffect(() => {
@@ -147,10 +139,11 @@ export function HostCarsScreen() {
 
   return (
     <View style={styles.container}>
-      <LargeTitle title="My Cars" />
+      {/* Title is the shared header now (TopBar / stack header). */}
       <TopPillBlock sort={sort} isFilterApplied={isFilterApplied} filters={filters} setShowSort={setShowSort} setShowFilter={setShowFilter} setFilters={setFilters}/>
-      <FlatList 
-        data={vehicles}
+      <StatusFilterChips value={statusFilter} onChange={setStatusFilter} vehicles={vehicles} />
+      <FlatList
+        data={statusFilter === 'all' ? vehicles : vehicles.filter((v) => (statusFilter === 'live' ? (!v.isDraft && v.isAdminApproved) : statusFilter === 'pending' ? (!v.isDraft && !v.isAdminApproved) : v.isDraft))}
         refreshControl={<RefreshControl progressBackgroundColor='#000' tintColor={BRAND_COLOR} colors={[BRAND_COLOR]} onRefresh={()=>fetchVehicles('refresh')} refreshing={refreshing}/>}
         renderItem={renderVehicleItem}
         keyExtractor={(item) => item.id}
@@ -163,6 +156,36 @@ export function HostCarsScreen() {
     </View>
   );
 }
+
+// Live / Pending / Draft / All status chips with per-status counts.
+const StatusFilterChips = ({ value, onChange, vehicles }) => {
+  const counts = {
+    all: vehicles.length,
+    live: vehicles.filter((v) => !v.isDraft && v.isAdminApproved).length,
+    pending: vehicles.filter((v) => !v.isDraft && !v.isAdminApproved).length,
+    draft: vehicles.filter((v) => v.isDraft).length,
+  };
+  const chips = [
+    { id: 'all', label: 'All' },
+    { id: 'live', label: 'Live' },
+    { id: 'pending', label: 'Pending' },
+    { id: 'draft', label: 'Draft' },
+  ];
+  return (
+    <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 12 }}>
+      {chips.map((c) => {
+        const active = value === c.id;
+        return (
+          <TouchableOpacity key={c.id} onPress={() => onChange(c.id)} activeOpacity={0.8}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 20, backgroundColor: active ? BRAND_COLOR : '#1c1c1e', borderWidth: 1, borderColor: active ? BRAND_COLOR : '#2c2c2e' }}>
+            <CustomText fontType='primary' weight='Bold' style={{ color: active ? '#000' : '#c3c3c3', fontSize: 11 }}>{c.label}</CustomText>
+            <CustomText fontType='primary' weight='Bold' style={{ color: active ? '#000' : '#757575', fontSize: 11 }}>{counts[c.id]}</CustomText>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+};
 
 const LoaderScreen = () => {
   return (

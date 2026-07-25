@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform, FlatList, TouchableHighlight, ToastAndroid, ScrollView } from 'react-native';
 // import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -18,6 +19,7 @@ import LocationChangeNotificationScreen from './LocationChangeNotificationScreen
 import { getCurrentLocation, notify } from '../../utils/utils';
 
 export function DatePickerScreen({ visible, onClose, onSelect }) {
+  const insets = useSafeAreaInsets();
     const bookingState = useSelector((state) => state.booking);
   const [startDate, setStartDate] = useState(bookingState.startDateTime ? new Date(bookingState.startDateTime) : new Date());
   const [endDate, setEndDate] = useState(bookingState.endDateTime ? new Date(bookingState.endDateTime) : new Date());
@@ -321,7 +323,7 @@ export function DatePickerScreen({ visible, onClose, onSelect }) {
   }
 
   return (
-      <View style={styles.modalContainer}>
+      <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
         <ScrollView style={styles.modalContent}>
 
         <TouchableHighlight underlayColor='#2C2C2E' onPress={() => setShowLocationSearch(true)}>

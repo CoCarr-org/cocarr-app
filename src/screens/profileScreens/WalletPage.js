@@ -86,12 +86,7 @@ const getTransactions = async () => {
 
   return (
     <View style={styles.container}>
-        <StatusBar barStyle={'light-content'} backgroundColor={'#1c1c1e'}/>
-      <View style={styles.headerContainer}>
-      <TouchableHighlight underlayColor={BRAND_COLOR} style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="chevron-back" size={20} color="#e3e3e3" />
-        </TouchableHighlight>
-    </View>
+      {/* Header (back + "Wallet") is the shared stack header now. */}
       <View style={{ backgroundColor:'#1c1c1e',paddingVertical:24,paddingHorizontal:16,}}>
 
         <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',marginBottom:16,width:48,height:48,borderRadius:56,backgroundColor:'#000',padding:4,justifyContent:'center',alignItems:'center',marginHorizontal:'auto'}}>

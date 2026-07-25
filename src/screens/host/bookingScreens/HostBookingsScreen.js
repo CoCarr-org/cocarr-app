@@ -1,12 +1,11 @@
 import axios from 'axios';
-import LargeTitle from '../../../components/LargeTitle';
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Alert, RefreshControl, ScrollView, TouchableHighlight } from 'react-native';
 import { API_URL, BOOKING_BOOKED, BRAND_COLOR } from '../../../utils/constants';
 import { useSelector } from 'react-redux';
 import { formatDate, photoUrl } from '../../../utils/utils';
 import HeaderBlock from '../../../components/CenterHeader';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import CustomText from '../../../components/CustomText';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { BOOKING_ONGOING, BOOKING_FINISHED, BOOKING_CANCELLED } from '../../../utils/constants';
@@ -17,11 +16,16 @@ export function HostBookingsScreen() {
   const [rides, setRides] = useState([]);
   const authInfo = useSelector((state)=>state.auth)
   const navigation = useNavigation();
+  const route = useRoute();
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState('createdAt');
   const [offset, setOffset] = useState(0);
   const [count, setCount] = useState(0);
-  const [filter, setFilter] = useState({vehicleId:null,status:''})
+  // Status can be seeded from the "Active bookings" KPI on the host home.
+  const [filter, setFilter] = useState({vehicleId:null,status:route.params?.status || ''})
+  useEffect(() => {
+    if (route.params?.status !== undefined) setFilter((f) => ({ ...f, status: route.params.status }));
+  }, [route.params?.status]);
   const [cars, setCars] = useState([])
   const [showCarsPicker, setShowCarsPicker] = useState(false);
   const carsPickerRef = useRef(null);
@@ -72,7 +76,7 @@ export function HostBookingsScreen() {
 
   return (
     <View style={styles.container}>
-      <LargeTitle title="Bookings" />
+      {/* Title is the shared header now (TopBar / stack header). */}
       <TouchableOpacity onPress={() => carsPickerRef.current?.show()} style={{flexDirection:'row',  alignContent:"center",paddingHorizontal:16,paddingVertical:12}}>
         <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',alignContent:"center",backgroundColor:'#000',borderRadius:10,padding:12,width:'100%'}}>
             <View>
