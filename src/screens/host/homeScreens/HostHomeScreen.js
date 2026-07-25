@@ -249,46 +249,16 @@ const HostDashboard = ({ vehicles, bookings, wallet, navigation }) => {
 };
 
 // ── Scheduling assistant ──────────────────────────────────────────────────────
-// Pick a car from a horizontal strip, then see and manage that one car's
-// availability below. Deliberately different from the Cars tab (a full vertical
-// management list) so home reads as "scheduling", not "manage cars".
-// ── Scheduling assistant ──────────────────────────────────────────────────────
-// "Availability" — one card per car with a glanceable next-7-days strip (which
-// days already have an availability window), the next upcoming window, and a
-// quick add. A weekly-at-a-glance view rather than a plain list.
-const DAY_MS = 24 * 60 * 60 * 1000;
-const DOW = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-
-const next7Days = () => {
-  const out = [];
-  const base = new Date();
-  base.setHours(0, 0, 0, 0);
-  for (let i = 0; i < 7; i++) out.push(new Date(base.getTime() + i * DAY_MS));
-  return out;
-};
-
-// True if any window covers this calendar day.
-const dayCovered = (day, windows) => {
-  const dStart = day.getTime();
-  const dEnd = dStart + DAY_MS;
-  return windows.some((w) => {
-    const s = new Date(w.startTime).getTime();
-    const e = new Date(w.endTime).getTime();
-    return s < dEnd && e > dStart;
-  });
-};
-
+// "Availability" — one card per car listing its availability windows (from → to),
+// with an always-present Schedule action. Non-approved cars show a locked note.
 const AvailabilityCard = ({ car, windows, navigation }) => {
   const status = STATUS(car);
   const canSchedule = status === 'live';
-  const days = next7Days();
-  const todayIdx = 0;
-  // Next window that hasn't ended yet.
   const now = Date.now();
-  const nextWindow = [...windows]
+  // Upcoming (not-yet-ended) windows, soonest first.
+  const upcoming = [...windows]
     .filter((w) => new Date(w.endTime).getTime() > now)
-    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0];
-
+    .sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
   const dotColor = status === 'live' ? '#6ee6b0' : status === 'pending' ? BRAND_COLOR : '#b9b9c2';
 
   return (
@@ -313,49 +283,54 @@ const AvailabilityCard = ({ car, windows, navigation }) => {
       </TouchableOpacity>
 
       {canSchedule ? (
-        <>
-          {/* 7-day availability strip */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 12 }}>
-            {days.map((d, i) => {
-              const covered = dayCovered(d, windows);
-              const isToday = i === todayIdx;
-              return (
-                <View key={i} style={{ alignItems: 'center', gap: 6, flex: 1 }}>
-                  <CustomText fontType='primary' weight='Bold' style={{ color: isToday ? '#e3e3e3' : '#5a5a62', fontSize: 9 }}>{DOW[d.getDay()]}</CustomText>
-                  <View style={{
-                    width: 28, height: 28, borderRadius: 8,
-                    backgroundColor: covered ? '#EDBF3122' : '#1c1c1e',
-                    borderWidth: 1, borderColor: covered ? BRAND_COLOR : isToday ? '#3a3a40' : '#232327',
-                    alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <CustomText fontType='primary' weight={covered ? 'Bold' : 'Regular'} style={{ color: covered ? BRAND_COLOR : '#6f6f76', fontSize: 11 }}>{d.getDate()}</CustomText>
+        <View style={{ paddingHorizontal: 14, paddingBottom: 12, borderTopWidth: 1, borderTopColor: '#1f1f23', paddingTop: 12 }}>
+          <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3, marginBottom: 8 }}>
+            {upcoming.length > 1 ? `Availability windows · ${upcoming.length}` : 'Availability window'}
+          </CustomText>
+
+          {upcoming.length === 0 ? (
+            <View style={{ backgroundColor: '#151519', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 12 }}>
+              <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 12 }}>No availability windows yet.</CustomText>
+              <CustomText fontType='primary' weight='Regular' style={{ color: '#5a5a62', fontSize: 11, marginTop: 2 }}>Add one so renters can book this car.</CustomText>
+            </View>
+          ) : (
+            upcoming.slice(0, 5).map((w) => (
+              <TouchableOpacity key={w.id} onPress={() => navigation.navigate('ScheduleInfo', { scheduleId: w.id })}
+                style={{ backgroundColor: '#151519', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#EDBF3115', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="arrow-up-circle-outline" size={15} color={BRAND_COLOR} />
+                    </View>
+                    <View>
+                      <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>From</CustomText>
+                      <CustomText fontType='primary' weight='Medium' style={{ color: '#e3e3e3', fontSize: 12 }}>{formatDateOnly(w.startTime)} · {formatTime(w.startTime)}</CustomText>
+                    </View>
+                  </View>
+                  {w.scheduleBlocks && w.scheduleBlocks.length > 0 ? (
+                    <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 10 }}>{w.scheduleBlocks.length} pause(s)</CustomText>
+                  ) : <Icon name="chevron-forward" size={13} color="#5a5a62" />}
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ width: 26, height: 26, borderRadius: 7, backgroundColor: '#3fce8f18', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="arrow-down-circle-outline" size={15} color="#6ee6b0" />
+                  </View>
+                  <View>
+                    <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>To</CustomText>
+                    <CustomText fontType='primary' weight='Medium' style={{ color: '#e3e3e3', fontSize: 12 }}>{formatDateOnly(w.endTime)} · {formatTime(w.endTime)}</CustomText>
                   </View>
                 </View>
-              );
-            })}
-          </View>
+              </TouchableOpacity>
+            ))
+          )}
 
-          {/* Next window + add */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12, borderTopWidth: 1, borderTopColor: '#1f1f23' }}>
-            <View style={{ flex: 1, marginRight: 12 }}>
-              <CustomText fontType='primary' weight='SemiBold' style={{ color: '#6f6f76', fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>Next window</CustomText>
-              {nextWindow ? (
-                <TouchableOpacity onPress={() => navigation.navigate('ScheduleInfo', { scheduleId: nextWindow.id })}>
-                  <CustomText fontType='primary' weight='Medium' numberOfLines={1} style={{ color: '#e3e3e3', fontSize: 12, marginTop: 2 }}>
-                    {formatDateOnly(nextWindow.startTime)} · {formatTime(nextWindow.startTime)}
-                  </CustomText>
-                </TouchableOpacity>
-              ) : (
-                <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 12, marginTop: 2 }}>Nothing scheduled</CustomText>
-              )}
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate('CreateSchedule', { vehicleId: car.id })}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: BRAND_COLOR, borderRadius: 20, paddingVertical: 9, paddingHorizontal: 14 }}>
-              <Icon name="add" size={15} color="#000" />
-              <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15 }}>Schedule</CustomText>
-            </TouchableOpacity>
-          </View>
-        </>
+          {/* Always present. */}
+          <TouchableOpacity onPress={() => navigation.navigate('CreateSchedule', { vehicleId: car.id })}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: BRAND_COLOR, borderRadius: 10, paddingVertical: 13, marginTop: 2 }}>
+            <Icon name="add-circle" size={16} color="#000" />
+            <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15 }}>Add availability</CustomText>
+          </TouchableOpacity>
+        </View>
       ) : (
         <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1a1a1c', borderRadius: 10, padding: 12 }}>
@@ -369,6 +344,7 @@ const AvailabilityCard = ({ car, windows, navigation }) => {
     </View>
   );
 };
+
 
 const SchedulingAssistant = ({ vehicles, schedulesByCar, navigation }) => {
   if (vehicles.length === 0) {
@@ -388,7 +364,7 @@ const SchedulingAssistant = ({ vehicles, schedulesByCar, navigation }) => {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <View>
           <CustomText fontType='primary' weight='Bold' style={{ color: '#f0f0f2', fontSize: 15, letterSpacing: -.2 }}>Availability</CustomText>
-          <CustomText fontType='primary' weight='Regular' style={{ color: '#6f6f76', fontSize: 11, marginTop: 1 }}>Next 7 days — tap a car to add windows</CustomText>
+          <CustomText fontType='primary' weight='Regular' style={{ color: '#6f6f76', fontSize: 11, marginTop: 1 }}>Manage each car's availability windows</CustomText>
         </View>
         <TouchableOpacity onPress={() => navigation.navigate('AddCar')} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
           <Icon name="add-circle-outline" size={15} color={BRAND_COLOR} />
