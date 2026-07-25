@@ -85,9 +85,10 @@ export function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={{paddingVertical:12,paddingHorizontal:24,flexDirection:'row',justifyContent:'flex-end',alignItems:'center'}}>
-      <TouchableHighlight underlayColor='#2c2c2e' onPress={()=>navigation.navigate('EditProfile')} style={{backgroundColor:'#1c1c1e',borderRadius:24,paddingVertical:8,paddingHorizontal:16}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:'#c3c3c3', fontSize:12,textAlign:'center',letterSpacing:-.05}}>Edit Profile</CustomText>
+      <View style={{paddingVertical:12,paddingHorizontal:20,flexDirection:'row',justifyContent:'flex-end',alignItems:'center'}}>
+      {/* Edit profile is a compact icon button now, not a text pill. */}
+      <TouchableHighlight underlayColor='#2c2c2e' onPress={()=>navigation.navigate('EditProfile')} style={{backgroundColor:'#1c1c1e',borderRadius:20,width:38,height:38,justifyContent:'center',alignItems:'center'}}>
+                <Ionicons name="create-outline" size={18} color="#c3c3c3" />
               </TouchableHighlight>
       </View>
       <View style={{flex:1}}>

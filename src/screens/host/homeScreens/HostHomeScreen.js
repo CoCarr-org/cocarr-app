@@ -217,9 +217,9 @@ const HostDashboard = ({ vehicles, bookings, wallet, navigation }) => {
   const balance = wallet?.balance ?? wallet?.points ?? wallet?.walletPoints;
 
   const tiles = [
-    { icon: 'car-sport', label: 'Live cars', value: String(liveCars.length), sub: draftCount ? `${draftCount} in draft` : 'All published' },
-    { icon: 'calendar', label: 'Active bookings', value: String(activeBookings), sub: `${bookings.length} shown` },
-    { icon: 'wallet', label: 'Wallet', value: balance != null ? inr(balance) : '—', sub: 'View earnings', onPress: () => navigation.navigate('HostEarnings') },
+    { icon: 'car-sport', label: 'Live cars', value: String(liveCars.length), sub: draftCount ? `${draftCount} in draft` : 'All published', onPress: () => navigation.navigate('HostCars', { statusFilter: 'live' }) },
+    { icon: 'calendar', label: 'Active bookings', value: String(activeBookings), sub: `${bookings.length} shown`, onPress: () => navigation.navigate('HostBooking', { status: 'ongoing' }) },
+    { icon: 'wallet', label: 'Earnings', value: balance != null ? inr(balance) : '—', sub: 'View breakdown', onPress: () => navigation.navigate('HostEarnings') },
     { icon: 'star', label: 'Avg rating', value: avgRating || 'New', sub: `${totalRides} rides` },
   ];
 

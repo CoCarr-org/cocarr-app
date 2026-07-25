@@ -41,6 +41,7 @@ import { CarsInfoScreen } from '../screens/homeScreens/carinfo/CarInfoScreen.js'
 import { HostStartBookingScreen } from '../screens/host/bookingScreens/HostStartBookingScreen.js';
 import { DatePickerScreen } from '../screens/homeScreens/DatePickerScreen.js';
 import { HostBankPage } from '../screens/host/hostProfileScreens/HostBankPage.js';
+import HostEarningsPage from '../screens/host/hostProfileScreens/HostEarningsPage.js';
 import { setupNotificationListeners } from '../components/NotificationSetup.js';
 import { CarsPaymentScreen } from '../screens/homeScreens/carinfo/CarPaymentScreen.js';
 import { StartBookingScreen } from '../screens/rideScreens/StartBookingScreen.js';
@@ -151,6 +152,7 @@ export function MainNavigator() {
           <Stack.Screen name="HostEndBooking" component={HostEndBookingScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="HostStartBooking" component={HostStartBookingScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="HostBankPage" component={HostBankPage} options={{ headerShown: false }}/>
+          <Stack.Screen name="HostEarnings" component={HostEarningsPage} options={{ title: 'Earnings' }}/>
           <Stack.Screen name="HostDamageScreen" component={HostDamageScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} options={{ title: 'Terms & Conditions' }}/>
         </Stack.Group>
