@@ -86,22 +86,10 @@ export default function HostBookingInfoScreen({ route }) {
 
   return (
     <View style={styles.container}>
-      <HeaderBlock title="Ride Info" navigation={navigation} showBackButton={true} customSecondaryText={`#${booking.bookingId}`} />
-      <View style={styles.bookingInfo}>
-        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',position:'relative'}}>
-          <LinearGradient style={{position:'absolute',width:'100%',height:'100%',justifyContent:'flex-end',alignItems:'flex-start',left:0,top:0,}} colors={['rgba(0,0,0,0)','rgba(0,0,0,1)']} start={{x:0,y:0}} end={{x:0,y:1}}>
-            </LinearGradient>
-          {/* <Image source={{ uri: booking.vehicle.images[0].url }} style={styles.vehicleImage} /> */}
-          <LinearGradient style={{position:'absolute',width:'100%',height:'100%',justifyContent:'flex-end',alignItems:'flex-start',left:0,bottom:0,}} colors={['rgba(0,0,0,1)','rgba(0,0,0,0)']} start={{x:0,y:1}} end={{x:0,y:0}}>
-            <View style={{flexDirection:'column',justifyContent:'flex-start',paddingHorizontal:16,paddingBottom:12}}>
-            <CustomText fontType='primary' weight='Medium' style={styles.bookingTitle}>{booking.vehicle.brand.name} {booking.vehicle.vehicleName}</CustomText>
-            <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3',fontSize:10,textTransform:'uppercase',letterSpacing:.15,textAlign:'left'}}>{booking.vehicle.vehicleFuelType} · {booking.vehicle.vehicleSeats} Seater · {booking.vehicle.vehicleYear}</CustomText>
-
-          </View>
-            </LinearGradient>
-        </View>
-
-      </View>
+      <HeaderBlock title="Booking Info" navigation={navigation} showBackButton={true} customSecondaryText={`#${booking.bookingId}`} />
+      {/* Clean header: vehicle photo banner with the car info + status below it,
+          instead of the old empty gradients over a commented-out image. */}
+      <BookingHeader booking={booking} />
       <TabViewInfo booking={booking} setShowReview={setShowReview}/>
         {booking.isAllowedForReport ? <TouchableHighlight 
             style={[
@@ -184,6 +172,42 @@ const CancelRidePopup = ({onCancel,show}) => {
   )
 }
 
+const STATUS_META = {
+  [BOOKING_BOOKED]:   { label: 'Upcoming',  fg: '#EDBF31', bg: '#EDBF3122', bd: '#EDBF3155' },
+  [BOOKING_ONGOING]:  { label: 'Ongoing',   fg: '#6ee6b0', bg: '#3fce8f22', bd: '#3fce8f59' },
+  [BOOKING_FINISHED]: { label: 'Completed', fg: '#a3a3a3', bg: '#26262a',   bd: '#3a3a40' },
+  cancelled:          { label: 'Cancelled', fg: '#ff8f8f', bg: '#ef444422', bd: '#ef444455' },
+};
+
+// Vehicle photo banner + car name/specs/registration + status badge.
+const BookingHeader = ({ booking }) => {
+  const v = booking.vehicle || {};
+  const img = (v.images || []).filter((i) => !i.isDeleted)[0]?.url;
+  const st = STATUS_META[booking.status] || STATUS_META[BOOKING_FINISHED];
+  return (
+    <View>
+      {img ? (
+        <Image source={{ uri: photoUrl(img) }} style={{ width: '100%', height: 190, backgroundColor: '#1c1c1e' }} resizeMode="cover" />
+      ) : (
+        <View style={{ width: '100%', height: 190, backgroundColor: '#1c1c1e', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="car-outline" size={40} color="#3a3a40" />
+        </View>
+      )}
+      <View style={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 6 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <CustomText fontType='primary' weight='Bold' style={{ color: '#f0f0f2', fontSize: 18, letterSpacing: -.3, flex: 1 }}>{v.brand?.name} {v.vehicleName}</CustomText>
+          <View style={{ backgroundColor: st.bg, borderWidth: 1, borderColor: st.bd, borderRadius: 100, paddingVertical: 4, paddingHorizontal: 10 }}>
+            <CustomText fontType='primary' weight='Bold' style={{ color: st.fg, fontSize: 9, textTransform: 'uppercase', letterSpacing: .3 }}>{st.label}</CustomText>
+          </View>
+        </View>
+        <CustomText fontType='primary' weight='Regular' style={{ color: '#a3a3a3', fontSize: 10, textTransform: 'uppercase', letterSpacing: .15, marginTop: 4 }}>
+          {[v.vehicleFuelType, v.vehicleSeats && `${v.vehicleSeats} Seater`, v.vehicleYear, v.vehicleNumber].filter(Boolean).join(' · ')}
+        </CustomText>
+      </View>
+    </View>
+  );
+};
+
 const TabViewInfo = ({booking,setShowReview}) => {
 
   const [index, setIndex] = useState(0);
@@ -204,30 +228,23 @@ const TabViewInfo = ({booking,setShowReview}) => {
     documents: ()=><Documents booking={booking}/>
   });
 
-  const renderTabBar = (props) => {
-    return (
-      <TabBar
-      {...props}
-      // tabStyle={{...props.tabStyle}}
-      // tabStyle={{...props.tabStyle,width:'auto'}}
-      style={{backgroundColor:'#000'}}
-      indicatorStyle={{backgroundColor:BRAND_COLOR,height:0}}
-      labelStyle={{color:'#fff',fontSize:8,fontWeight:'500',textTransform:'uppercase',letterSpacing:.15}}
-      activeColor='#fff'
-      renderTabBarItem={props => {
-        const active = props.navigationState.routes[props.navigationState.index].key === props.route.key ? true : false;
-          return (
-            <TouchableOpacity activeOpacity={0.8} onPress={() => setIndex(routes.findIndex(r => r.key === props.route.key))} style={{paddingVertical:8,paddingHorizontal:18,backgroundColor:!active ? '#1c1c1e' : '#EDBF313A',marginRight:12,borderRadius:24,marginLeft:props.route.key === 'overview' ? 16 : 0}}>
-              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}>
-                  <Text style={{color:active ? BRAND_COLOR : '#757575',fontSize:10,fontWeight:'600',textTransform:'uppercase',letterSpacing:.15}}>{props.route.title}</Text>
-              </View>
-            </TouchableOpacity>
-          )
-        }}
-        inactiveColor='#757575'
-      />
-    )
-  }
+  // Plain horizontal pill row (not TabBar's scrollEnabled mode, which
+  // mis-measures custom items and runs away). Simple controlled selector.
+  const renderTabBar = () => (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 10 }}
+      style={{ backgroundColor: '#000', flexGrow: 0 }}>
+      {routes.map((r, i) => {
+        const active = i === index;
+        return (
+          <TouchableOpacity key={r.key} activeOpacity={0.8} onPress={() => setIndex(i)}
+            style={{ paddingVertical: 8, paddingHorizontal: 16, borderRadius: 24, backgroundColor: active ? '#EDBF313A' : '#1c1c1e' }}>
+            <Text style={{ color: active ? BRAND_COLOR : '#757575', fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: .15 }}>{r.title}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
   return (
     <TabView
       navigationState={{ index, routes }}
@@ -235,11 +252,9 @@ const TabViewInfo = ({booking,setShowReview}) => {
       onIndexChange={setIndex}
       overdrag={true}
       style={{backgroundColor:'#000'}}
-      
-      renderTabBar={(props)=>renderTabBar(props)}
-      // initialLayout={{ width: Dimensions.get('window').width }}
+      renderTabBar={renderTabBar}
     />
-  ) 
+  )
 }
 
 
