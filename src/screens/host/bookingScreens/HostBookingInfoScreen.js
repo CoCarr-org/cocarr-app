@@ -450,7 +450,7 @@ const Overview = ({booking,setShowReview}) => {
 
                       {
                         booking.damages[0].damageImage.split(',').map((image,index)=>(
-                          <Image source={{uri:image}} style={{width:'48%',height:100,borderRadius:6}} key={index}/>
+                          <Image source={{uri:photoUrl(image)}} style={{width:'48%',height:100,borderRadius:6}} key={index}/>
                         ))
                       }
                       </View>

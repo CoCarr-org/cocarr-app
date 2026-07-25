@@ -17,6 +17,7 @@ import Select from '../../../components/Select';
 export function HostDamageScreen({route}) {
   const navigation = useNavigation();
   const {bookingId} = route.params;
+  const authInfo = useSelector((state) => state.auth);
   const [isLoading, setIsLoading] = useState(false);
   const [booking, setBooking] = useState({});
   const inputRef = useRef(null);
@@ -136,9 +137,12 @@ export function HostDamageScreen({route}) {
           throw error;
         });
 
+        // The presigned bucket URL has no trailing slash, so `url + key`
+        // produces a malformed link. The bucket is private anyway — store the
+        // API image-proxy URL built from the object key (matches the web).
         return {
           type,
-          url: urlRes.data.url + urlRes.data.fields.key
+          url: `${API_URL}/image/${urlRes.data.fields.key}`
         };
       });
 
@@ -150,6 +154,8 @@ export function HostDamageScreen({route}) {
         damageDescription: data.damageDescription,
         damagedPart: data.damagePart.value,
         damageImage: uploadedImages
+      }, {
+        headers: { Authorization: `${authInfo.token}` }
       });
       navigation.navigate('HostBookingInfo', {bookingId:bookingId});
       setSubmitting(false);
