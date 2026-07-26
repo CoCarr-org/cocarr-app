@@ -39,7 +39,13 @@ export const photoUrl = (value) => {
   }
   if (/^https?:\/\//i.test(value)) {
     const match = value.match(/^https?:\/\/([^/]+)\/(.+)$/);
-    if (match && match[1].endsWith('storageapi.dev')) {
+    // Private bucket (Tigris/storageapi.dev), OR an already-proxied
+    // `/image/:key` URL built against a DIFFERENT host — web/app/admin each
+    // have their own fallback API base URL and they don't all agree, and a
+    // value from a server-side getter (e.g. User.profilePhoto) is proxied
+    // against *the backend's* configured public URL, which may not match
+    // this client's own. Rebuild against our own API_URL either way.
+    if (match && (match[1].endsWith('storageapi.dev') || match[2].includes('image/'))) {
       return `${API_URL}/image/${extractKey(match[2])}`;
     }
     return value;
