@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, TouchableHighlight, Dimensions, Linking, ScrollView, ToastAndroid } from 'react-native';
 import axios from 'axios';
 import { useFocusEffect } from '@react-navigation/native';
-import { API_URL, BOOKING_BOOKED, BOOKING_FINISHED, BRAND_COLOR } from '../../utils/constants';
+import { API_URL, BOOKING_BOOKED, BOOKING_INITIATED, BOOKING_FINISHED, BRAND_COLOR } from '../../utils/constants';
 import { useDispatch, useSelector } from 'react-redux';
 import { formatDate, photoUrl, notify } from '../../utils/utils';
 import HeaderBlock from '../../components/CenterHeader';
@@ -94,6 +94,10 @@ export default function RideInfoScreen({ route,navigation }) {
   // Start Ride only unlocks once the booking's start time has actually
   // arrived — before that, riders can only cancel or reschedule.
   const hasStarted = booking.startTime ? new Date(booking.startTime) <= new Date() : false;
+  // "initiated" is a real, non-transient state (confirm-booking can fail
+  // after payment capture, or the webhook can lag) — an upcoming ride stuck
+  // there still needs Cancel/Reschedule, same as web already does.
+  const isUpcoming = booking.status === BOOKING_BOOKED || booking.status === BOOKING_INITIATED;
 
   return (
     <View style={styles.container}>
@@ -104,7 +108,7 @@ export default function RideInfoScreen({ route,navigation }) {
       {/* Breathing room between the car info and the tab section. */}
       <View style={{ height: 14 }} />
       <TabViewInfo booking={booking}/>
-      {booking.status === BOOKING_BOOKED ? (
+      {isUpcoming ? (
         <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: 10, paddingHorizontal: 16, paddingVertical: 14 }}>
           {/* Cancel — outline danger, icon + label. */}
           <TouchableOpacity onPress={() => setShowCancelRide(booking)} activeOpacity={0.85}
@@ -132,7 +136,7 @@ export default function RideInfoScreen({ route,navigation }) {
           ) : null}
         </View>
       ) : null}
-      {booking.status === BOOKING_BOOKED && !hasStarted ? (
+      {isUpcoming && !hasStarted ? (
         <CustomText fontType='primary' weight='Regular' style={{ color: '#a3a3a3', fontSize: 11, textAlign: 'center', paddingHorizontal: 16, marginTop: -6, marginBottom: 8 }}>
           You can start this ride once {formatDate(booking.startTime)} arrives.
         </CustomText>

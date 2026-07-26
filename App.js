@@ -15,6 +15,7 @@ import Toast, { BaseToast } from 'react-native-toast-message';
 import { HostNavigator } from './src/navigators/HostNavigator';
 import { API_URL } from './src/utils/constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 function RootNavigator() {
   const [initializing, setInitializing] = useState(false);
@@ -177,7 +178,9 @@ export default function App() {
           size themselves around the notch and the home indicator. */}
       <SafeAreaProvider>
         <PersistGate loading={<ActivityIndicator size="large" color="#EDBF31" />} persistor={persistor}>
-          <RootNavigator />
+          <ErrorBoundary>
+            <RootNavigator />
+          </ErrorBoundary>
           <Toast config={toastConfig} />
         </PersistGate>
       </SafeAreaProvider>

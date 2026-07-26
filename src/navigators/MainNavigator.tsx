@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import HostScreen from '../screens/homeScreens/HostScreen';
 import { HostProfile } from '../screens/host/hostProfileScreens/HostProfile.js';
 import { useDispatch, useSelector } from 'react-redux';
@@ -63,10 +63,13 @@ export function MainNavigator() {
     try {
       const response = await axios.get(`${API_URL}/booking/last-booking`);
       console.log('last booking response',response.data);
-      if(!response.data.review) dispatch(setShowLastBooking(response.data.booking));
+      // A brand-new account with no finished bookings gets `null` back here,
+      // not `{booking, review}` — reading `.review` off that threw, which
+      // this catch then reported as a misleading "Error fetching last
+      // booking" alert on every first login.
+      if (response.data && !response.data.review) dispatch(setShowLastBooking(response.data.booking));
     } catch (error) {
       console.log('token',error);
-      Alert.alert('Error fetching last booking');
     }
   }
   

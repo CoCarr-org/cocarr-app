@@ -30,17 +30,20 @@ const OngoingRides = ({rides, navigation, refreshing, onRefresh}) => (
 
 const BookedRides = ({rides, navigation, refreshing, onRefresh}) => (
   <View style={{flex:1}}>
-    <FlatList 
+    <FlatList
       style={{paddingHorizontal:16}}
       refreshControl={
-        <RefreshControl 
+        <RefreshControl
           colors={['#EDBF31']}
           progressBackgroundColor={'#000'}
           refreshing={refreshing}
           onRefresh={onRefresh}
         />
       }
-      data={rides.filter(ride => ride.status === BOOKING_BOOKED)}
+      // "initiated" is a real stuck state (confirm-booking can fail after
+      // payment capture) — it's still an upcoming ride to the rider, so it
+      // belongs here, not invisible under no tab at all.
+      data={rides.filter(ride => ride.status === BOOKING_BOOKED || ride.status === BOOKING_INITIATED)}
       renderItem={({item})=>renderItem(item,navigation)}
     />
   </View>

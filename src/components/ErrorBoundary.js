@@ -20,9 +20,12 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <Text>Something went wrong!</Text>
-          <Button title="Retry" onPress={() => this.setState({ hasError: false })} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 24, gap: 8 }}>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center' }}>Something went wrong.</Text>
+          <Text style={{ color: '#a3a3a3', fontSize: 13, textAlign: 'center', marginBottom: 12 }}>
+            Please try again. If this keeps happening, restart the app.
+          </Text>
+          <Button title="Retry" color="#EDBF31" onPress={() => this.setState({ hasError: false })} />
         </View>
       );
     }
