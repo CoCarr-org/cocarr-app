@@ -102,6 +102,7 @@ export function StartBookingScreen({route}) {
   };
 
   const onSubmit = async () => {
+    setIsLoading(true);
     try {
       const uploadPromises = Object.entries(data.images).map(async ([type, image]) => {
         if (!image) return null;
@@ -127,7 +128,10 @@ export function StartBookingScreen({route}) {
 
         return {
           type,
-          url: urlRes.data.url + urlRes.data.fields.key
+          // Bucket URL has no trailing slash and the key is bare, so the old
+          // `url + key` produced a malformed/inaccessible link (same bug
+          // already fixed on web's upload helper) — use the API image proxy.
+          url: `${API_URL}/image/${urlRes.data.fields.key}`
         };
       });
 
@@ -141,8 +145,12 @@ export function StartBookingScreen({route}) {
       });
       navigation.navigate('RideInfo', {bookingId:bookingId});
     } catch (error) {
-      console.error('Error uploading images:', error.response ? error.response.data : error.message);
-      notify('Error uploading images');
+      console.error('Error starting ride:', error.response ? error.response.data : error.message);
+      // Surface the backend's actual reason (e.g. "Invalid Start OTP") instead
+      // of a generic message that hides why the ride didn't start.
+      notify(error.response?.data?.message || error.response?.data?.error || 'Could not start the ride. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -218,9 +226,9 @@ export function StartBookingScreen({route}) {
       </GestureHandlerRootView>
 
         <TouchableOpacity disabled={isLoading || !data.startDateTime || !data.startKms || !data.startOtp || !data.images.front || !data.images.back || !data.images.driverSide || !data.images.passengerSide || !data.images.userWithCar || !data.images.fuelOdometer} onPress={onSubmit} style={{backgroundColor:(isLoading || !data.startDateTime || !data.startKms || !data.startOtp || !data.images.front || !data.images.back || !data.images.driverSide || !data.images.passengerSide || !data.images.userWithCar || !data.images.fuelOdometer) ? '#4C4C4E' : BRAND_COLOR,borderRadius:5,paddingVertical:12,paddingHorizontal:12,color:'#fff',fontSize:14,width:'100%',marginTop:12,justifyContent:'center',alignItems:'center'}}>
-          <CustomText fontType='primary' weight='Bold' style={{color:'#000', fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Start Ride</CustomText>
+          <CustomText fontType='primary' weight='Bold' style={{color:'#000', fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>{isLoading ? 'Starting…' : 'Start Ride'}</CustomText>
         </TouchableOpacity>
-        
+
       </View>
 
         {

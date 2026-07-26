@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, ActivityIndicator, TouchableHighlight, Dimensions, Linking, ScrollView, ToastAndroid } from 'react-native';
 import axios from 'axios';
+import { useFocusEffect } from '@react-navigation/native';
 import { API_URL, BOOKING_BOOKED, BOOKING_FINISHED, BRAND_COLOR } from '../../utils/constants';
 import { useDispatch, useSelector } from 'react-redux';
 import { formatDate, photoUrl, notify } from '../../utils/utils';
@@ -39,9 +40,16 @@ export default function RideInfoScreen({ route,navigation }) {
     }
   };
 
-  useEffect(() => {
-    getBookingInfo();
-  }, []);
+  // Refetch every time this screen comes back into focus — e.g. returning
+  // from StartBooking/EndBooking after the ride's status actually changed.
+  // A mount-only effect left this screen showing stale "booked" state (and
+  // no Start Ride/OTP UI having taken effect) after starting a ride, since
+  // navigating back to an already-mounted screen doesn't remount it.
+  useFocusEffect(
+    useCallback(() => {
+      getBookingInfo();
+    }, [bookingId])
+  );
 
 
   const onCancel = async () => {
@@ -80,19 +88,13 @@ export default function RideInfoScreen({ route,navigation }) {
   }
 
   const onStartRide = () => {
-    const startTime = new Date(booking.startTime);
-              const now = new Date();
-              const timeDiff = startTime - now;
-              const minutesDiff = timeDiff / (1000 * 60);
-              
-              if (minutesDiff <= 30 && minutesDiff >= -30) {
-                navigation.navigate('StartBooking', {bookingId: booking.bookingId})
-              } else {
-                navigation.navigate('StartBooking', {bookingId: booking.bookingId})
-                // notify('Ride can be started only within 30 mins of start time');
-              }
-    
+    navigation.navigate('StartBooking', {bookingId: booking.bookingId})
   }
+
+  // Start Ride only unlocks once the booking's start time has actually
+  // arrived — before that, riders can only cancel or reschedule.
+  const hasStarted = booking.startTime ? new Date(booking.startTime) <= new Date() : false;
+
   return (
     <View style={styles.container}>
       <HeaderBlock title="Ride Info" navigation={navigation} showBackButton={true} customSecondaryText={`#${booking.bookingId}`} />
@@ -119,13 +121,21 @@ export default function RideInfoScreen({ route,navigation }) {
             </TouchableOpacity>
           ) : null}
 
-          {/* Start ride — solid primary, fills remaining width. */}
-          <TouchableOpacity onPress={onStartRide} activeOpacity={0.85}
-            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, backgroundColor: BRAND_COLOR, paddingVertical: 12 }}>
-            <Ionicons name='play-circle' size={20} color='#000' />
-            <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: .15 }}>Start Ride</CustomText>
-          </TouchableOpacity>
+          {/* Start ride — solid primary, fills remaining width. Only shown
+              once the booking's start time has arrived. */}
+          {hasStarted ? (
+            <TouchableOpacity onPress={onStartRide} activeOpacity={0.85}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 12, backgroundColor: BRAND_COLOR, paddingVertical: 12 }}>
+              <Ionicons name='play-circle' size={20} color='#000' />
+              <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: .15 }}>Start Ride</CustomText>
+            </TouchableOpacity>
+          ) : null}
         </View>
+      ) : null}
+      {booking.status === BOOKING_BOOKED && !hasStarted ? (
+        <CustomText fontType='primary' weight='Regular' style={{ color: '#a3a3a3', fontSize: 11, textAlign: 'center', paddingHorizontal: 16, marginTop: -6, marginBottom: 8 }}>
+          You can start this ride once {formatDate(booking.startTime)} arrives.
+        </CustomText>
       ) : null}
 
         {booking.status === 'ongoing' ? <View style={{flexDirection:'row',alignItems:'center',paddingHorizontal:16,paddingVertical:16}}>
