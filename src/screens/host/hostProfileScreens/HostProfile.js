@@ -96,7 +96,7 @@ export function HostProfile() {
         <View style={{flexDirection:'column', gap:12,justifyContent:'center',alignItems:'center'}}>
 
           <View style={{flexDirection:'column', alignItems:'center',paddingVertical:16, gap:12,marginBottom:12}}>
-            <View style={{flexDirection:'column', alignItems:'flex-start',backgroundColor:'#1c1c1e',borderRadius:120,width:120,height:120,justifyContent:'center',alignItems:'center'}}>
+            <View style={{flexDirection:'column',backgroundColor:'#1c1c1e',borderRadius:120,width:120,height:120,justifyContent:'center',alignItems:'center'}}>
               {user?.profilePhoto && <Image source={{uri:photoUrl(user?.profilePhoto)}} style={{width:120, height:120, borderRadius:120}}/>}
             </View>
               <View style={{flexDirection:'column', alignItems:'center'}}>

@@ -116,10 +116,15 @@ export default function HomeScreen() {
         latitude: info?.geometry?.location?.lat ?? location.latitude,
         longitude: info?.geometry?.location?.lng ?? location.longitude,
       };
-      dispatch(setShowCityLocation({
-        selectedCity: isPlaceValid && city ? city : undefined,
-        selectedLocation: detectedLocation,
-      }));
+      if (isPlaceValid && city) {
+        dispatch(setShowCityLocation({ selectedCity: city, selectedLocation: detectedLocation }));
+      } else {
+        // Nothing serviced this point — keep whatever city was already
+        // selected (the reducer would anyway, but be explicit) and actually
+        // tell the user, instead of leaving them on a silently-empty search.
+        dispatch(setShowCityLocation({ selectedLocation: detectedLocation }));
+        setShowLocationValid(true);
+      }
       dispatch(setShowCityPicker(false));
     } catch (error) {
       console.log('detecting location error',error)
@@ -148,10 +153,14 @@ export default function HomeScreen() {
         latitude: info?.geometry?.location?.lat,
         longitude: info?.geometry?.location?.lng,
       };
-      dispatch(setShowCityLocation({
-        selectedCity: (isPlaceValid || isCityChanged) && city ? city : undefined,
-        selectedLocation: detectedLocation,
-      }));
+      if ((isPlaceValid || isCityChanged) && city) {
+        dispatch(setShowCityLocation({ selectedCity: city, selectedLocation: detectedLocation }));
+      } else {
+        // Not within any serviced city's radius — keep the previous city and
+        // tell the user why, instead of silently leaving them stuck.
+        dispatch(setShowCityLocation({ selectedLocation: detectedLocation }));
+        setShowLocationValid(true);
+      }
     } catch (error) {
       console.log('validate place error', error);
       dispatch(setShowCityLocation({ selectedLocation: { name: item.description, place_id: item.place_id } }));

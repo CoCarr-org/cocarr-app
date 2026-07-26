@@ -43,7 +43,7 @@ export function CarsListingScreen() {
   
     useEffect(() => {
       fetchVehicles();
-    }, [sort,filters]);
+    }, [sort,filters,selectedCity?.id]);
     
     useEffect(() => {
       setIsFilterApplied(filters.maxPrice > 0 || filters.minPrice > 0 || filters.distance > 0 || filters.deliveryType.length > 0 || filters.userRating > 0 || filters.vehicleType.length > 0 || filters.vehicleFuelType.length > 0 || filters.vehicleSeats.length > 0 || filters.vehicleTransmissionType.length > 0);
@@ -51,7 +51,17 @@ export function CarsListingScreen() {
 
 
   const fetchVehicles = async (refresh = false) => {
+    // No city yet (e.g. the location search resolved to an address outside
+    // every serviced city, or the picker hasn't loaded) — don't crash on
+    // `selectedCity.id` and silently swallow it into a blank list.
+    if (!selectedCity?.id) {
+      setError('Select a serviced city to see cars.');
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     try {
+      setError('');
       if(!refresh) setLoading(true)
         else setRefreshing(true)
       const now = new Date();
@@ -103,6 +113,7 @@ export function CarsListingScreen() {
       setRefreshing(false);
     } catch (err) {
         console.log('error',err.message)
+      setError(err?.response?.data?.message || 'Could not load cars. Please try again.');
       setLoading(false);
       setRefreshing(false);
     }
@@ -224,12 +235,19 @@ export function CarsListingScreen() {
     <View style={styles.container}>
       <HeaderBlock/>
       <TopPillBlock sort={sort} isFilterApplied={isFilterApplied} filters={filters} setShowSort={setShowSort} setShowFilter={setShowFilter} setFilters={setFilters}/>
-      <FlatList 
+      <FlatList
         data={vehicles}
         refreshControl={<RefreshControl progressBackgroundColor='#000' tintColor={BRAND_COLOR} colors={[BRAND_COLOR]} onRefresh={()=>fetchVehicles('refresh')} refreshing={refreshing}/>}
         renderItem={renderVehicleItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
+        contentContainerStyle={vehicles.length === 0 ? styles.listContainerEmpty : styles.listContainer}
+        ListEmptyComponent={!loading ? (
+          <View style={styles.centered}>
+            <CustomText fontType='primary' weight='Medium' style={{ color: '#a3a3a3', fontSize: 13, textAlign: 'center' }}>
+              No cars available in {selectedCity?.name || 'this area'} for these dates yet.
+            </CustomText>
+          </View>
+        ) : null}
       />
 
       {showFilter && <FilterModal maxAvailablePrice={maxAvailablePrice} maxAvailableDistance={maxAvailableDistance} clearAll={clearAll} onFilterSubmit={onFilterSubmit} showFilter={showFilter} setShowFilter={setShowFilter} filters={filters} setFilters={setFilters}/>}
@@ -559,6 +577,10 @@ const styles = StyleSheet.create({
     color: '#a3a3a3',
   },
   listContainer: {
+    padding: 16,
+  },
+  listContainerEmpty: {
+    flexGrow: 1,
     padding: 16,
   },
   header: {
