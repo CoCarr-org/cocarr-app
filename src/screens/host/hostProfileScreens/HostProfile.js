@@ -48,6 +48,12 @@ export function HostProfile() {
 
   const options = [
     {
+      onPress: 'HostInbox',
+      icon: <Ionicons name="mail-outline" size={16} color="#fff" />,
+      title: 'Inbox',
+      description: 'Messages with your riders',
+    },
+    {
       onPress: 'HostBankPage',
       icon: <MaterialCommunityIcons name="bank-outline" size={16} color="#fff" />,
       title: 'Bank Details',

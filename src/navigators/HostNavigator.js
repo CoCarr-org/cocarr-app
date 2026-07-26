@@ -7,7 +7,7 @@ import TopBar from '../components/navigation/TopBar';
 import HostHomeScreen from '../screens/host/homeScreens/HostHomeScreen.js';
 import { HostBookingsScreen } from '../screens/host/bookingScreens/HostBookingsScreen.js';
 import { HostCarsScreen } from '../screens/host/hostCarsScreens/HostCarsScreen.js';
-import { HostInboxScreen } from '../screens/host/hostInboxScreens/HostInboxScreen.js';
+import HostEarningsPage from '../screens/host/hostProfileScreens/HostEarningsPage';
 
 const Tab = createBottomTabNavigator();
 
@@ -60,17 +60,14 @@ export function HostNavigator() {
             
           }}
         />
-        <Tab.Screen 
-          name="HostInbox" 
-          component={HostInboxScreen}
+        <Tab.Screen
+          name="HostEarnings"
+          component={HostEarningsPage}
           options={{
-            title: 'Inbox',
-            tabBarIcon: ({focused,color, size}) => <Svg width="20" height="20" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <Path d="M1.5 11C1.5 6.522 1.5 4.282 2.891 2.891C4.282 1.5 6.521 1.5 11 1.5C15.478 1.5 17.718 1.5 19.109 2.891C20.5 4.282 20.5 6.521 20.5 11C20.5 15.478 20.5 17.718 19.109 19.109C17.718 20.5 15.479 20.5 11 20.5C6.522 20.5 4.282 20.5 2.891 19.109C1.5 17.718 1.5 15.479 1.5 11Z"  stroke={focused ? color : '#a3a3a3'} stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-            <Path d="M9 7.5C9 7.10218 8.84196 6.72064 8.56066 6.43934C8.27936 6.15804 7.89782 6 7.5 6C7.10218 6 6.72064 6.15804 6.43934 6.43934C6.15804 6.72064 6 7.10218 6 7.5C6 7.89782 6.15804 8.27936 6.43934 8.56066C6.72064 8.84196 7.10218 9 7.5 9C7.89782 9 8.27936 8.84196 8.56066 8.56066C8.84196 8.27936 9 7.89782 9 7.5ZM9 7.5H16M13 14.5C13 14.1022 13.158 13.7206 13.4393 13.4393C13.7206 13.158 14.1022 13 14.5 13C14.8978 13 15.2794 13.158 15.5607 13.4393C15.842 13.7206 16 14.1022 16 14.5C16 14.8978 15.842 15.2794 15.5607 15.5607C15.2794 15.842 14.8978 16 14.5 16C14.1022 16 13.7206 15.842 13.4393 15.5607C13.158 15.2794 13 14.8978 13 14.5ZM13 14.5H6" stroke={focused ? color : '#a3a3a3'} stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-            </Svg>
-            
-            
+            title: 'Earnings',
+            tabBarIcon: ({ focused, color }) => (
+              <Icon name={focused ? 'cash' : 'cash-outline'} size={20} color={focused ? color : '#a3a3a3'} />
+            ),
           }}
         />
       </Tab.Navigator>

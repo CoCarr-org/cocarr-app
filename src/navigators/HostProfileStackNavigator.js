@@ -5,7 +5,7 @@ import { OffersScreen } from '../screens/profileScreens/Offers';
 import { EditProfileScreen } from '../screens/profileScreens/EditProfileScreen';
 import ReferralPage from '../screens/profileScreens/ReferralPage';
 import WalletPage from '../screens/profileScreens/WalletPage';
-import HostEarningsPage from '../screens/host/hostProfileScreens/HostEarningsPage';
+import { HostInboxScreen } from '../screens/host/hostInboxScreens/HostInboxScreen.js';
 import { HostProfile } from '../screens/host/hostProfileScreens/HostProfile';
 
 const Stack = createNativeStackNavigator();
@@ -15,7 +15,7 @@ export function HostProfileStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:'#000'}}>
       <Stack.Screen name="HostProfile" component={HostProfile} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
-      <Stack.Screen name="HostEarnings" component={HostEarningsPage} />
+      <Stack.Screen name="HostInbox" component={HostInboxScreen} />
       <Stack.Screen name="Referral" component={ReferralPage}/>
       <Stack.Screen name="Offers" component={OffersScreen} />
       <Stack.Screen name="Wallet" component={WalletPage}/>
