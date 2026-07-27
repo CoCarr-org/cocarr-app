@@ -316,6 +316,7 @@ const Overview = ({booking,setShowReview}) => {
                   </View>
                 ))}
               </View>
+              <CustomText fontType='primary' style={{color:'#757575',fontSize:11,marginTop:8,textAlign:'center'}}>Read this to the rider — they enter it to start the ride</CustomText>
             </View> : null}
             
             {booking.status === BOOKING_ONGOING ? <View style={{flexDirection:'column',alignItems:'center',justifyContent:'space-between',paddingBottom:32}}>
@@ -327,6 +328,7 @@ const Overview = ({booking,setShowReview}) => {
                   </View>
                 ))}
               </View>
+              <CustomText fontType='primary' style={{color:'#757575',fontSize:11,marginTop:8,textAlign:'center'}}>Read this to the rider — they enter it to close the ride</CustomText>
             </View> : null}
               <View style={{flexDirection:'column',alignItems:'flex-start',justifyContent:'space-between',borderWidth:1,borderColor:'#EDBF3115',paddingHorizontal:16,paddingVertical:12,borderRadius:8,backgroundColor:'#EDBF3113'}}>
                 <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>

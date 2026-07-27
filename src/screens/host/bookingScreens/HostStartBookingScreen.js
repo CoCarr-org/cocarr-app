@@ -121,10 +121,14 @@ const onSubmit = async () => {
         startFuel: data.startFuel,
         startImages: uploadedImageUrls
       });
+      // Recording the handover does not start the ride. The rider has to enter
+      // the start OTP on their own app — that is what proves both parties are
+      // present, so the host is never the one typing the code they can see.
+      notify('Handover saved. Read the start OTP to the rider — the ride begins once they enter it.');
       navigation.navigate('HostBookingInfo', {bookingId:bookingId});
   } catch (error) {
-    console.error('Error uploading images:', error.response ? error.response.data : error.message);
-    notify('Error uploading images');
+    console.error('Error saving handover:', error.response ? error.response.data : error.message);
+    notify(error.response?.data?.message || error.response?.data?.error || 'Could not save the handover details');
   }
 };
 

@@ -119,10 +119,11 @@ const onSubmit = async () => {
         endFuel: data.endFuel,
         endImages: uploadedImageUrls
       });
+      notify('Return details saved. Read the end OTP to the rider — the ride closes once they enter it.');
       navigation.navigate('HostBookingInfo', {bookingId:bookingId});
   } catch (error) {
-    console.error('Error uploading images:', error.response ? error.response.data : error.message);
-    notify('Error uploading images');
+    console.error('Error saving return details:', error.response ? error.response.data : error.message);
+    notify(error.response?.data?.message || error.response?.data?.error || 'Could not save the return details');
   }
 };
 
