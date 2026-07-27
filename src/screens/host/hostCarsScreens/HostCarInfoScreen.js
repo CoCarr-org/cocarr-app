@@ -410,7 +410,7 @@ const Images = ({ vehicle }) => {
   const getSignedUrl = async (fileName, fileType) => {
     try {
       const response = await axios.get(`${API_URL}/image/url`, {
-        params: { fileName, fileType }
+        params: { fileName, fileType, folder: 'vehicle' }
       });
 
       const formData = new FormData();

@@ -68,7 +68,7 @@ export const EditProfileScreen = () => {
       if (isProfileChanged && profileImage) {
         try {
           let urlRes = await axios.get(`${API_URL}/image/url`, {
-            params: { fileName: profileImage.fileName, fileType: profileImage.type }
+            params: { fileName: profileImage.fileName, fileType: profileImage.type, folder: 'profile' }
           });
   
           const formData = new FormData();

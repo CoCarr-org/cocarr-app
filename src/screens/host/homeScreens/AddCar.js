@@ -713,7 +713,7 @@ const StepImages = ({ carDetails, handleChange, handleNext }) => {
   const uploadOne = async (asset) => {
     // Already uploaded (resumed draft) — keep as-is.
     if (asset.url && !asset.uri) return asset.url;
-    const urlRes = await axios.get(`${API_URL}/image/url`, { params: { fileName: asset.fileName, fileType: asset.type } });
+    const urlRes = await axios.get(`${API_URL}/image/url`, { params: { fileName: asset.fileName, fileType: asset.type, folder: 'vehicle' } });
     const formData = new FormData();
     Object.entries(urlRes.data.fields).forEach(([field, value]) => formData.append(field, value));
     formData.append('acl', 'public-read');

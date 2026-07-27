@@ -146,7 +146,7 @@ export function HostDamageScreen({ route }) {
         if (!image) return null;
 
         const urlRes = await axios.get(`${API_URL}/image/url`, {
-          params: { fileName: image.fileName, fileType: image.type },
+          params: { fileName: image.fileName, fileType: image.type, folder: 'ride' },
         });
 
         const formData = new FormData();

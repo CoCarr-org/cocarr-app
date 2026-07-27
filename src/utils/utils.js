@@ -23,9 +23,21 @@ export const notify = (message) => {
 // Object keys are UUIDs. Older uploads were stored as `<endpoint>/<bucket><uuid>`
 // (the presigned URL has no trailing slash), so using the whole path as the key
 // 404s. Prefer the trailing UUID when one is present.
-const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+// Keys are `<folder>/<uuid>` (kyc, pan, license, vehicle-rc, vehicle, profile,
+// ride, misc) for anything uploaded since folders were introduced, and a bare
+// `<uuid>` for everything before that — those rows were never migrated, so both
+// forms must keep resolving. The folder list mirrors storageFolders.js on the
+// backend; adding one there means adding it here, or the prefix gets stripped
+// and the proxy 404s.
+const STORAGE_FOLDERS = ['kyc', 'pan', 'license', 'vehicle-rc', 'vehicle', 'profile', 'ride', 'misc'];
+const UUID_SRC = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
+const FOLDER_RE = new RegExp(`(?:^|/)(${STORAGE_FOLDERS.join('|')})/(${UUID_SRC})`, 'i');
+const UUID_RE = new RegExp(UUID_SRC, 'gi');
+
 const extractKey = (path) => {
   const clean = String(path || '').replace(/^\/+/, '').split('?')[0];
+  const foldered = clean.match(FOLDER_RE);
+  if (foldered) return `${foldered[1].toLowerCase()}/${foldered[2]}`;
   const found = clean.match(UUID_RE);
   return found ? found[found.length - 1] : clean;
 };

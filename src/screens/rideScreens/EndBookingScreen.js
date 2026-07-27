@@ -108,7 +108,7 @@ export function EndBookingScreen({route}) {
         if (!image) return null;
 
         let urlRes = await axios.get(`${API_URL}/image/url`, {
-          params: { fileName: image.fileName, fileType: image.type }
+          params: { fileName: image.fileName, fileType: image.type, folder: 'ride' }
         });
 
         const formData = new FormData();
