@@ -10,6 +10,7 @@ import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons'
 import { useNavigation } from '@react-navigation/native';
 import { photoUrl, notify } from '../../../utils/utils';
 import CustomText from '../../../components/CustomText';
+import ProfileStatusPrompt from '../../../components/ProfileStatusPrompt';
 import { API_URL, BRAND_COLOR } from '../../../utils/constants';
 import axios from 'axios';
 
@@ -106,6 +107,9 @@ export function HostProfile() {
       <View style={{flex:1}}>
         <ScrollView style={{paddingHorizontal:20}} showsVerticalScrollIndicator={false}>
 
+        {/* Same prompt as the rider profile — a host is a user too, and the
+            same verification gates their own bookings. */}
+        <ProfileStatusPrompt />
 
         <View style={{flexDirection:'column', gap:12,justifyContent:'center',alignItems:'center'}}>
 

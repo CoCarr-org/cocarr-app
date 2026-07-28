@@ -3,21 +3,21 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>265614983806-ilpm00mc8437julp5usq6ktm7bko5dq2.apps.googleusercontent.com</string>
+	<string>687550883138-g7pq8aqjqdvt7c90n48ohnapnurkn7ee.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.265614983806-ilpm00mc8437julp5usq6ktm7bko5dq2</string>
+	<string>com.googleusercontent.apps.687550883138-g7pq8aqjqdvt7c90n48ohnapnurkn7ee</string>
 	<key>API_KEY</key>
-	<string>AIzaSyC0rDFwSulM7lR0zyEET-gzsPtaZL9912g</string>
+	<string>AIzaSyAx0uVOx2w0SuyWuuc4L0XN7osf2rskAm0</string>
 	<key>GCM_SENDER_ID</key>
-	<string>265614983806</string>
+	<string>687550883138</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.iappwiz.cocarr</string>
 	<key>PROJECT_ID</key>
-	<string>cocarr-front-end</string>
+	<string>cocarr-frontend-dev</string>
 	<key>STORAGE_BUCKET</key>
-	<string>cocarr-front-end.firebasestorage.app</string>
+	<string>cocarr-frontend-dev.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:265614983806:ios:9331015ce8707a7afcce2f</string>
+	<string>1:687550883138:ios:d6b8f2a62fac94cb0494db</string>
 </dict>
 </plist>

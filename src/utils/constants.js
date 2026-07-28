@@ -1,7 +1,7 @@
 //export const API_URL = 'https://api.cocarr.com/v1';
 //export const API_URL = 'https://cocarr-web-production.up.railway.app/v1';
 //export const API_URL = 'http://172.20.10.2:3030/v1';
-export const API_URL = 'https://api.cocarr.com/v1';
+export const API_URL = 'https://api-dev.cocarr.com/v1';
 // export const API_URL = 'https://cocarr-apitest.infantsurya.in/v1';
 
 export const BOOKING_INITIATED = "initiated"

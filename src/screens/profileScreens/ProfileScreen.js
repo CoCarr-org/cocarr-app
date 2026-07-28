@@ -7,6 +7,7 @@ import Ionicons  from 'react-native-vector-icons/Ionicons'
 import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons'
 import { useNavigation } from '@react-navigation/native';
 import CustomText from '../../components/CustomText';
+import ProfileStatusPrompt from '../../components/ProfileStatusPrompt';
 import { API_URL, BRAND_COLOR } from '../../utils/constants';
 import { photoUrl, notify } from '../../utils/utils';
 import axios from 'axios';
@@ -89,6 +90,9 @@ export function ProfileScreen() {
       <View style={{flex:1}}>
         <ScrollView style={{paddingHorizontal:20}} showsVerticalScrollIndicator={false}>
 
+        {/* Verification is enforced on booking, so this is the first thing a
+            user with an unfinished profile should see. */}
+        <ProfileStatusPrompt />
 
         <View style={{flexDirection:'column', gap:12,justifyContent:'center',alignItems:'center'}}>
 

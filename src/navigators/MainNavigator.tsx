@@ -50,6 +50,7 @@ import { RescheduleScreen } from '../screens/rideScreens/RescheduleScreen.js';
 import { HostDamageScreen } from '../screens/host/bookingScreens/HostDamageScreen.js';
 import TermsAndConditionsScreen from '../screens/host/bookingScreens/TermsAndConditionsScreen.js';
 import VerificationScreen from '../screens/profileScreens/VerificationScreen.js';
+import OnboardingWizardScreen from '../screens/profileScreens/OnboardingWizardScreen.js';
 import LicenceVerificationScreen from '../screens/profileScreens/LicenceVerificationScreen.js';
 import AadhaarVerificationScreen from '../screens/profileScreens/AadhaarVerificationScreen.js';
 import PanVerificationScreen from '../screens/profileScreens/PanVerificationScreen.js';
@@ -128,8 +129,8 @@ export function MainNavigator() {
       try {
         const res = await axios.get(`${API_URL}/user/verification`);
         const status = res.data?.verificationStatus;
-        if (!cancelled && ['not_started', 'in_progress', 'rejected'].includes(status)) {
-          navigation.navigate('Verification');
+        if (!cancelled && ['incomplete', 'rejected'].includes(status)) {
+          navigation.navigate('OnboardingWizard');
         }
       } catch (error) {
         console.log('Onboarding status check skipped:', error?.message);
@@ -243,6 +244,7 @@ export function MainNavigator() {
               screens are reachable from the profile menu; declaring them here
               too is what lets the post-sign-in push above reach them without
               having to address a nested navigator. */}
+          <Stack.Screen name="OnboardingWizard" component={OnboardingWizardScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="Verification" component={VerificationScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="LicenceVerification" component={LicenceVerificationScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen} options={{ headerShown: false }}/>

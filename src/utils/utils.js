@@ -75,6 +75,37 @@ export const UnauthAxios = () => {
 };
 
 
+// Uploads an image-picker asset via the backend's presigned POST and returns
+// the API proxy URL for it.
+//
+// `folder` sorts the object in the bucket — see storageFolders.js on the
+// backend, which is authoritative; an unknown value silently lands in `misc`.
+//
+// The returned value is built from `fields.key`, NOT `url + key`: `url` is the
+// bucket endpoint with no trailing slash, so concatenating produces a
+// malformed link. That bug cost several screens their uploaded images before
+// this was centralised — every capture screen had its own copy of this
+// function, and they did not all get fixed together.
+export const uploadImage = async (asset, folder) => {
+  const { data } = await axios.get(`${API_URL}/image/url`, {
+    params: { fileName: asset.fileName, fileType: asset.type, folder },
+  });
+
+  const formData = new FormData();
+  Object.entries(data.fields).forEach(([field, value]) => formData.append(field, value));
+  formData.append('acl', 'public-read');
+  formData.append('file', { uri: asset.uri, type: asset.type, name: asset.fileName });
+
+  // Straight to storage, unauthenticated — sending our Firebase token to the
+  // bucket would be rejected and leaks a credential to a third party.
+  await UnauthAxios().post(data.url, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 20000,
+  });
+
+  return `${API_URL}/image/${data.fields.key}`;
+};
+
 export const formatDate = (dateTime, type = 'short') => {
   if (!dateTime) return '';
   

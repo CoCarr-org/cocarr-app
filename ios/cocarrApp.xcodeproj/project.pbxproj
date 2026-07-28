@@ -60,8 +60,8 @@
 		B5A7A2DDF7704BDF9ED12315 /* FontAwesome.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 3A59CD0F0769459694381CBB /* FontAwesome.ttf */; };
 		B8C86D7CE26E42368462BC0E /* FontAwesome6_Brands.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A0791087752045288946B49E /* FontAwesome6_Brands.ttf */; };
 		C43BEC7A09A24C53921A42CB /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1FD33792A344483A897CFB48 /* Colors.xcassets */; };
-		CD98FAEA300B3A4A00661693 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = CD98FAE9300B3A4A00661693 /* GoogleService-Info.plist */; };
-		CD98FAEB300B3A4A00661693 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = CD98FAE9300B3A4A00661693 /* GoogleService-Info.plist */; };
+		CD1FD6E63019305B00ACC8F1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = CD1FD6E53019305B00ACC8F1 /* GoogleService-Info.plist */; };
+		CD1FD6E73019305B00ACC8F1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = CD1FD6E53019305B00ACC8F1 /* GoogleService-Info.plist */; };
 		CFDCFA01DC144A4A8C1657BB /* AntDesign.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 6CE434030DAD4617A7E295F0 /* AntDesign.ttf */; };
 		D6B5DDEEE4FA45CB9C216293 /* FontAwesome6_Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = BC22403BDE004635B0077DCD /* FontAwesome6_Regular.ttf */; };
 		DABD4D1D45F647C0A6E045FC /* FontAwesome6_Brands.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A0791087752045288946B49E /* FontAwesome6_Brands.ttf */; };
@@ -129,7 +129,7 @@
 		BC54D6E9CBFF4D1689093E8B /* MonaSans-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "MonaSans-ExtraBold.ttf"; path = "../fonts/MonaSans-ExtraBold.ttf"; sourceTree = "<group>"; };
 		C433402332C948B8AFFA2BB8 /* Geist-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Geist-Regular.ttf"; path = "../fonts/Geist-Regular.ttf"; sourceTree = "<group>"; };
 		C8E9F2DF2ABE4CA89A593970 /* Zocial.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = Zocial.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Zocial.ttf"; sourceTree = "<group>"; };
-		CD98FAE9300B3A4A00661693 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		CD1FD6E53019305B00ACC8F1 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		CEE75AE4CC9649B98877D42B /* FontAwesome5_Brands.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Brands.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf"; sourceTree = "<group>"; };
 		D12ED4534C0CEF3658DC204B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = cocarrApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		DEB43EA4550045B1927E6416 /* FontAwesome5_Solid.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = FontAwesome5_Solid.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Solid.ttf"; sourceTree = "<group>"; };
@@ -255,7 +255,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				CD98FAE9300B3A4A00661693 /* GoogleService-Info.plist */,
+				CD1FD6E53019305B00ACC8F1 /* GoogleService-Info.plist */,
 				13B07FAE1A68108700A75B9A /* cocarrApp */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* cocarrAppTests */,
@@ -376,13 +376,13 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CD98FAEA300B3A4A00661693 /* GoogleService-Info.plist in Resources */,
 				9E10B5B36A70400FB7B682E5 /* Fontisto.ttf in Resources */,
 				135E7CD4ADD041FF856E21CA /* Octicons.ttf in Resources */,
 				229A063103D6496E8D8DB3AF /* Feather.ttf in Resources */,
 				96EB7E5C125F4862980AA6F3 /* FontAwesome6_Regular.ttf in Resources */,
 				664A8221A7804DD9B58A7AE4 /* Entypo.ttf in Resources */,
 				DADADCCFF9894212AB18B4C8 /* FontAwesome5_Brands.ttf in Resources */,
+				CD1FD6E63019305B00ACC8F1 /* GoogleService-Info.plist in Resources */,
 				0DDE9141C4B541A28D760902 /* MaterialCommunityIcons.ttf in Resources */,
 				CFDCFA01DC144A4A8C1657BB /* AntDesign.ttf in Resources */,
 				5135B4338B184746B2598935 /* Foundation.ttf in Resources */,
@@ -422,8 +422,8 @@
 				76F2FF0A24964E5FAF5D2DF9 /* MonaSans-SemiBold.ttf in Resources */,
 				38D1532B63074818AE2D951D /* BootSplash.storyboard in Resources */,
 				C43BEC7A09A24C53921A42CB /* Colors.xcassets in Resources */,
-				CD98FAEB300B3A4A00661693 /* GoogleService-Info.plist in Resources */,
 				856A3E354FA14327B45AEDD8 /* Fontisto.ttf in Resources */,
+				CD1FD6E73019305B00ACC8F1 /* GoogleService-Info.plist in Resources */,
 				548AADB13E314F5B9060ED1E /* Octicons.ttf in Resources */,
 				84A96687817F4779A25B615A /* Feather.ttf in Resources */,
 				D6B5DDEEE4FA45CB9C216293 /* FontAwesome6_Regular.ttf in Resources */,
