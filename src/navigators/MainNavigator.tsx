@@ -49,6 +49,11 @@ import { EndBookingScreen } from '../screens/rideScreens/EndBookingScreen.js';
 import { RescheduleScreen } from '../screens/rideScreens/RescheduleScreen.js';
 import { HostDamageScreen } from '../screens/host/bookingScreens/HostDamageScreen.js';
 import TermsAndConditionsScreen from '../screens/host/bookingScreens/TermsAndConditionsScreen.js';
+import VerificationScreen from '../screens/profileScreens/VerificationScreen.js';
+import LicenceVerificationScreen from '../screens/profileScreens/LicenceVerificationScreen.js';
+import AadhaarVerificationScreen from '../screens/profileScreens/AadhaarVerificationScreen.js';
+import PanVerificationScreen from '../screens/profileScreens/PanVerificationScreen.js';
+import { useNavigation } from '@react-navigation/native';
 
 const Stack = createNativeStackNavigator();
 
@@ -56,6 +61,10 @@ const Stack = createNativeStackNavigator();
 export function MainNavigator() {
   const auth = useSelector(state => state.auth);
   const dispatch = useDispatch();
+  const navigation = useNavigation();
+  // Onboarding is pushed at most once per session — otherwise every re-render
+  // of this shell would shove the user back into the flow they just left.
+  const onboardingChecked = React.useRef(false);
 
 
  
@@ -106,6 +115,28 @@ export function MainNavigator() {
   useEffect(() => {
     if(auth.isAuthenticated) setupNotificationListeners()
   },[auth.isAuthenticated])
+
+  // Signing in is the START of onboarding, not the end of it: a user who has
+  // not submitted their profile (or was asked to fix something) is taken
+  // straight to the verification flow. Pushed rather than gated, so a failed
+  // status call can never lock someone out of the app.
+  useEffect(() => {
+    if (!auth.isAuthenticated || onboardingChecked.current) return;
+    onboardingChecked.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axios.get(`${API_URL}/user/verification`);
+        const status = res.data?.verificationStatus;
+        if (!cancelled && ['not_started', 'in_progress', 'rejected'].includes(status)) {
+          navigation.navigate('Verification');
+        }
+      } catch (error) {
+        console.log('Onboarding status check skipped:', error?.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [auth.isAuthenticated, navigation]);
 
   const isHostMode = auth.userRole === 'host';
 
@@ -205,6 +236,17 @@ export function MainNavigator() {
         <Stack.Group>
           <Stack.Screen name="KycVerification" component={KycVerificationScreen} options={{ title: 'Verify KYC' }}/>
           <Stack.Screen name="LicenseVerification" component={LicenseVerificationScreen} options={{ title: 'Verify Licence' }}/>
+        </Stack.Group>
+
+        <Stack.Group>
+          {/* Onboarding. Also registered inside both profile stacks so the
+              screens are reachable from the profile menu; declaring them here
+              too is what lets the post-sign-in push above reach them without
+              having to address a nested navigator. */}
+          <Stack.Screen name="Verification" component={VerificationScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="LicenceVerification" component={LicenceVerificationScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen} options={{ headerShown: false }}/>
+          <Stack.Screen name="PanVerification" component={PanVerificationScreen} options={{ headerShown: false }}/>
         </Stack.Group>
       </Stack.Navigator>
     </View>

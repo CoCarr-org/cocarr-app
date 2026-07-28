@@ -16,8 +16,9 @@ const STATUS = {
   not_started: { label: 'Not started', colour: '#b9b9c2' },
   in_progress: { label: 'In progress', colour: '#b9b9c2' },
   pending: { label: 'Verification pending', colour: BRAND_COLOR },
-  verified: { label: 'Verified', colour: '#6ee6b0' },
+  active: { label: 'Active', colour: '#6ee6b0' },
   rejected: { label: 'Changes needed', colour: '#f87171' },
+  suspended: { label: 'Suspended', colour: '#fb923c' },
 };
 
 // Defined at module scope on purpose. Declaring this inside the component
@@ -118,7 +119,8 @@ const VerificationScreen = () => {
 
   const s = state || {};
   const status = STATUS[s.verificationStatus] || STATUS.not_started;
-  const locked = s.verificationStatus === 'pending' || s.verificationStatus === 'verified';
+  // Nothing to edit while under review, once approved, or while suspended.
+  const locked = ['pending', 'active', 'suspended'].includes(s.verificationStatus);
 
   return (
     <View style={styles.container}>
@@ -147,6 +149,20 @@ const VerificationScreen = () => {
           <CustomText fontType='primary' style={styles.note}>
             Your details are with our team. We&apos;ll let you know once the review is complete.
           </CustomText>
+        ) : null}
+
+        {s.verificationStatus === 'suspended' ? (
+          <View style={styles.rejection}>
+            <CustomText fontType='primary' weight='Bold' style={styles.rejectionTitle}>
+              Your account is suspended
+            </CustomText>
+            <CustomText fontType='primary' style={styles.rejectionBody}>
+              {s.suspensionReason || 'Please contact support for details.'}
+            </CustomText>
+            <CustomText fontType='primary' style={styles.rejectionHint}>
+              You cannot book or list vehicles until it is reactivated.
+            </CustomText>
+          </View>
         ) : null}
 
         {/* Outstanding items — the same list the server gates submission on, so
