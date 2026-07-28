@@ -5,6 +5,7 @@ import { OffersScreen } from '../screens/profileScreens/Offers';
 import { EditProfileScreen } from '../screens/profileScreens/EditProfileScreen';
 import ReferralPage from '../screens/profileScreens/ReferralPage';
 import WalletPage from '../screens/profileScreens/WalletPage';
+import PanVerificationScreen from '../screens/profileScreens/PanVerificationScreen';
 import { HostInboxScreen } from '../screens/host/hostInboxScreens/HostInboxScreen.js';
 import { HostProfile } from '../screens/host/hostProfileScreens/HostProfile';
 
@@ -19,6 +20,7 @@ export function HostProfileStackNavigator() {
       <Stack.Screen name="Referral" component={ReferralPage}/>
       <Stack.Screen name="Offers" component={OffersScreen} />
       <Stack.Screen name="Wallet" component={WalletPage}/>
+      <Stack.Screen name="PanVerification" component={PanVerificationScreen}/>
     </Stack.Navigator>
   );
 }

@@ -112,6 +112,11 @@ export function HostCarsScreen() {
             <View style={{width:5,height:5,borderRadius:5,backgroundColor:'#b9b9c2'}} />
             <CustomText fontType='primary' weight='Bold' style={{color:'#b9b9c2', fontSize:9,letterSpacing:.15}}>Not Completed</CustomText>
           </View>
+        ) : car.approvalStatus === 'rejected' ? (
+          <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#ef444422',borderWidth:1,borderColor:'#ef444459',borderRadius:100,paddingVertical:2,paddingHorizontal:8}}>
+            <View style={{width:5,height:5,borderRadius:5,backgroundColor:'#f87171'}} />
+            <CustomText fontType='primary' weight='Bold' style={{color:'#f87171', fontSize:9,letterSpacing:.15}}>Changes Needed</CustomText>
+          </View>
         ) : car.isAdminApproved === false ? (
           <View style={{flexDirection:'row',alignItems:'center',gap:5,backgroundColor:'#EDBF3122',borderWidth:1,borderColor:'#EDBF3166',borderRadius:100,paddingVertical:2,paddingHorizontal:8}}>
             <View style={{width:5,height:5,borderRadius:5,backgroundColor:BRAND_COLOR}} />

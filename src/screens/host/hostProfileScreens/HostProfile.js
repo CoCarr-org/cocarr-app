@@ -60,6 +60,14 @@ export function HostProfile() {
       description: 'Update your host bank details for payout',
     },
     {
+      // Sits next to Bank Details: both are prerequisites for getting paid,
+      // and the listing flow asks for them back to back.
+      onPress: 'PanVerification',
+      icon: <Ionicons name="card-outline" size={16} color="#fff" />,
+      title: 'PAN Verification',
+      description: 'Required before payouts can be released',
+    },
+    {
       onPress: 'Referral',
       icon: <Ionicons name="people-outline" size={16} color="#fff" />,
       title: 'Refer & Earn',

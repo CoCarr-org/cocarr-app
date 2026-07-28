@@ -111,6 +111,7 @@ const HeaderBlock = ({vehicle}) => {
   const imgs = (vehicle.images || []).filter((i) => !i.isDeleted);
   const status = vehicle.isDraft ? { label: 'Not Completed', bg: '#26262a', bd: '#3a3a40', fg: '#b9b9c2', dot: '#b9b9c2' }
     : vehicle.isAdminApproved ? { label: 'Live', bg: '#3fce8f22', bd: '#3fce8f59', fg: '#6ee6b0', dot: '#6ee6b0' }
+    : vehicle.approvalStatus === 'rejected' ? { label: 'Changes Needed', bg: '#ef444422', bd: '#ef444459', fg: '#f87171', dot: '#f87171' }
     : { label: 'Pending Approval', bg: '#EDBF3122', bd: '#EDBF3166', fg: BRAND_COLOR, dot: BRAND_COLOR };
   const rating = Number(vehicle.rating || 0);
 
@@ -133,6 +134,15 @@ const HeaderBlock = ({vehicle}) => {
           </View>
           <CustomText fontType='primary' weight='Medium' style={{ color: '#8a8a8a', fontSize: 12 }}>{vehicle.vehicleNumber}</CustomText>
         </View>
+
+        {/* A rejection is only actionable if the host can read why. */}
+        {vehicle.approvalStatus === 'rejected' && vehicle.rejectionReason ? (
+          <View style={{ marginTop: 10, backgroundColor: '#ef444414', borderLeftWidth: 3, borderLeftColor: '#ef4444', borderRadius: 6, paddingVertical: 10, paddingHorizontal: 12 }}>
+            <CustomText fontType='primary' weight='Bold' style={{ color: '#f87171', fontSize: 12 }}>Changes needed before this car can go live</CustomText>
+            <CustomText fontType='primary' style={{ color: '#e5b4b4', fontSize: 12, marginTop: 4 }}>{vehicle.rejectionReason}</CustomText>
+            <CustomText fontType='primary' style={{ color: '#a88', fontSize: 10, marginTop: 6 }}>Edit the details below and save — that resubmits it for review.</CustomText>
+          </View>
+        ) : null}
 
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
           <CustomText fontType='primary' weight='Bold' numberOfLines={1} style={{ color: '#f0f0f2', fontSize: 20, letterSpacing: -.4, flex: 1, marginRight: 12 }}>{vehicle.brand?.name} {vehicle.vehicleName}</CustomText>

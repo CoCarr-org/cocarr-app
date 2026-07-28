@@ -52,6 +52,12 @@ export function ProfileScreen() {
       description: 'Refer your friends to earn rewards',
     },
     {
+      onPress: 'PanVerification',
+      icon: <Ionicons name="card-outline" size={16} color="#fff" />,
+      title: 'PAN Verification',
+      description: 'Required to receive payouts',
+    },
+    {
       onPress: () => Linking.openURL('https://cocarr.com/terms-and-conditions'),
       icon: <Ionicons name="document-text-outline" size={16} color="#fff" />,
       title: 'Terms & Conditions',
