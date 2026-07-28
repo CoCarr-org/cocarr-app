@@ -60,6 +60,12 @@ export function HostProfile() {
       description: 'Update your host bank details for payout',
     },
     {
+      onPress: 'Verification',
+      icon: <Ionicons name="shield-checkmark-outline" size={16} color="#fff" />,
+      title: 'Profile Verification',
+      description: 'Complete your details and submit for review',
+    },
+    {
       // Sits next to Bank Details: both are prerequisites for getting paid,
       // and the listing flow asks for them back to back.
       onPress: 'PanVerification',

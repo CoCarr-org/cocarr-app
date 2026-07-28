@@ -52,6 +52,12 @@ export function ProfileScreen() {
       description: 'Refer your friends to earn rewards',
     },
     {
+      onPress: 'Verification',
+      icon: <Ionicons name="shield-checkmark-outline" size={16} color="#fff" />,
+      title: 'Profile Verification',
+      description: 'Complete your details and submit for review',
+    },
+    {
       onPress: 'PanVerification',
       icon: <Ionicons name="card-outline" size={16} color="#fff" />,
       title: 'PAN Verification',
