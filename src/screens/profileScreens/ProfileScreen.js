@@ -8,6 +8,7 @@ import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons'
 import { useNavigation } from '@react-navigation/native';
 import CustomText from '../../components/CustomText';
 import ProfileStatusPrompt from '../../components/ProfileStatusPrompt';
+import VerificationBadge from '../../components/VerificationBadge';
 import { API_URL, BRAND_COLOR } from '../../utils/constants';
 import { photoUrl, notify } from '../../utils/utils';
 import axios from 'axios';
@@ -97,8 +98,11 @@ export function ProfileScreen() {
         <View style={{flexDirection:'column', gap:12,justifyContent:'center',alignItems:'center'}}>
 
           <View style={{flexDirection:'column', alignItems:'center',paddingVertical:16, gap:12,marginBottom:12}}>
-            <View style={{flexDirection:'column', alignItems:'flex-start',backgroundColor:'#2c2c2e',borderRadius:120,width:120,height:120,justifyContent:'center',alignItems:'center'}}>
+            <View style={{position:'relative'}}>
+              <View style={{flexDirection:'column', alignItems:'flex-start',backgroundColor:'#2c2c2e',borderRadius:120,width:120,height:120,justifyContent:'center',alignItems:'center'}}>
               {user?.profilePhoto && <Image source={{uri:photoUrl(user?.profilePhoto)}} style={{width:120, height:120, borderRadius:120}}/>}
+            </View>
+              <VerificationBadge size='lg' ringColor='#000' />
             </View>
               <View style={{flexDirection:'column', alignItems:'center'}}>
                 <Text style={{color:'#efefef', fontSize:15, fontWeight:'500',textAlign:'center'}}>{user?.userName}</Text>

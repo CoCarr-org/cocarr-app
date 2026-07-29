@@ -1,51 +1,56 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   View, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView,
-  ActivityIndicator, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Modal, FlatList,
 } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { launchCamera } from 'react-native-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import CustomText from '../../components/CustomText';
-import Header from '../../components/CenterHeader';
 import { API_URL, BRAND_COLOR } from '../../utils/constants';
-import { notify, photoUrl, uploadImage } from '../../utils/utils';
+import { notify, photoUrl } from '../../utils/utils';
+import { ALL_STATES } from '../../utils/indianStates';
+import {
+  validateDateOfBirth, maxDateOfBirth, minDateOfBirth, toLocalIsoDate,
+} from '../../utils/age';
 
-// Onboarding wizard — the flow a new account lands in straight after OTP
-// verification, and what the "Complete your profile" prompt reopens.
+// Onboarding wizard — where a new account lands straight after OTP.
 //
-//   1. Profile details   MANDATORY (everything except the photo)
-//   2. Driving licence   skippable
-//   3. Aadhaar           skippable
-//   4. Review & save     -> home
+//   1. Your details      MANDATORY
+//   2. Aadhaar           MANDATORY — number + both faces, read by OCR
+//   3. Driving licence   MANDATORY — number + both faces, read by OCR
+//   4. Live selfie       optional, can be added later from the profile
 //
-// Skipping a document is a supported outcome, not a failure: the profile stays
-// `incomplete` and the app keeps prompting. Only a complete submission reaches
-// `pending`. The wizard never decides the status itself — it submits and
-// reports whatever the server came back with.
+// Steps 1–3 cannot be skipped. When OCR cannot read a document the user is
+// asked to consent to manual verification rather than being dead-ended: an OCR
+// outage is our problem, not theirs, and the admin reviews the scan either way.
+//
+// Every camera capture here uses launchCamera, never launchImageLibrary. That is
+// deliberate for the selfie (a gallery pick would defeat the liveness check) and
+// consistent for documents (a photo of the actual card, not a screenshot).
 
-const STEPS = ['Details', 'Licence', 'Aadhaar', 'Review'];
-
-const GATE_NOTE =
-  'You can browse cars right away, but a ride can only be booked once your '
-  + 'driving licence and Aadhaar have been verified.';
+const STEPS = ['Details', 'Aadhaar', 'Licence', 'Selfie'];
 
 const LICENCE_RE = /^[A-Z]{2}[0-9]{2}[0-9A-Z]{10,12}$/;
 
-// ── Module scope, deliberately ──────────────────────────────────────────────
-// A component declared inside another component's render is a brand-new type
-// on every render, so React unmounts and remounts it — in a form that means
-// the TextInput loses focus after a single keystroke and typing is impossible.
-// This has bitten these screens three times. Do not move these inside.
+// ── Module scope, deliberately ─────────────────────────────────────────────
+// A component declared inside another component's render is a brand-new type on
+// every render, so React unmounts and remounts it — in a form that means the
+// TextInput loses focus after a single keystroke. This has bitten these screens
+// repeatedly. Do not move these inside.
 
-const Field = ({ label, value, onChange, required, placeholder, keyboardType, maxLength, autoCapitalize }) => (
+const Field = ({
+  label, value, onChange, required, placeholder, keyboardType, maxLength,
+  autoCapitalize, error,
+}) => (
   <View style={styles.field}>
     <CustomText fontType='primary' style={styles.fieldLabel}>
       {label}{required ? <CustomText style={styles.req}> *</CustomText> : null}
     </CustomText>
     <TextInput
-      style={styles.input}
+      style={[styles.input, error && styles.inputError]}
       value={value}
       onChangeText={onChange}
       placeholder={placeholder}
@@ -54,17 +59,63 @@ const Field = ({ label, value, onChange, required, placeholder, keyboardType, ma
       maxLength={maxLength}
       autoCapitalize={autoCapitalize}
     />
+    {error ? <CustomText fontType='primary' style={styles.fieldError}>{error}</CustomText> : null}
   </View>
 );
 
-const ImageBox = ({ label, uri, onPick }) => (
-  <TouchableOpacity style={styles.uploadBox} onPress={onPick}>
+// Read-only field that opens a picker. Used for date and state, so both look
+// like the text fields around them instead of like buttons.
+const PickerField = ({ label, value, placeholder, onPress, required, error }) => (
+  <View style={styles.field}>
+    <CustomText fontType='primary' style={styles.fieldLabel}>
+      {label}{required ? <CustomText style={styles.req}> *</CustomText> : null}
+    </CustomText>
+    <TouchableOpacity style={[styles.input, styles.pickerInput, error && styles.inputError]} onPress={onPress}>
+      <CustomText fontType='primary' style={value ? styles.pickerValue : styles.pickerPlaceholder}>
+        {value || placeholder}
+      </CustomText>
+      <Icon name='chevron-down' size={16} color='#6b6b73' />
+    </TouchableOpacity>
+    {error ? <CustomText fontType='primary' style={styles.fieldError}>{error}</CustomText> : null}
+  </View>
+);
+
+const StateModal = ({ visible, onClose, onSelect, selected }) => (
+  <Modal visible={visible} animationType='slide' transparent onRequestClose={onClose}>
+    <View style={styles.modalBackdrop}>
+      <View style={styles.modalSheet}>
+        <View style={styles.modalHead}>
+          <CustomText fontType='primary' weight='Bold' style={styles.modalTitle}>Select state</CustomText>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Icon name='close' size={22} color='#9a9aa2' />
+          </TouchableOpacity>
+        </View>
+        <FlatList
+          data={ALL_STATES}
+          keyExtractor={(item) => item}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.stateRow} onPress={() => { onSelect(item); onClose(); }}>
+              <CustomText fontType='primary' style={styles.stateText}>{item}</CustomText>
+              {selected === item ? <Icon name='checkmark' size={18} color={BRAND_COLOR} /> : null}
+            </TouchableOpacity>
+          )}
+        />
+      </View>
+    </View>
+  </Modal>
+);
+
+// Document face capture. Camera only — see the note at the top of the file.
+const DocCapture = ({ label, uri, onPress, required }) => (
+  <TouchableOpacity style={styles.docBox} onPress={onPress}>
     {uri ? (
-      <Image source={{ uri }} style={styles.preview} resizeMode='cover' />
+      <Image source={{ uri }} style={styles.docPreview} resizeMode='cover' />
     ) : (
       <>
         <Icon name='camera-outline' size={22} color='#757575' />
-        <CustomText fontType='primary' style={styles.uploadText}>{label}</CustomText>
+        <CustomText fontType='primary' style={styles.docText}>
+          {label}{required ? ' *' : ''}
+        </CustomText>
       </>
     )}
   </TouchableOpacity>
@@ -94,26 +145,32 @@ const StepRail = ({ step }) => (
   </View>
 );
 
-const Note = ({ children }) => (
-  <View style={styles.note}>
-    <CustomText fontType='primary' style={styles.noteText}>{children}</CustomText>
-  </View>
-);
-
-const ReviewRow = ({ label, value, tone }) => (
-  <View style={styles.reviewRow}>
-    <CustomText fontType='primary' style={styles.reviewLabel}>{label}</CustomText>
-    <CustomText fontType='primary' weight={tone ? 'Bold' : 'Regular'} style={[
-      styles.reviewValue,
-      tone === 'ok' && styles.reviewOk,
-      tone === 'warn' && styles.reviewWarn,
-    ]}>
-      {value}
+// Shown when OCR could not read a document. Consent is an action the user takes,
+// never a box we pre-tick — it is a record that they agreed.
+const ConsentPrompt = ({ message, busy, onAgree, onRetry }) => (
+  <View style={[styles.banner, styles.bannerWarn]}>
+    <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+      We couldn&apos;t verify that automatically
     </CustomText>
+    <CustomText fontType='primary' style={styles.bannerBody}>{message}</CustomText>
+    <CustomText fontType='primary' style={styles.bannerBody}>
+      You can still continue — our team will check your document by hand. That usually
+      takes a little longer than an automatic check.
+    </CustomText>
+    <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={onAgree}>
+      <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+        {busy ? 'Submitting…' : 'I agree, verify it manually'}
+      </CustomText>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={onRetry}>
+      <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+        Retake the photo
+      </CustomText>
+    </TouchableOpacity>
   </View>
 );
 
-// ────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────────
 
 const OnboardingWizardScreen = () => {
   const navigation = useNavigation();
@@ -121,28 +178,30 @@ const OnboardingWizardScreen = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [status, setStatus] = useState(null);
   const scroller = useRef(null);
 
-  // Step 1
+  // Step 1 — no profile photo here any more; the step-4 selfie becomes the avatar.
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', dateOfBirth: '',
     address: '', city: '', state: '', pincode: '',
   });
-  const [photo, setPhoto] = useState(null);
-  const [photoExisting, setPhotoExisting] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStates, setShowStates] = useState(false);
 
-  // Step 2
+  // Step 2 / 3
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarFront, setAadhaarFront] = useState(null);
+  const [aadhaarBack, setAadhaarBack] = useState(null);
   const [licenceNumber, setLicenceNumber] = useState('');
-  const [front, setFront] = useState(null);
-  const [back, setBack] = useState(null);
+  const [licenceFront, setLicenceFront] = useState(null);
+  const [licenceBack, setLicenceBack] = useState(null);
 
-  // Step 3 — mirrors the provider: number, then OTP, then an optional photo.
-  const [aadhaar, setAadhaar] = useState('');
-  const [aadhaarRef, setAadhaarRef] = useState('');
-  const [otp, setOtp] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [aadhaarImage, setAadhaarImage] = useState(null);
+  // Step 4
+  const [selfie, setSelfie] = useState(null);
+
+  const [consent, setConsent] = useState(null);
 
   const load = async () => {
     try {
@@ -156,7 +215,6 @@ const OnboardingWizardScreen = () => {
         address: p.address || '', city: p.city || '',
         state: p.state || '', pincode: p.pincode || '',
       });
-      setPhotoExisting(p.profilePhoto || '');
       const licence = res.data?.documents?.licence;
       if (licence?.licenceNumber) setLicenceNumber(licence.licenceNumber);
     } catch (e) {
@@ -166,55 +224,79 @@ const OnboardingWizardScreen = () => {
     }
   };
 
-  // useFocusEffect, not useEffect: returning here from a capture screen must
-  // re-read the status, or a document just uploaded still shows as missing.
+  // useFocusEffect, not useEffect: returning here must re-read the status, or a
+  // document just submitted still shows as missing.
   useFocusEffect(useCallback(() => { load(); }, []));
 
-  const set = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key) => (value) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setFieldErrors((fe) => ({ ...fe, [key]: undefined }));
+  };
 
   const goStep = (n) => {
     setError('');
+    setConsent(null);
     setStep(n);
     scroller.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const pick = (setter) => async () => {
-    const res = await launchImageLibrary({ mediaType: 'photo', quality: 0.8 });
-    if (res.didCancel || !res.assets?.length) return;
+  // Camera capture, base64 so it can be posted as a data URI. `includeBase64`
+  // plus a modest maxWidth keeps the payload inside the server's 12mb JSON limit.
+  const capture = (setter, { front = false } = {}) => async () => {
+    const res = await launchCamera({
+      mediaType: 'photo',
+      cameraType: front ? 'front' : 'back',
+      includeBase64: true,
+      quality: 0.8,
+      maxWidth: 1600,
+      maxHeight: 1600,
+      saveToPhotos: false,
+    });
+
+    if (res.didCancel) return;
+    if (res.errorCode) {
+      // A denied camera permission is the common case and needs a route out,
+      // not a dead end — but never a gallery fallback.
+      setError(res.errorCode === 'permission'
+        ? 'Camera access is blocked. Enable it for Cocarr in your device settings, then try again.'
+        : res.errorMessage || 'Could not open the camera.');
+      return;
+    }
+    const asset = res.assets?.[0];
+    if (!asset?.base64) { setError('Could not read that photo. Please try again.'); return; }
+
     setError('');
-    setter(res.assets[0]);
+    setter(`data:${asset.type || 'image/jpeg'};base64,${asset.base64}`);
   };
 
   // ── Step 1 ────────────────────────────────────────────────────────────────
   const saveProfile = async () => {
     setError('');
     const required = {
-      firstName: 'First name', lastName: 'Last name', dateOfBirth: 'Date of birth',
+      firstName: 'First name', lastName: 'Last name', email: 'Email',
       address: 'Address', city: 'City', state: 'State', pincode: 'PIN code',
     };
-    const missing = Object.entries(required)
-      .filter(([k]) => !String(form[k] || '').trim())
-      .map(([, label]) => label);
-    if (missing.length) { setError(`Please fill in: ${missing.join(', ')}`); return; }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dateOfBirth)) {
-      setError('Enter your date of birth as YYYY-MM-DD.');
+    const errs = {};
+    for (const [key, label] of Object.entries(required)) {
+      if (!String(form[key] || '').trim()) errs[key] = `${label} is required`;
+    }
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      errs.email = 'Enter a valid email address';
+    }
+    if (form.pincode && !/^\d{6}$/.test(form.pincode)) {
+      errs.pincode = 'PIN code must be 6 digits';
+    }
+    const dobError = validateDateOfBirth(form.dateOfBirth);
+    if (dobError) errs.dateOfBirth = dobError;
+
+    if (Object.keys(errs).length) {
+      setFieldErrors(errs);
+      setError('Please correct the highlighted fields.');
       return;
     }
 
     setBusy(true);
     try {
-      // The photo is optional, so a failed upload must not block the step —
-      // it is reported and the rest of the details still save.
-      if (photo) {
-        try {
-          const url = await uploadImage(photo, 'profile');
-          await axios.put(`${API_URL}/user/update-photo`, { profilePhoto: url });
-          setPhotoExisting(url);
-          setPhoto(null);
-        } catch {
-          notify('Your photo could not be uploaded, but your details were saved.');
-        }
-      }
       await axios.put(`${API_URL}/user/onboarding`, form);
       await load();
       goStep(1);
@@ -225,114 +307,129 @@ const OnboardingWizardScreen = () => {
     }
   };
 
-  // ── Step 2 ────────────────────────────────────────────────────────────────
-  const saveLicence = async () => {
+  // ── Steps 2 & 3 ───────────────────────────────────────────────────────────
+  const submitDocument = async (path, payload, nextStep, manualConsent = false) => {
     setError('');
+    setBusy(true);
+    try {
+      const res = await axios.post(`${API_URL}${path}`, { ...payload, manualConsent });
+      setStatus(res.data);
+      setConsent(null);
+      goStep(nextStep);
+    } catch (e) {
+      const data = e.response?.data;
+      if (data?.needsConsent) {
+        setConsent({ step, message: data.error, payload, path, nextStep });
+      } else {
+        setError(data?.error || 'Could not save that document.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitAadhaar = () => {
+    if (!/^\d{12}$/.test(aadhaarNumber.replace(/\s/g, ''))) {
+      setError('Enter the 12-digit Aadhaar number.'); return;
+    }
+    if (!aadhaarFront || !aadhaarBack) {
+      setError('Photograph both the front and back of your Aadhaar card.'); return;
+    }
+    submitDocument('/user/verification/aadhaar', {
+      aadhaarNumber: aadhaarNumber.replace(/\s/g, ''),
+      frontImage: aadhaarFront,
+      backImage: aadhaarBack,
+    }, 2);
+  };
+
+  const submitLicence = () => {
     const number = licenceNumber.trim().toUpperCase().replace(/[\s-]/g, '');
     if (!LICENCE_RE.test(number)) {
-      setError('Enter a valid licence number, e.g. KA0520190001234.');
-      return;
+      setError('Enter a valid licence number, for example KA0520190001234.'); return;
     }
-    const already = status?.documents?.licence;
-    if (!front && !already?.frontImageKey) {
-      setError('Add a photo of the front of your licence.');
-      return;
+    if (!licenceFront || !licenceBack) {
+      setError('Photograph both the front and back of your licence.'); return;
     }
-
-    setBusy(true);
-    try {
-      const [licenseFrontImage, licenseBackImage] = await Promise.all([
-        front ? uploadImage(front, 'license') : already?.frontImageKey,
-        back ? uploadImage(back, 'license') : already?.backImageKey,
-      ]);
-      await axios.put(`${API_URL}/user/update-license`, {
-        licenseNumber: number,
-        licenseFrontImage,
-        licenseBackImage,
-        dateOfBirth: form.dateOfBirth,
-      });
-      await load();
-      goStep(2);
-    } catch (e) {
-      setError(e.response?.data?.error || 'Could not save your licence.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // ── Step 3 ────────────────────────────────────────────────────────────────
-  const sendOtp = async () => {
-    setError('');
-    const number = aadhaar.replace(/\s/g, '');
-    if (!/^\d{12}$/.test(number)) { setError('Enter the 12-digit Aadhaar number.'); return; }
-    setBusy(true);
-    try {
-      const res = await axios.post(`${API_URL}/user/check-kyc`, { kycNumber: number, uid: 'self' });
-      setAadhaarRef(res.data?.kycRef || '');
-      setOtpSent(true);
-    } catch (e) {
-      setError(e.response?.data?.error || 'Could not send the Aadhaar OTP.');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const verifyOtp = async () => {
-    setError('');
-    if (!otp.trim()) { setError('Enter the OTP sent to your Aadhaar-linked number.'); return; }
-    setBusy(true);
-    try {
-      await axios.post(`${API_URL}/user/verify-kyc`, {
-        ref: aadhaarRef, otp: otp.trim(), kycNumber: aadhaar.replace(/\s/g, ''), uid: 'self',
-      });
-      if (aadhaarImage) {
-        const kycImage = await uploadImage(aadhaarImage, 'kyc');
-        await axios.put(`${API_URL}/user/update-kyc`, { kycImage });
-      }
-      await load();
-      goStep(3);
-    } catch (e) {
-      setError(e.response?.data?.error || 'Could not verify the OTP.');
-    } finally {
-      setBusy(false);
-    }
+    submitDocument('/user/verification/licence', {
+      licenceNumber: number,
+      frontImage: licenceFront,
+      backImage: licenceBack,
+    }, 3);
   };
 
   // ── Step 4 ────────────────────────────────────────────────────────────────
-  const finish = async () => {
+  const saveSelfie = async () => {
+    if (!selfie) { setError('Take a selfie first.'); return; }
     setError('');
     setBusy(true);
     try {
-      const res = await axios.post(`${API_URL}/user/verification/submit`);
-      notify(res.data?.verificationStatus === 'pending'
-        ? 'Your profile is under verification'
-        : 'Profile saved. Add your documents to start booking.');
-      // Reset rather than navigate: the wizard sits on the stack and going
-      // "back" into a flow that has been submitted makes no sense.
-      navigation.reset({ index: 0, routes: [{ name: 'HomeTab' }] });
+      await axios.post(`${API_URL}/user/verification/selfie`, { image: selfie });
+      await finish();
     } catch (e) {
-      setError(e.response?.data?.error || 'Could not save your profile.');
+      setError(e.response?.data?.error || 'Could not save your photo.');
       setBusy(false);
     }
+  };
+
+  const finish = async () => {
+    try {
+      await axios.post(`${API_URL}/user/verification/submit`);
+    } catch {
+      // Best-effort: the documents are already stored and the server promotes
+      // the profile to `pending` on its own once both are present. Blocking here
+      // would strand the user at the end of a flow they have completed.
+    }
+    notify('Your profile is under verification');
+    navigation.reset({ index: 0, routes: [{ name: 'HomeTab' }] });
   };
 
   if (loading) {
     return (
       <View style={styles.container}>
-        <Header navigation={navigation} title='Complete your profile' />
         <View style={styles.centered}><ActivityIndicator color={BRAND_COLOR} /></View>
       </View>
     );
   }
 
   const docs = status?.documents || {};
-  const licenceDone = !!docs.licence?.submitted;
   const aadhaarDone = !!docs.aadhaar?.submitted;
-  const bothDone = licenceDone && aadhaarDone;
+  const licenceDone = !!docs.licence?.submitted;
 
   return (
     <View style={styles.container}>
-      <Header navigation={navigation} title='Complete your profile' />
+      {/*
+        Own header rather than CenterHeader.
+        CenterHeader's back button calls navigation.goBack(), which on step 1 of a
+        mandatory flow would drop the user out of onboarding entirely — and the
+        screen also carried a second "‹ Back" at the bottom of the scroll view, so
+        there were two back affordances doing different things. This header owns
+        the ONLY back control, it moves between steps, and it is simply absent on
+        step 1 where there is nowhere to go.
+      */}
+      <View style={styles.header}>
+        {step > 0 ? (
+          <TouchableOpacity
+            style={styles.headerBack}
+            onPress={() => goStep(step - 1)}
+            disabled={busy}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Icon name='chevron-back' size={24} color='#e3e3e3' />
+          </TouchableOpacity>
+        ) : (
+          // Keeps the title optically centred when there is no chevron.
+          <View style={styles.headerBackSpacer} />
+        )}
+        <View style={styles.headerTitleWrap}>
+          <CustomText fontType='primary' weight='Bold' numberOfLines={1} style={styles.headerTitle}>
+            Complete your profile
+          </CustomText>
+          <CustomText fontType='primary' style={styles.headerSub}>
+            Step {step + 1} of {STEPS.length}
+          </CustomText>
+        </View>
+        <View style={styles.headerBackSpacer} />
+      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -349,40 +446,66 @@ const OnboardingWizardScreen = () => {
           {step === 0 && (
             <>
               <CustomText fontType='primary' style={styles.hint}>
-                These details are matched against your documents, so enter them exactly as
-                they appear there.
+                Enter your details exactly as they appear on your Aadhaar and driving
+                licence — we compare them.
               </CustomText>
 
-              <View style={styles.photoRow}>
-                {photo || photoExisting ? (
-                  <Image
-                    source={{ uri: photo ? photo.uri : photoUrl(photoExisting) }}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarEmpty]} />
-                )}
-                <View style={{ flex: 1 }}>
-                  <TouchableOpacity style={styles.secondaryBtn} onPress={pick(setPhoto)}>
-                    <CustomText fontType='primary' weight='SemiBold' style={styles.secondaryBtnText}>
-                      {photo || photoExisting ? 'Change photo' : 'Add a photo'}
-                    </CustomText>
-                  </TouchableOpacity>
-                  <CustomText fontType='primary' style={styles.optional}>Optional.</CustomText>
-                </View>
-              </View>
-
-              <Field label='First name' value={form.firstName} onChange={set('firstName')} required />
-              <Field label='Last name' value={form.lastName} onChange={set('lastName')} required />
+              <Field label='First name' value={form.firstName} onChange={set('firstName')}
+                error={fieldErrors.firstName} required />
+              <Field label='Last name' value={form.lastName} onChange={set('lastName')}
+                error={fieldErrors.lastName} required />
               <Field label='Email' value={form.email} onChange={set('email')}
-                keyboardType='email-address' autoCapitalize='none' required />
-              <Field label='Date of birth' value={form.dateOfBirth} onChange={set('dateOfBirth')}
-                placeholder='YYYY-MM-DD' maxLength={10} required />
-              <Field label='Address' value={form.address} onChange={set('address')} required />
-              <Field label='City' value={form.city} onChange={set('city')} required />
-              <Field label='State' value={form.state} onChange={set('state')} required />
-              <Field label='PIN code' value={form.pincode} onChange={set('pincode')}
-                keyboardType='number-pad' maxLength={6} required />
+                keyboardType='email-address' autoCapitalize='none'
+                error={fieldErrors.email} required />
+
+              <PickerField
+                label='Date of birth'
+                value={form.dateOfBirth}
+                placeholder='Select your date of birth'
+                onPress={() => setShowDatePicker(true)}
+                error={fieldErrors.dateOfBirth}
+                required
+              />
+              {showDatePicker && (
+                <DateTimePicker
+                  mode='date'
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  value={form.dateOfBirth ? new Date(form.dateOfBirth) : maxDateOfBirth()}
+                  // The picker itself will not offer an under-18 date; the rule is
+                  // enforced again on submit and on the server.
+                  maximumDate={maxDateOfBirth()}
+                  minimumDate={minDateOfBirth()}
+                  onChange={(event, date) => {
+                    // Android fires with type 'dismissed' on cancel; iOS spinner
+                    // fires continuously, so the sheet is closed explicitly there.
+                    if (Platform.OS === 'android') setShowDatePicker(false);
+                    if (event.type === 'dismissed' || !date) return;
+                    set('dateOfBirth')(toLocalIsoDate(date));
+                  }}
+                />
+              )}
+              {showDatePicker && Platform.OS === 'ios' && (
+                <TouchableOpacity style={styles.linkBtn} onPress={() => setShowDatePicker(false)}>
+                  <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>Done</CustomText>
+                </TouchableOpacity>
+              )}
+
+              <Field label='Address' value={form.address} onChange={set('address')}
+                error={fieldErrors.address} required />
+              <Field label='City' value={form.city} onChange={set('city')}
+                error={fieldErrors.city} required />
+
+              <PickerField label='State' value={form.state} placeholder='Select your state'
+                onPress={() => setShowStates(true)} error={fieldErrors.state} required />
+
+              <Field label='PIN code' value={form.pincode}
+                onChange={(t) => set('pincode')(t.replace(/\D/g, ''))}
+                keyboardType='number-pad' maxLength={6}
+                error={fieldErrors.pincode} required />
+
+              <CustomText fontType='primary' style={styles.footnote}>
+                You must be at least 18 to drive on Cocarr.
+              </CustomText>
 
               <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={saveProfile}>
                 <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
@@ -392,17 +515,58 @@ const OnboardingWizardScreen = () => {
             </>
           )}
 
-          {/* ── Step 2 ── */}
+          {/* ── Step 2: Aadhaar ── */}
           {step === 1 && (
             <>
               <CustomText fontType='primary' weight='Bold' style={styles.h2}>
-                Upload your driving licence
+                Aadhaar verification
               </CustomText>
-              <Note>{GATE_NOTE}</Note>
+              {aadhaarDone ? (
+                <CustomText fontType='primary' style={styles.ok}>
+                  Your Aadhaar is on file. Submitting again replaces it.
+                </CustomText>
+              ) : null}
 
+              <Field label='Aadhaar number' value={aadhaarNumber}
+                onChange={(t) => setAadhaarNumber(t.replace(/[^\d\s]/g, ''))}
+                placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14} required />
+
+              <CustomText fontType='primary' style={styles.hint}>
+                Photograph both sides. Keep the whole card in frame and the text readable.
+              </CustomText>
+              <View style={styles.docRow}>
+                <DocCapture label='Front' uri={aadhaarFront || photoUrl(docs.aadhaar?.imageKey)}
+                  onPress={capture(setAadhaarFront)} required />
+                <DocCapture label='Back' uri={aadhaarBack || photoUrl(docs.aadhaar?.backImageKey)}
+                  onPress={capture(setAadhaarBack)} required />
+              </View>
+
+              {consent && consent.step === 1 ? (
+                <ConsentPrompt
+                  message={consent.message}
+                  busy={busy}
+                  onAgree={() => submitDocument(consent.path, consent.payload, consent.nextStep, true)}
+                  onRetry={() => setConsent(null)}
+                />
+              ) : (
+                <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={submitAadhaar}>
+                  <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                    {busy ? 'Checking…' : 'Verify and continue'}
+                  </CustomText>
+                </TouchableOpacity>
+              )}
+            </>
+          )}
+
+          {/* ── Step 3: Driving licence ── */}
+          {step === 2 && (
+            <>
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>
+                Driving licence verification
+              </CustomText>
               {licenceDone ? (
                 <CustomText fontType='primary' style={styles.ok}>
-                  Your licence is on file. You can replace it below.
+                  Your licence is on file. Submitting again replaces it.
                 </CustomText>
               ) : null}
 
@@ -410,154 +574,91 @@ const OnboardingWizardScreen = () => {
                 onChange={(t) => setLicenceNumber(t.toUpperCase())}
                 placeholder='KA0520190001234' autoCapitalize='characters' required />
 
-              <View style={styles.uploadRow}>
-                <ImageBox label='Front *'
-                  uri={front ? front.uri : photoUrl(docs.licence?.frontImageKey)}
-                  onPick={pick(setFront)} />
-                <ImageBox label='Back'
-                  uri={back ? back.uri : photoUrl(docs.licence?.backImageKey)}
-                  onPick={pick(setBack)} />
+              <CustomText fontType='primary' style={styles.hint}>
+                Photograph both sides of your licence.
+              </CustomText>
+              <View style={styles.docRow}>
+                <DocCapture label='Front' uri={licenceFront || photoUrl(docs.licence?.frontImageKey)}
+                  onPress={capture(setLicenceFront)} required />
+                <DocCapture label='Back' uri={licenceBack || photoUrl(docs.licence?.backImageKey)}
+                  onPress={capture(setLicenceBack)} required />
               </View>
 
-              <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={saveLicence}>
-                <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                  {busy ? 'Saving…' : 'Continue'}
-                </CustomText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.skipBtn} disabled={busy} onPress={() => goStep(2)}>
-                <CustomText fontType='primary' weight='SemiBold' style={styles.skipText}>
-                  Skip for now
-                </CustomText>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* ── Step 3 ── */}
-          {step === 2 && (
-            <>
-              <CustomText fontType='primary' weight='Bold' style={styles.h2}>
-                Upload your Aadhaar card
-              </CustomText>
-              <Note>{GATE_NOTE}</Note>
-
-              {aadhaarDone ? (
-                <>
-                  <CustomText fontType='primary' style={styles.ok}>
-                    Your Aadhaar is verified and on file.
-                  </CustomText>
-                  <TouchableOpacity style={styles.primaryBtn} onPress={() => goStep(3)}>
-                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      Continue
-                    </CustomText>
-                  </TouchableOpacity>
-                </>
-              ) : !otpSent ? (
-                <>
-                  <Field label='Aadhaar number' value={aadhaar}
-                    onChange={(t) => setAadhaar(t.replace(/[^\d\s]/g, ''))}
-                    placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14} required />
-
-                  <CustomText fontType='primary' style={styles.fieldLabel}>Aadhaar card photo</CustomText>
-                  <View style={styles.uploadRow}>
-                    <ImageBox label='Aadhaar' uri={aadhaarImage?.uri} onPick={pick(setAadhaarImage)} />
-                  </View>
-
-                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={sendOtp}>
-                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      {busy ? 'Sending…' : 'Send OTP'}
-                    </CustomText>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.skipBtn} disabled={busy} onPress={() => goStep(3)}>
-                    <CustomText fontType='primary' weight='SemiBold' style={styles.skipText}>
-                      Skip for now
-                    </CustomText>
-                  </TouchableOpacity>
-                </>
+              {consent && consent.step === 2 ? (
+                <ConsentPrompt
+                  message={consent.message}
+                  busy={busy}
+                  onAgree={() => submitDocument(consent.path, consent.payload, consent.nextStep, true)}
+                  onRetry={() => setConsent(null)}
+                />
               ) : (
-                <>
-                  <CustomText fontType='primary' style={styles.hint}>
-                    Enter the OTP sent to the mobile number registered against your Aadhaar.
+                <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={submitLicence}>
+                  <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                    {busy ? 'Checking…' : 'Verify and continue'}
                   </CustomText>
-                  <Field label='OTP' value={otp} onChange={(t) => setOtp(t.replace(/\D/g, ''))}
-                    keyboardType='number-pad' maxLength={6} required />
-
-                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={verifyOtp}>
-                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      {busy ? 'Verifying…' : 'Verify & continue'}
-                    </CustomText>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.skipBtn} disabled={busy} onPress={() => setOtpSent(false)}>
-                    <CustomText fontType='primary' weight='SemiBold' style={styles.skipText}>
-                      Change number
-                    </CustomText>
-                  </TouchableOpacity>
-                </>
+                </TouchableOpacity>
               )}
             </>
           )}
 
-          {/* ── Step 4 ── */}
+          {/* ── Step 4: Live selfie ── */}
           {step === 3 && (
             <>
-              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Review and save</CustomText>
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Take a selfie</CustomText>
+              <CustomText fontType='primary' style={styles.hint}>
+                This becomes your profile photo and helps hosts recognise you. It has to be
+                taken now with your front camera — you can&apos;t choose an existing picture.
+              </CustomText>
 
-              <View style={styles.reviewCard}>
-                <ReviewRow label='Name' value={[form.firstName, form.lastName].filter(Boolean).join(' ') || '—'} />
-                <ReviewRow label='Date of birth' value={form.dateOfBirth || '—'} />
-                <ReviewRow label='Email' value={form.email || '—'} />
-                <ReviewRow label='Address'
-                  value={[form.address, form.city, form.state, form.pincode].filter(Boolean).join(', ') || '—'} />
-                <ReviewRow label='Driving licence' value={licenceDone ? 'Uploaded' : 'Skipped'}
-                  tone={licenceDone ? 'ok' : 'warn'} />
-                <ReviewRow label='Aadhaar' value={aadhaarDone ? 'Verified' : 'Skipped'}
-                  tone={aadhaarDone ? 'ok' : 'warn'} />
+              <View style={styles.selfieWrap}>
+                <TouchableOpacity style={styles.selfieFrame} onPress={capture(setSelfie, { front: true })}>
+                  {selfie ? (
+                    <Image source={{ uri: selfie }} style={styles.selfieImage} resizeMode='cover' />
+                  ) : (
+                    <>
+                      <Icon name='camera-outline' size={30} color='#757575' />
+                      <CustomText fontType='primary' style={styles.docText}>Tap to take a selfie</CustomText>
+                    </>
+                  )}
+                </TouchableOpacity>
+                {selfie ? (
+                  <TouchableOpacity style={styles.linkBtn} onPress={capture(setSelfie, { front: true })}>
+                    <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>Retake</CustomText>
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
-              {bothDone ? (
-                <View style={[styles.banner, styles.bannerOk]}>
-                  <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
-                    Your profile will be sent for verification.
-                  </CustomText>
-                  <CustomText fontType='primary' style={styles.bannerBody}>
-                    Once our team has approved it you&apos;ll be able to book a ride. In the
-                    meantime, enjoy browsing our cars.
-                  </CustomText>
-                </View>
-              ) : (
-                <View style={[styles.banner, styles.bannerWarn]}>
-                  <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
-                    Your profile will be saved as incomplete.
-                  </CustomText>
-                  <CustomText fontType='primary' style={styles.bannerBody}>
-                    You skipped {!licenceDone && !aadhaarDone
-                      ? 'your driving licence and Aadhaar'
-                      : !licenceDone ? 'your driving licence' : 'your Aadhaar'}.
-                    You can browse cars now, but you&apos;ll need to add {!licenceDone && !aadhaarDone
-                      ? 'both and have them' : 'it and have it'} verified before booking a ride.
-                  </CustomText>
-                  <TouchableOpacity onPress={() => goStep(licenceDone ? 2 : 1)}>
-                    <CustomText fontType='primary' weight='SemiBold' style={styles.bannerLink}>
-                      Add it now
-                    </CustomText>
-                  </TouchableOpacity>
-                </View>
-              )}
+              <View style={[styles.banner, styles.bannerOk]}>
+                <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>Almost done</CustomText>
+                <CustomText fontType='primary' style={styles.bannerBody}>
+                  Your documents are with our team. Once they&apos;re approved you can book a
+                  ride — in the meantime, enjoy browsing our cars.
+                </CustomText>
+              </View>
 
-              <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={finish}>
+              <TouchableOpacity style={styles.primaryBtn} disabled={busy || !selfie} onPress={saveSelfie}>
                 <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                  {busy ? 'Saving…' : 'Save and continue'}
+                  {busy ? 'Saving…' : 'Save and finish'}
+                </CustomText>
+              </TouchableOpacity>
+
+              {/* The only optional step, so the only one that can be deferred. */}
+              <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={finish}>
+                <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                  Skip the photo for now
                 </CustomText>
               </TouchableOpacity>
             </>
-          )}
-
-          {step > 0 && (
-            <TouchableOpacity style={styles.skipBtn} disabled={busy} onPress={() => goStep(step - 1)}>
-              <CustomText fontType='primary' style={styles.backText}>‹ Back</CustomText>
-            </TouchableOpacity>
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <StateModal
+        visible={showStates}
+        onClose={() => setShowStates(false)}
+        onSelect={(s) => set('state')(s)}
+        selected={form.state}
+      />
     </View>
   );
 };
@@ -566,6 +667,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16, paddingBottom: 48 },
+
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'ios' ? 52 : 16,
+    paddingBottom: 12,
+    backgroundColor: '#000',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#1e1e22',
+  },
+  headerBack: { width: 36, alignItems: 'flex-start', justifyContent: 'center' },
+  headerBackSpacer: { width: 36 },
+  headerTitleWrap: { flex: 1, alignItems: 'center' },
+  headerTitle: { color: '#f0f0f2', fontSize: 16, letterSpacing: -0.2 },
+  headerSub: { color: '#8a8a8a', fontSize: 11, marginTop: 2 },
 
   rail: { flexDirection: 'row', marginBottom: 18 },
   railItem: { flex: 1, alignItems: 'center' },
@@ -582,23 +699,13 @@ const styles = StyleSheet.create({
 
   h2: { fontSize: 17, color: '#fff', marginBottom: 8 },
   hint: { fontSize: 13, color: '#9a9aa2', marginBottom: 14, lineHeight: 19 },
-  optional: { fontSize: 11, color: '#6b6b73', marginTop: 5 },
+  footnote: { fontSize: 11, color: '#6b6b73', marginTop: 2 },
   error: { fontSize: 13, color: '#f87171', marginBottom: 12 },
   ok: { fontSize: 13, color: '#6ee6b0', marginBottom: 12 },
 
-  note: {
-    backgroundColor: '#241f0c',
-    borderLeftWidth: 3, borderLeftColor: BRAND_COLOR,
-    padding: 12, borderRadius: 6, marginBottom: 16,
-  },
-  noteText: { fontSize: 12, color: '#e0cf94', lineHeight: 18 },
-
-  photoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 18 },
-  avatar: { width: 68, height: 68, borderRadius: 34 },
-  avatarEmpty: { backgroundColor: '#1e1e22' },
-
   field: { marginBottom: 14 },
   fieldLabel: { fontSize: 12, color: '#9a9aa2', marginBottom: 6 },
+  fieldError: { fontSize: 11, color: '#f87171', marginTop: 4 },
   req: { color: '#f87171' },
   input: {
     backgroundColor: '#141418',
@@ -606,50 +713,61 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 10,
     color: '#fff', fontSize: 14,
   },
+  inputError: { borderColor: '#f87171' },
+  pickerInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pickerValue: { color: '#fff', fontSize: 14 },
+  pickerPlaceholder: { color: '#6b6b73', fontSize: 14 },
 
-  uploadRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
-  uploadBox: {
-    flex: 1, height: 108, borderRadius: 8,
+  docRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+  docBox: {
+    flex: 1, height: 112, borderRadius: 8,
     borderWidth: 1, borderColor: '#26262c', borderStyle: 'dashed',
     backgroundColor: '#141418',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  uploadText: { fontSize: 11, color: '#757575', marginTop: 6 },
-  preview: { width: '100%', height: '100%' },
+  docPreview: { width: '100%', height: '100%' },
+  docText: { fontSize: 11, color: '#757575', marginTop: 6 },
+
+  selfieWrap: { alignItems: 'center', marginVertical: 8 },
+  selfieFrame: {
+    width: 200, height: 200, borderRadius: 100,
+    borderWidth: 2, borderColor: BRAND_COLOR,
+    backgroundColor: '#141418',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+  },
+  selfieImage: { width: '100%', height: '100%' },
 
   primaryBtn: {
     backgroundColor: BRAND_COLOR, borderRadius: 8,
     paddingVertical: 14, alignItems: 'center', marginTop: 18,
   },
   primaryBtnText: { color: '#000', fontSize: 15 },
-  secondaryBtn: {
-    borderWidth: 1, borderColor: '#26262c', borderRadius: 8,
-    paddingVertical: 9, paddingHorizontal: 14, alignSelf: 'flex-start',
-  },
-  secondaryBtnText: { color: '#fff', fontSize: 13 },
-  skipBtn: { alignItems: 'center', paddingVertical: 14 },
-  skipText: { color: BRAND_COLOR, fontSize: 14 },
-  backText: { color: '#9a9aa2', fontSize: 14 },
+  linkBtn: { alignItems: 'center', paddingVertical: 14 },
+  linkText: { color: BRAND_COLOR, fontSize: 14 },
 
-  reviewCard: {
-    backgroundColor: '#141418', borderRadius: 10,
-    paddingHorizontal: 14, marginBottom: 16,
-  },
-  reviewRow: {
-    flexDirection: 'row', justifyContent: 'space-between', gap: 16,
-    paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: '#1e1e22',
-  },
-  reviewLabel: { fontSize: 13, color: '#9a9aa2' },
-  reviewValue: { fontSize: 13, color: '#fff', flexShrink: 1, textAlign: 'right' },
-  reviewOk: { color: '#6ee6b0' },
-  reviewWarn: { color: '#fb923c' },
-
-  banner: { borderRadius: 10, padding: 14 },
+  banner: { borderRadius: 10, padding: 14, marginTop: 16 },
   bannerOk: { backgroundColor: '#0f2a1c' },
   bannerWarn: { backgroundColor: '#2a1d0c' },
   bannerTitle: { fontSize: 14, color: '#fff', marginBottom: 5 },
-  bannerBody: { fontSize: 12.5, color: '#c9c9d1', lineHeight: 19 },
-  bannerLink: { fontSize: 13, color: BRAND_COLOR, marginTop: 10 },
+  bannerBody: { fontSize: 12.5, color: '#c9c9d1', lineHeight: 19, marginBottom: 6 },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: '#141418', borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    maxHeight: '75%', paddingBottom: 24,
+  },
+  modalHead: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 18, paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#26262c',
+  },
+  modalTitle: { color: '#fff', fontSize: 15 },
+  stateRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 18, paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#1e1e22',
+  },
+  stateText: { color: '#e3e3e3', fontSize: 14 },
 });
 
 export default OnboardingWizardScreen;
