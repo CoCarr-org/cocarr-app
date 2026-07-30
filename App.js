@@ -22,6 +22,16 @@ function RootNavigator() {
   const { isAuthenticated, userRole } = useSelector((state) => state.auth);
   const navigationRef = useRef(null);
 
+  // Single source of truth for tearing down an invalid session: drop the
+  // Firebase session, clear the Redux auth state (which flips the shell back to
+  // AuthNavigator) and strip the default Authorization header so no stale token
+  // rides along on the next request. Safe to call more than once.
+  function forceLogout() {
+    auth().signOut().catch(() => {});
+    store.dispatch(logout());
+    delete axios.defaults.headers.common['Authorization'];
+  }
+
   async function onAuthStateChanged(user) {
     if (user) {
       console.log('User logged in:', user);
@@ -35,6 +45,15 @@ function RootNavigator() {
     } else {
       store.dispatch(updateToken({ token: null }));
       delete axios.defaults.headers.common['Authorization'];
+      // Firebase reports no user, but Redux may still be marked authenticated
+      // from a persisted session — e.g. the token was revoked, the account was
+      // disabled, or the session expired and was cleared on another device.
+      // Without this the app would keep rendering the authenticated shell with
+      // no valid token, and every request would 401 forever. Log out so the
+      // user lands back on the login flow.
+      if (store.getState().auth.isAuthenticated) {
+        forceLogout();
+      }
     }
 
     if (initializing) setInitializing(false);
@@ -55,26 +74,34 @@ function RootNavigator() {
         if (error.response?.status === 401) {
           const currentUser = auth().currentUser;
           if (currentUser) {
-            let retryCount = error.config.__retryCount || 0;
+            let retryCount = error.config?.__retryCount || 0;
             if (retryCount < 2) {
               error.config.__retryCount = retryCount + 1;
               try {
                 console.log('Refreshing Firebase token...');
+                // getIdToken(true) forces a refresh; it throws if the token /
+                // account is no longer valid (revoked, disabled, deleted).
                 const newToken = await currentUser.getIdToken(true);
                 store.dispatch(updateToken({ token: newToken }));
                 axios.defaults.headers.common['Authorization'] = `${newToken}`;
 
-                // Retry request with new token
+                // Retry request with the refreshed token. Callers pass the
+                // token explicitly per-request (from Redux), so overwrite the
+                // config header too or the retry re-sends the stale one.
                 error.config.headers['Authorization'] = `${newToken}`;
                 return axios(error.config);
               } catch (refreshError) {
                 console.log('Token refresh failed, logging out user');
               }
             }
-            // Logout user after two failed attempts
-            auth().signOut();
-            store.dispatch(logout());
-            delete axios.defaults.headers.common['Authorization'];
+            // A live Firebase user still returning 401 after two refreshes:
+            // the token can't be salvaged, so end the session.
+            forceLogout();
+          } else if (store.getState().auth.isAuthenticated) {
+            // No Firebase user at all but Redux still thinks we're signed in:
+            // the session is gone (revoked/expired/cleared). There's nothing to
+            // refresh, so log out straight away instead of looping on 401s.
+            forceLogout();
           }
         }
         return Promise.reject(error);
