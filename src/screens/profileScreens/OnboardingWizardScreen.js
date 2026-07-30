@@ -12,7 +12,7 @@ import { useDispatch } from 'react-redux';
 import { updateProfile } from '../../store/authSlice';
 import CustomText from '../../components/CustomText';
 import { API_URL, BRAND_COLOR, BYPASS_AADHAAR_VERIFY } from '../../utils/constants';
-import { notify, photoUrl } from '../../utils/utils';
+import { notify, photoUrl, requestCameraPermission } from '../../utils/utils';
 import { ALL_STATES } from '../../utils/indianStates';
 import {
   validateDateOfBirth, maxDateOfBirth, minDateOfBirth, toLocalIsoDate,
@@ -22,9 +22,23 @@ import {
 // Mirrors the web app's OnboardingWizardPage; keep the two in step.
 //
 //   1. Your details      MANDATORY
-//   2. Aadhaar           MANDATORY — number + both faces, read by OCR
-//   3. Driving licence   MANDATORY — number + both faces, read by OCR
-//   4. Live selfie       optional, can be added later from the profile
+//   2. Aadhaar card      MANDATORY — both faces, read by OCR
+//   3. Driving licence   MANDATORY — both faces, read by OCR
+//   4. Live selfie       MANDATORY — no skip
+//   5. Aadhaar KYC       MANDATORY — number, then OTP, then submit
+//
+// WHY THE AADHAAR NUMBER IS NOT IN STEP 2. All three uploads come first and the
+// identity check last, because:
+//   - the uploads are what OCR needs. When it reads the card the number is never
+//     typed at all, so asking for it up front is a field most users should never
+//     have to see.
+//   - the OTP is the one thing that can fail for reasons the user cannot fix in
+//     the moment (a phone not to hand, a provider outage). Reaching it last means
+//     everything else is already stored when it does.
+//
+// FAILED OCR IS NEVER A DEAD END. Steps 2 and 3 both offer the same two ways out
+// of an unreadable photo: retry it, or ask our team to check it by hand. An OCR
+// outage is our problem, not the user's.
 //
 // THREE MODES, taken from the `mode` route param:
 //   onboarding — a new account, straight after OTP. Cannot be abandoned.
@@ -38,15 +52,17 @@ import {
 // LicenceVerificationScreen and the whole verificationScreens/ folder — eight
 // screens collecting the same fields with their own copies of the validation.
 //
-// Steps 1–3 cannot be skipped. When OCR cannot read a document the user is
-// asked to consent to manual verification rather than being dead-ended: an OCR
-// outage is our problem, not theirs, and the admin reviews the scan either way.
-//
 // Every camera capture here uses launchCamera, never launchImageLibrary. That is
 // deliberate for the selfie (a gallery pick would defeat the liveness check) and
 // consistent for documents (a photo of the actual card, not a screenshot).
 
-const STEPS = ['Details', 'Aadhaar', 'Licence', 'Selfie'];
+const STEPS = ['Details', 'Aadhaar', 'Licence', 'Selfie', 'KYC'];
+
+const STEP_DETAILS = 0;
+const STEP_AADHAAR = 1;
+const STEP_LICENCE = 2;
+const STEP_SELFIE = 3;
+const STEP_KYC = 4;
 
 const LICENCE_RE = /^[A-Z]{2}[0-9]{2}[0-9A-Z]{10,12}$/;
 
@@ -229,26 +245,32 @@ const ReviewImage = ({ src, label }) => (
   </View>
 );
 
-// Shown when OCR could not read a document. Consent is an action the user takes,
-// never a box we pre-tick — it is a record that they agreed.
-const ConsentPrompt = ({ message, busy, onAgree, onRetry }) => (
+// The one thing steps 2 and 3 both do when OCR cannot read a photo: offer a
+// retry, or a human. Never a dead end, and never a silent pass — asking our team
+// to check the document is something the user actively chooses, and it is
+// recorded as their choice.
+//
+// `children` is where the licence step slots in its number field: a licence
+// nobody can read still needs a number for support to look it up.
+const OcrFallback = ({ message, busy, onRetry, onManual, manualLabel, children }) => (
   <View style={[styles.banner, styles.bannerWarn]}>
     <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
       We couldn&apos;t verify that automatically
     </CustomText>
     <CustomText fontType='primary' style={styles.bannerBody}>{message}</CustomText>
     <CustomText fontType='primary' style={styles.bannerBody}>
-      You can still continue — our team will check your document by hand. That usually
-      takes a little longer than an automatic check.
+      Take another photo — good light, the whole document in frame, no glare — or ask our
+      team to check it by hand. A manual check usually takes a little longer.
     </CustomText>
-    <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={onAgree}>
+    {children}
+    <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={onRetry}>
       <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-        {busy ? 'Submitting…' : 'I agree, verify it manually'}
+        Retry verification
       </CustomText>
     </TouchableOpacity>
-    <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={onRetry}>
+    <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={onManual}>
       <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-        Retake the photo
+        {busy ? 'Submitting…' : (manualLabel || 'Continue — our team will verify it')}
       </CustomText>
     </TouchableOpacity>
   </View>
@@ -273,7 +295,7 @@ const OnboardingWizardScreen = () => {
   const [status, setStatus] = useState(null);
   const scroller = useRef(null);
 
-  // Step 1 — no profile photo here any more; the step-4 selfie becomes the avatar.
+  // Step 1 — no profile photo here; the step-4 selfie becomes the avatar.
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', dateOfBirth: '',
     address: '', city: '', state: '', pincode: '',
@@ -287,41 +309,42 @@ const OnboardingWizardScreen = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStates, setShowStates] = useState(false);
 
-  // Step 2 / 3
-  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  // ── Step 2: the Aadhaar card itself ──
   const [aadhaarFront, setAadhaarFront] = useState(null);
   const [aadhaarBack, setAadhaarBack] = useState(null);
-  // The step runs scans → number → OTP. `scanned` gates the second half: the
-  // number field and the OTP controls stay hidden until the card has been read,
-  // because until then there is nothing to prefill and nothing to confirm.
-  const [scanned, setScanned] = useState(false);
-  // OCR read the card. NOT the same as the profile being verified — that stays
-  // an admin decision — it is the first of the step's two ticks.
+  // The card is stored and OCR has run. Says nothing about whether it could be
+  // read — `aadhaarOcrFailed` is that.
+  const [aadhaarScanned, setAadhaarScanned] = useState(false);
   const [documentVerified, setDocumentVerified] = useState(false);
-  // OCR could not read the number, so the user types it. The OTP still has to
-  // pass, so this changes who supplies the number, not how it is proven.
-  const [manualEntry, setManualEntry] = useState(false);
+  const [aadhaarOcrFailed, setAadhaarOcrFailed] = useState(false);
+  const [aadhaarOcrMessage, setAadhaarOcrMessage] = useState('');
+  // The user chose a human check over another retry. Recorded server-side too;
+  // this is the local copy that drives the wording of step 5.
+  const [aadhaarManualVerify, setAadhaarManualVerify] = useState(false);
+
+  // ── Step 3: the licence ──
+  const [licenceNumber, setLicenceNumber] = useState('');
+  const [licenceFront, setLicenceFront] = useState(null);
+  const [licenceBack, setLicenceBack] = useState(null);
+  // Set from the server's `needsConsent`: OCR could not read the licence.
+  const [licenceFallback, setLicenceFallback] = useState(null);
+
+  // ── Step 4: the selfie ──
+  const [selfie, setSelfie] = useState(null);
+  const [selfieSaved, setSelfieSaved] = useState(false);
+  // 'blocked' means the OS will not prompt again and only Settings can fix it;
+  // 'denied' means asking again is still worth doing. There is NO skip built on
+  // either — the distinction only decides which remedy we offer.
+  const [cameraPermission, setCameraPermission] = useState(null);
+
+  // ── Step 5: the KYC check ──
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [numberConfirmed, setNumberConfirmed] = useState(false);
+  const [aadhaarDetails, setAadhaarDetails] = useState(null);
   const [aadhaarRef, setAadhaarRef] = useState('');
   const [aadhaarOtp, setAadhaarOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
-  // Consent to the support team checking the card by hand. Set when OCR fails
-  // rather than offered up front — there is nothing to consent to while
-  // automatic reading is still working.
-  const [aadhaarManualVerify, setAadhaarManualVerify] = useState(false);
-  const [licenceNumber, setLicenceNumber] = useState('');
-  const [licenceFront, setLicenceFront] = useState(null);
-  const [licenceBack, setLicenceBack] = useState(null);
-
-  // Step 4
-  const [selfie, setSelfie] = useState(null);
-  // Set only when the user has personally re-requested camera permission and it
-  // failed again. Tracked from the retry action rather than by counting
-  // failures, so a single mis-tap on the OS prompt does not hand out a skip.
-  const [cameraBlocked, setCameraBlocked] = useState(false);
-  const [cameraDenied, setCameraDenied] = useState(false);
-
-  const [consent, setConsent] = useState(null);
 
   const load = async () => {
     try {
@@ -344,19 +367,18 @@ const OnboardingWizardScreen = () => {
       setInitialForm(loaded);
       const licence = res.data?.documents?.licence;
       if (licence?.licenceNumber) setLicenceNumber(licence.licenceNumber);
-      // Reopening must resume where the step got to, not restart it.
+      // Reopening must resume where each step got to, not restart it.
       const aad = res.data?.documents?.aadhaar;
-      if (aad?.otpVerified) setOtpVerified(true);
+      if (aad?.scanned) setAadhaarScanned(true);
       if (aad?.documentVerified) setDocumentVerified(true);
-      // The scans are already stored, so the number/OTP half is reachable again
-      // without re-photographing them. The number itself is not returned
-      // (Aadhaar is masked everywhere it is read back), so a manual re-entry is
-      // asked for whenever the OTP is still outstanding.
-      if (aad?.imageKey) {
-        setScanned(true);
-        if (!aad.otpVerified) setManualEntry(true);
-      }
+      if (aad?.scanned && !aad?.documentVerified) setAadhaarOcrFailed(true);
       if (aad?.manualConsent) setAadhaarManualVerify(true);
+      // A number already settled on means step 5's first phase is done, whether
+      // or not the OTP has been taken yet — otherwise reopening the screen asks
+      // for a number the user cannot supply, because it is masked from here on.
+      if (aad?.numberConfirmed) setNumberConfirmed(true);
+      if (aad?.otpVerified) setOtpVerified(true);
+      if (p.profilePhoto) setSelfieSaved(true);
     } catch (e) {
       setError(e.response?.data?.error || 'Could not load your profile');
     } finally {
@@ -375,7 +397,7 @@ const OnboardingWizardScreen = () => {
 
   const goStep = (n) => {
     setError('');
-    setConsent(null);
+    setLicenceFallback(null);
     setStep(n);
     setFurthest((f) => Math.max(f, n));
     scroller.current?.scrollTo({ y: 0, animated: true });
@@ -396,7 +418,22 @@ const OnboardingWizardScreen = () => {
 
   // Camera capture, base64 so it can be posted as a data URI. `includeBase64`
   // plus a modest maxWidth keeps the payload inside the server's 12mb JSON limit.
-  const capture = (setter, { front = false, isRetry = false } = {}) => async () => {
+  //
+  // Permission is requested EXPLICITLY first rather than left to launchCamera:
+  // the picker reports a refusal as an opaque errorCode and gives no way to tell
+  // "the user said no" from "the OS will never ask again", which is exactly the
+  // distinction the mandatory selfie step needs in order to offer the right
+  // remedy.
+  const capture = (setter, { front = false, openSettingsIfBlocked = false } = {}) => async () => {
+    const permission = await requestCameraPermission(openSettingsIfBlocked);
+    setCameraPermission(permission);
+    if (permission !== 'granted') {
+      setError(permission === 'unavailable'
+        ? 'This device has no camera we can use.'
+        : 'Camera access is needed to take this photo.');
+      return;
+    }
+
     const res = await launchCamera({
       mediaType: 'photo',
       cameraType: front ? 'front' : 'back',
@@ -409,21 +446,10 @@ const OnboardingWizardScreen = () => {
 
     if (res.didCancel) return;
     if (res.errorCode) {
-      const denied = res.errorCode === 'permission' || res.errorCode === 'camera_unavailable';
-      if (denied) {
-        setCameraDenied(true);
-        // Only a failed RETRY unlocks the way past a required step.
-        if (isRetry) setCameraBlocked(true);
-      }
-      setError(denied
-        ? 'Camera access is blocked. Enable it for Cocarr in your device settings, then try again.'
-        : res.errorMessage || 'Could not open the camera.');
+      setError(res.errorMessage || 'Could not open the camera.');
       return;
     }
 
-    // It opened — clear any earlier denial so the escape hatch disappears.
-    setCameraDenied(false);
-    setCameraBlocked(false);
     const asset = res.assets?.[0];
     if (!asset?.base64) { setError('Could not read that photo. Please try again.'); return; }
 
@@ -431,7 +457,7 @@ const OnboardingWizardScreen = () => {
     setter(`data:${asset.type || 'image/jpeg'};base64,${asset.base64}`);
   };
 
-  // ── Step 1 ────────────────────────────────────────────────────────────────
+  // ── Step 1: your details ──────────────────────────────────────────────────
   const saveProfile = async () => {
     setError('');
     const required = {
@@ -473,7 +499,7 @@ const OnboardingWizardScreen = () => {
       if (res.data?.verificationInvalidated) {
         notify('Saved. Your documents need checking again, so your profile is back for review.');
       }
-      goStep(1);
+      goStep(STEP_AADHAAR);
     } catch (e) {
       setError(e.response?.data?.error || 'Could not save your details.');
     } finally {
@@ -481,38 +507,10 @@ const OnboardingWizardScreen = () => {
     }
   };
 
-  // ── Steps 2 & 3 ───────────────────────────────────────────────────────────
-  const submitDocument = async (path, payload, nextStep, manualConsent = false) => {
-    setError('');
-    setBusy(true);
-    try {
-      const res = await axios.post(`${API_URL}${path}`, { ...payload, manualConsent });
-      setStatus(res.data);
-      setConsent(null);
-      goStep(nextStep);
-    } catch (e) {
-      const data = e.response?.data;
-      if (data?.needsOtp) {
-        // Rejected for want of an OTP — send the user back to that phase rather
-        // than showing an error they cannot act on.
-        setOtpVerified(false);
-        setOtpSent(false);
-        setError(data.error);
-      } else if (data?.needsConsent) {
-        setConsent({ step, message: data.error, payload, path, nextStep });
-      } else {
-        setError(data?.error || 'Could not save that document.');
-      }
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  // ── Aadhaar phase 1: read the card ───────────────────────────────────────
-  // Both faces go up, OCR reads the front, and the number it finds prefills the
-  // field. A failed read is not a dead end — it switches the step to manual
-  // entry, and the OTP that follows is the same either way, so a typed number
-  // ends up no less proven than an extracted one.
+  // ── Step 2: upload the Aadhaar card ───────────────────────────────────────
+  // Both faces go up and OCR reads the front. Whatever it reads is kept for
+  // step 5 — the number is never asked for here, because most of the time it
+  // does not need to be asked for at all.
   const scanAadhaar = async () => {
     setError('');
     if (!aadhaarFront || !aadhaarBack) {
@@ -525,49 +523,187 @@ const OnboardingWizardScreen = () => {
         frontImage: aadhaarFront,
         backImage: aadhaarBack,
       });
-      const data = res.data || {};
-      setScanned(true);
+      setAadhaarScanned(true);
 
-      if (data.needsManualEntry) {
-        // OCR could not read it. Ask for the number by hand and record consent
-        // to a human checking the card.
-        setManualEntry(true);
-        setAadhaarManualVerify(true);
-        setError(data.message || 'We could not read the number. Enter it manually.');
+      if (res.data?.needsManualEntry) {
+        // Not a failure the user caused, and not the end of the step — the
+        // fallback below offers a retry or a human.
+        setDocumentVerified(false);
+        setAadhaarOcrFailed(true);
+        setAadhaarOcrMessage(res.data?.message || 'We could not read your Aadhaar card.');
       } else {
-        setManualEntry(false);
-        setAadhaarManualVerify(false);
-        setAadhaarNumber(data.aadhaarNumber || '');
         setDocumentVerified(true);
-        notify('Document verified. Now confirm the number with an OTP.');
+        setAadhaarOcrFailed(false);
+        setAadhaarManualVerify(false);
+        // Handed back so step 5 can show the number already filled in. It is
+        // masked in every other response.
+        setAadhaarNumber(res.data?.aadhaarNumber || '');
+        notify('Aadhaar card read successfully.');
       }
       await load();
     } catch (e) {
-      setError(e.response?.data?.error || e.response?.data?.message || 'Could not read your Aadhaar card.');
+      setError(e.response?.data?.error || 'Could not read your Aadhaar card.');
     } finally {
       setBusy(false);
     }
   };
 
-  const sendAadhaarOtp = async () => {
+  // "Our team will verify it for me". The scans are already stored, so this
+  // records the choice rather than re-uploading several megabytes to set a flag.
+  const consentToManualAadhaar = async () => {
     setError('');
-    const number = aadhaarNumber.replace(/\s/g, '');
-    if (!/^\d{12}$/.test(number)) { setError('Enter the 12-digit Aadhaar number.'); return; }
+    setBusy(true);
+    try {
+      await axios.post(`${API_URL}/user/verification/aadhaar/scan`, { manualConsent: true });
+      setAadhaarManualVerify(true);
+      await load();
+      goStep(STEP_LICENCE);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Could not record that. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
-    // Cashfree OTP verification is bypassed: don't call the provider. The scans
-    // are already stored by this point, so the card goes to the support team to
-    // be checked by hand and the step simply moves on.
-    if (BYPASS_AADHAAR_VERIFY) {
-      setOtpVerified(true);
-      setOtpSent(false);
-      notify('Our team will verify your Aadhaar by hand.');
-      goStep(2);
-      return;
+  // Clears the photos so the next attempt is genuinely a new one — leaving the
+  // old ones in the slots invites pressing Verify again on the same image.
+  const retryAadhaar = () => {
+    setAadhaarFront(null);
+    setAadhaarBack(null);
+    setAadhaarOcrFailed(false);
+    setAadhaarOcrMessage('');
+    setError('');
+  };
+
+  // ── Step 3: upload the driving licence ────────────────────────────────────
+  // The number is not asked for up front: OCR reads it off the front. It is only
+  // collected when OCR could not, because support cannot look up a licence with
+  // no number attached.
+  const submitLicence = async ({ manualConsent = false } = {}) => {
+    setError('');
+    if (!licenceFront || !licenceBack) {
+      setError('Photograph both the front and back of your licence.'); return;
+    }
+
+    const typed = licenceNumber.trim().toUpperCase().replace(/[\s-]/g, '');
+    if (typed && !LICENCE_RE.test(typed)) {
+      setError('Enter a valid licence number, for example KA0520190001234.'); return;
+    }
+    // Agreeing to a manual check with no number to check is not a submission
+    // anyone can act on.
+    if (manualConsent && licenceFallback?.needsNumber && !typed) {
+      setError('Enter your licence number so our team can check it.'); return;
     }
 
     setBusy(true);
     try {
-      const res = await axios.post(`${API_URL}/user/check-kyc`, { kycNumber: number, uid: 'self' });
+      const res = await axios.post(`${API_URL}/user/verification/licence`, {
+        licenceNumber: typed || undefined,
+        frontImage: licenceFront,
+        backImage: licenceBack,
+        manualConsent,
+      });
+      setStatus(res.data);
+      setLicenceFallback(null);
+      goStep(STEP_SELFIE);
+    } catch (e) {
+      const data = e.response?.data;
+      if (data?.needsConsent || data?.needsNumber) {
+        setLicenceFallback({ message: data.error, needsNumber: !!data.needsNumber });
+      } else {
+        setError(data?.error || 'Could not save that document.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const retryLicence = () => {
+    setLicenceFront(null);
+    setLicenceBack(null);
+    setLicenceFallback(null);
+    setError('');
+  };
+
+  // ── Step 4: the live selfie ───────────────────────────────────────────────
+  // Required, and there is no skip. A blocked camera gets a permission request,
+  // not a way past this step.
+  const saveSelfie = async () => {
+    if (!selfie) { setError('Take a selfie first.'); return; }
+    setError('');
+    setBusy(true);
+    try {
+      const res = await axios.post(`${API_URL}/user/verification/selfie`, { image: selfie });
+      // The header avatar renders from redux, not from this response — without
+      // this dispatch it keeps showing the old photo (or the placeholder) until
+      // the app is restarted.
+      const saved = res.data?.profile?.profilePhoto;
+      if (saved) dispatch(updateProfile({ profilePhoto: saved }));
+      setSelfieSaved(true);
+      await load();
+      setBusy(false);
+      goStep(STEP_KYC);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Could not save your photo.');
+      setBusy(false);
+    }
+  };
+
+  // ── Step 5: Aadhaar KYC ───────────────────────────────────────────────────
+  // Confirm the number first, then prove it with the OTP.
+  //
+  // The confirm call is not busywork in front of the OTP: it catches a typo, a
+  // number already registered to somebody else, and a number that disagrees with
+  // the card uploaded in step 2 — all before a code is sent to a phone the user
+  // may not be holding. It also returns the details on file for that Aadhaar, so
+  // the user can see what is about to be verified.
+  const confirmAadhaarNumber = async () => {
+    setError('');
+    const number = aadhaarNumber.replace(/\s/g, '');
+    // No number in hand is normal when OCR read the card: it is returned once,
+    // at scan time, and masked in every response afterwards, so reopening the
+    // screen leaves this empty. The server falls back to what it read.
+    if (number && !/^\d{12}$/.test(number)) {
+      setError('Enter the 12-digit Aadhaar number.'); return;
+    }
+    if (!number && !documentVerified) {
+      setError('Enter the 12-digit Aadhaar number.'); return;
+    }
+
+    setBusy(true);
+    try {
+      const res = await axios.post(`${API_URL}/user/verification/aadhaar/number`,
+        number ? { aadhaarNumber: number } : {});
+      setAadhaarDetails(res.data);
+      setNumberConfirmed(true);
+      if (res.data?.manualVerification) setAadhaarManualVerify(true);
+      await load();
+    } catch (e) {
+      const data = e.response?.data;
+      if (data?.needsScan) {
+        // The card is missing — the number has nothing to be checked against.
+        setError(data.error);
+        goStep(STEP_AADHAAR);
+      } else {
+        setError(data?.error || 'Could not verify that Aadhaar number.');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // `kycNumber` is only sent when this screen still holds it. Otherwise the
+  // server uses the number the confirm step wrote — the one this code is about
+  // to prove — rather than the client keeping a regulated identifier around just
+  // to hand it back.
+  const sendAadhaarOtp = async () => {
+    setError('');
+    const number = aadhaarNumber.replace(/\s/g, '');
+
+    setBusy(true);
+    try {
+      const res = await axios.post(`${API_URL}/user/check-kyc`,
+        { uid: 'self', ...(number ? { kycNumber: number } : {}) });
       setAadhaarRef(res.data?.kycRef || '');
       setOtpSent(true);
       notify('OTP sent to your Aadhaar-linked mobile number');
@@ -584,21 +720,20 @@ const OnboardingWizardScreen = () => {
 
     setBusy(true);
     try {
+      const number = aadhaarNumber.replace(/\s/g, '');
       await axios.post(`${API_URL}/user/verify-kyc`, {
         ref: aadhaarRef,
         otp: aadhaarOtp.trim(),
-        kycNumber: aadhaarNumber.replace(/\s/g, ''),
+        ...(number ? { kycNumber: number } : {}),
         uid: 'self',
-        // Only true when OCR could not read the card and the number was typed —
-        // it is what tells the reviewer this row needs human eyes.
-        manualConsent: BYPASS_AADHAAR_VERIFY || aadhaarManualVerify,
+        // Set when OCR could not read the card, so the reviewer knows this row
+        // needs human eyes even though the OTP passed.
+        manualConsent: aadhaarManualVerify,
       });
       setOtpVerified(true);
       setOtpSent(false);
       notify('Aadhaar verified.');
       await load();
-      // The OTP is the last thing this step needs — the scans went up before it.
-      goStep(2);
     } catch (e) {
       setError(e.response?.data?.error || e.response?.data?.message || 'That OTP could not be verified.');
     } finally {
@@ -606,48 +741,16 @@ const OnboardingWizardScreen = () => {
     }
   };
 
-  const submitLicence = () => {
-    const number = licenceNumber.trim().toUpperCase().replace(/[\s-]/g, '');
-    if (!LICENCE_RE.test(number)) {
-      setError('Enter a valid licence number, for example KA0520190001234.'); return;
-    }
-    if (!licenceFront || !licenceBack) {
-      setError('Photograph both the front and back of your licence.'); return;
-    }
-    submitDocument('/user/verification/licence', {
-      licenceNumber: number,
-      frontImage: licenceFront,
-      backImage: licenceBack,
-    }, 3);
-  };
-
-  // ── Step 4 ────────────────────────────────────────────────────────────────
-  const saveSelfie = async () => {
-    if (!selfie) { setError('Take a selfie first.'); return; }
-    setError('');
-    setBusy(true);
-    try {
-      const res = await axios.post(`${API_URL}/user/verification/selfie`, { image: selfie });
-      // The header avatar renders from redux, not from this response — without
-      // this dispatch it keeps showing the old photo (or the placeholder) until
-      // the app is restarted.
-      const saved = res.data?.profile?.profilePhoto;
-      if (saved) dispatch(updateProfile({ profilePhoto: saved }));
-      await finish();
-    } catch (e) {
-      setError(e.response?.data?.error || 'Could not save your photo.');
-      setBusy(false);
-    }
-  };
-
   const finish = async () => {
+    setBusy(true);
     try {
       await axios.post(`${API_URL}/user/verification/submit`);
     } catch {
       // Best-effort: the documents are already stored and the server promotes
-      // the profile to `pending` on its own once both are present. Blocking here
-      // would strand the user at the end of a flow they have completed.
+      // the profile to `pending` on its own once everything is present. Blocking
+      // here would strand the user at the end of a flow they have completed.
     }
+    setBusy(false);
     notify('Your profile is under verification');
     navigation.reset({ index: 0, routes: [{ name: 'HomeTab' }] });
   };
@@ -661,8 +764,11 @@ const OnboardingWizardScreen = () => {
   }
 
   const docs = status?.documents || {};
-  const aadhaarDone = !!docs.aadhaar?.submitted;
   const licenceDone = !!docs.licence?.submitted;
+  // With the provider bypassed there is no OTP to take, so the card goes to the
+  // support team instead. The number is still confirmed — it is what the card is
+  // checked against — but the step ends at Submit rather than at a code.
+  const kycProven = otpVerified || (BYPASS_AADHAAR_VERIFY && numberConfirmed);
 
   return (
     <View style={styles.container}>
@@ -676,9 +782,6 @@ const OnboardingWizardScreen = () => {
         step 1 where there is nowhere to go.
       */}
       <View style={styles.header}>
-        {/* One back control. In onboarding it steps backwards and is absent on
-            step 1, where there is nowhere to go; in edit/review it leaves the
-            screen, which is why those modes always show it. */}
         {step > 0 || isEdit || isReview ? (
           <TouchableOpacity
             style={styles.headerBack}
@@ -730,8 +833,8 @@ const OnboardingWizardScreen = () => {
             <CustomText fontType='primary' style={styles.error}>{error}</CustomText>
           ) : null}
 
-          {/* ── Step 1 ── */}
-          {step === 0 && !isReview && (
+          {/* ── Step 1: your details ── */}
+          {step === STEP_DETAILS && !isReview && (
             <>
               <CustomText fontType='primary' style={styles.hint}>
                 Enter your details exactly as they appear on your Aadhaar and driving
@@ -811,21 +914,20 @@ const OnboardingWizardScreen = () => {
             </>
           )}
 
-          {/* ── Step 2: Aadhaar ──
-              Three phases, in order: number → OTP → scans. The scans stay locked
-              until the OTP passes, because the server refuses them without it. */}
-          {step === 1 && !isReview && (
+          {/* ── Step 2: upload the Aadhaar card ──
+              Upload only. The number belongs to step 5, where it is either
+              confirmed from what OCR read here or collected because it could not
+              be read. */}
+          {step === STEP_AADHAAR && !isReview && (
             <>
               <CustomText fontType='primary' weight='Bold' style={styles.h2}>
-                Aadhaar verification
+                Upload your Aadhaar card
+              </CustomText>
+              <CustomText fontType='primary' style={styles.hint}>
+                Photograph both sides. Keep the whole card in frame and the text readable —
+                we read the details straight off it.
               </CustomText>
 
-              {/* Phase 1 — the scans. The card is read first so the number can
-                  be filled in from it. */}
-              <CustomText fontType='primary' style={styles.hint}>
-                Photograph both sides of your Aadhaar card. Keep the whole card in frame
-                and the text readable — we read the number straight off it.
-              </CustomText>
               <View style={styles.docRow}>
                 <DocCapture label='Front' uri={aadhaarFront || photoUrl(docs.aadhaar?.imageKey)}
                   onPress={capture(setAadhaarFront)} required />
@@ -834,37 +936,279 @@ const OnboardingWizardScreen = () => {
               </View>
 
               {documentVerified ? (
+                <View style={[styles.banner, styles.bannerOk]}>
+                  <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+                    Aadhaar card read
+                  </CustomText>
+                  <CustomText fontType='primary' style={styles.bannerBody}>
+                    We read your card. You&apos;ll confirm the number in the last step.
+                  </CustomText>
+                </View>
+              ) : null}
+
+              {aadhaarManualVerify && !documentVerified ? (
+                <View style={[styles.banner, styles.bannerWarn]}>
+                  <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+                    Manual check requested
+                  </CustomText>
+                  <CustomText fontType='primary' style={styles.bannerBody}>
+                    Our team will check your Aadhaar card by hand.
+                  </CustomText>
+                </View>
+              ) : null}
+
+              {aadhaarOcrFailed && !aadhaarManualVerify ? (
+                <OcrFallback
+                  message={aadhaarOcrMessage}
+                  busy={busy}
+                  onRetry={retryAadhaar}
+                  onManual={consentToManualAadhaar}
+                />
+              ) : (
+                <>
+                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={scanAadhaar}>
+                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                      {busy ? 'Reading…' : aadhaarScanned ? 'Upload again' : 'Upload and verify'}
+                    </CustomText>
+                  </TouchableOpacity>
+                  {documentVerified || aadhaarManualVerify ? (
+                    <TouchableOpacity style={styles.linkBtn} disabled={busy}
+                      onPress={() => goStep(STEP_LICENCE)}>
+                      <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                        Continue
+                      </CustomText>
+                    </TouchableOpacity>
+                  ) : null}
+                  {isEdit && isDirty ? (
+                    <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={cancel}>
+                      <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                        Cancel
+                      </CustomText>
+                    </TouchableOpacity>
+                  ) : null}
+                </>
+              )}
+            </>
+          )}
+
+          {/* ── Step 3: upload the driving licence ── */}
+          {step === STEP_LICENCE && !isReview && (
+            <>
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>
+                Upload your driving licence
+              </CustomText>
+              <CustomText fontType='primary' style={styles.hint}>
+                Photograph both sides. We read the licence number and expiry date off the
+                front, so you don&apos;t need to type them.
+              </CustomText>
+              {licenceDone ? (
                 <CustomText fontType='primary' style={styles.ok}>
-                  Document verified.
+                  Your licence is on file. Uploading again replaces it.
                 </CustomText>
               ) : null}
 
-              {!otpVerified ? (
-                <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={scanAadhaar}>
-                  <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                    {busy ? 'Verifying…' : scanned ? 'Verify again' : 'Verify'}
+              <View style={styles.docRow}>
+                <DocCapture label='Front' uri={licenceFront || photoUrl(docs.licence?.frontImageKey)}
+                  onPress={capture(setLicenceFront)} required />
+                <DocCapture label='Back' uri={licenceBack || photoUrl(docs.licence?.backImageKey)}
+                  onPress={capture(setLicenceBack)} required />
+              </View>
+
+              {licenceFallback ? (
+                <OcrFallback
+                  message={licenceFallback.message}
+                  busy={busy}
+                  onRetry={retryLicence}
+                  onManual={() => submitLicence({ manualConsent: true })}
+                >
+                  {/* Only when OCR read no number at all. Support has to be able
+                      to look the licence up, and an unreadable photo is exactly
+                      the case where they cannot get the number from the scan. */}
+                  {licenceFallback.needsNumber ? (
+                    <Field label='Licence number' value={licenceNumber}
+                      onChange={(t) => setLicenceNumber(t.toUpperCase())}
+                      placeholder='KA0520190001234' autoCapitalize='characters' required />
+                  ) : null}
+                </OcrFallback>
+              ) : (
+                <>
+                  <TouchableOpacity style={styles.primaryBtn} disabled={busy}
+                    onPress={() => submitLicence()}>
+                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                      {busy ? 'Reading…' : 'Upload and verify'}
+                    </CustomText>
+                  </TouchableOpacity>
+                  {licenceDone ? (
+                    <TouchableOpacity style={styles.linkBtn} disabled={busy}
+                      onPress={() => goStep(STEP_SELFIE)}>
+                      <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                        Keep the one on file
+                      </CustomText>
+                    </TouchableOpacity>
+                  ) : null}
+                </>
+              )}
+            </>
+          )}
+
+          {/* ── Step 4: live selfie ──
+              REQUIRED, and there is no skip — not even a hidden one. A camera
+              that will not open gets a permission request, and if the OS has
+              stopped prompting, a route into Settings. That is the only remedy
+              offered, by design. */}
+          {step === STEP_SELFIE && !isReview && (
+            <>
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Take a selfie</CustomText>
+              <CustomText fontType='primary' style={styles.hint}>
+                This becomes your profile photo and helps hosts recognise you. It has to be
+                taken now with your front camera — you can&apos;t choose an existing picture.
+              </CustomText>
+
+              <View style={styles.selfieWrap}>
+                <TouchableOpacity
+                  style={styles.selfieFrame}
+                  onPress={capture(setSelfie, { front: true })}
+                >
+                  {selfie ? (
+                    <Image source={{ uri: selfie }} style={styles.selfieImage} resizeMode='cover' />
+                  ) : (
+                    <>
+                      <Icon name='camera-outline' size={30} color='#757575' />
+                      <CustomText fontType='primary' style={styles.docText}>
+                        Tap to take a selfie
+                      </CustomText>
+                    </>
+                  )}
+                </TouchableOpacity>
+                {selfie ? (
+                  <TouchableOpacity style={styles.linkBtn} onPress={capture(setSelfie, { front: true })}>
+                    <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>Retake</CustomText>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              {/* Permission refused. Asking again is the remedy while the OS will
+                  still prompt; once it is 'blocked' the same button takes the
+                  user to Settings instead, because nothing else can fix it. */}
+              {cameraPermission && cameraPermission !== 'granted' && !selfie ? (
+                <View style={[styles.banner, styles.bannerWarn]}>
+                  <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+                    {cameraPermission === 'unavailable'
+                      ? 'No camera available'
+                      : 'Camera access is needed'}
+                  </CustomText>
+                  <CustomText fontType='primary' style={styles.bannerBody}>
+                    {cameraPermission === 'blocked'
+                      ? 'You\'ve turned the camera off for Cocarr, so we can\'t ask again from '
+                        + 'here. Open Settings, allow the camera, then come back and tap the circle.'
+                      : cameraPermission === 'unavailable'
+                        ? 'We couldn\'t find a camera on this device. Your other details are '
+                          + 'saved — finish this step on a phone with a front camera.'
+                        : 'Your selfie is required. Allow the camera and we\'ll take it now.'}
+                  </CustomText>
+                  {cameraPermission !== 'unavailable' ? (
+                    <TouchableOpacity
+                      style={styles.primaryBtn}
+                      disabled={busy}
+                      onPress={capture(setSelfie, {
+                        front: true,
+                        // Only jump to Settings when the OS has stopped asking —
+                        // otherwise the in-app prompt is the better experience.
+                        openSettingsIfBlocked: cameraPermission === 'blocked',
+                      })}
+                    >
+                      <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                        {cameraPermission === 'blocked' ? 'Open Settings' : 'Allow camera'}
+                      </CustomText>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ) : null}
+
+              <TouchableOpacity style={styles.primaryBtn} disabled={busy || !selfie} onPress={saveSelfie}>
+                <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                  {busy ? 'Saving…' : 'Save and continue'}
+                </CustomText>
+              </TouchableOpacity>
+
+              {/* Edit mode already has a photo on file, so the step is satisfied
+                  and this simply moves on. In onboarding there is no such
+                  control: the only way forward is to take the photo. */}
+              {isEdit || selfieSaved ? (
+                <TouchableOpacity style={styles.linkBtn} disabled={busy}
+                  onPress={() => goStep(STEP_KYC)}>
+                  <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                    {selfieSaved ? 'Keep my current photo' : 'Done'}
                   </CustomText>
                 </TouchableOpacity>
               ) : null}
+            </>
+          )}
 
-              {/* Phase 2 — the number, then the OTP. Hidden until the card has
-                  been read, because until then there is nothing to confirm. */}
-              {scanned && !otpVerified ? (
+          {/* ── Step 5: Aadhaar KYC ──
+              Two phases: settle the number, then prove it with the OTP. */}
+          {step === STEP_KYC && !isReview && (
+            <>
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Aadhaar KYC</CustomText>
+
+              {!kycProven ? (
+                <CustomText fontType='primary' style={styles.hint}>
+                  {documentVerified
+                    ? 'We read this number off the card you uploaded. Confirm it, then we\'ll '
+                      + 'verify it with a one-time code.'
+                    : 'We couldn\'t read the number from your card, so please enter it. We\'ll '
+                      + 'check it and then verify it with a one-time code.'}
+                </CustomText>
+              ) : null}
+
+              {/* Phase 1 — the number.
+                  The field is only shown when there is something for the user to
+                  type into it. When OCR read the card and this screen no longer
+                  has the number (it is returned once and masked thereafter), an
+                  empty box would read as "we lost it" — so say what will be
+                  used instead. */}
+              {!kycProven ? (
                 <>
-                  {manualEntry ? (
+                  {documentVerified && !aadhaarNumber ? (
                     <CustomText fontType='primary' style={styles.hint}>
-                      We couldn&apos;t read the number from your photos. Type it in and we&apos;ll
-                      still confirm it by OTP — our support team will check the card by hand.
+                      We&apos;ll use the number we read from the Aadhaar card you uploaded.
                     </CustomText>
+                  ) : (
+                    <Field label='Aadhaar number' value={aadhaarNumber}
+                      onChange={(t) => setAadhaarNumber(t.replace(/[^\d\s]/g, ''))}
+                      placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14}
+                      // Locked once confirmed, and while an OTP for it is in
+                      // flight — the code is bound to the number it was sent for.
+                      editable={!numberConfirmed && !otpSent} required />
+                  )}
+
+                  {!numberConfirmed ? (
+                    <TouchableOpacity style={styles.primaryBtn} disabled={busy}
+                      onPress={confirmAadhaarNumber}>
+                      <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                        {busy ? 'Checking…' : 'Verify and fetch details'}
+                      </CustomText>
+                    </TouchableOpacity>
                   ) : null}
+                </>
+              ) : null}
 
-                  <Field label='Aadhaar number' value={aadhaarNumber}
-                    onChange={(t) => setAadhaarNumber(t.replace(/[^\d\s]/g, ''))}
-                    placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14}
-                    // Locked once read by OCR, and while an OTP for it is in
-                    // flight — the code is bound to the number it was sent for.
-                    editable={!otpSent && (manualEntry || !documentVerified)} required />
+              {/* What we hold for that Aadhaar, so the user can see what is about
+                  to be verified rather than being asked to trust a number back. */}
+              {numberConfirmed && aadhaarDetails && !otpVerified ? (
+                <ReviewList rows={[
+                  ['Aadhaar number', aadhaarDetails.aadhaarNumber],
+                  ['Name on card', aadhaarDetails.holderName],
+                  ['Date of birth', aadhaarDetails.dateOfBirth],
+                  ['Gender', aadhaarDetails.gender],
+                  ['Address', aadhaarDetails.address],
+                ]} />
+              ) : null}
 
+              {/* Phase 2 — the OTP. Skipped entirely when the provider is
+                  bypassed; the card goes to the support team instead. */}
+              {numberConfirmed && !otpVerified && !BYPASS_AADHAAR_VERIFY ? (
+                <>
                   {!otpSent ? (
                     <>
                       <CustomText fontType='primary' style={styles.hint}>
@@ -873,7 +1217,16 @@ const OnboardingWizardScreen = () => {
                       </CustomText>
                       <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={sendAadhaarOtp}>
                         <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                          {busy ? 'Sending…' : 'Send OTP'}
+                          {busy ? 'Sending…' : 'Send Aadhaar OTP'}
+                        </CustomText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.linkBtn}
+                        disabled={busy}
+                        onPress={() => { setNumberConfirmed(false); setAadhaarDetails(null); }}
+                      >
+                        <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                          Use a different number
                         </CustomText>
                       </TouchableOpacity>
                     </>
@@ -892,177 +1245,52 @@ const OnboardingWizardScreen = () => {
                           Resend OTP
                         </CustomText>
                       </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.linkBtn}
-                        disabled={busy}
-                        onPress={() => { setOtpSent(false); setAadhaarOtp(''); }}
-                      >
-                        <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-                          Change number
-                        </CustomText>
-                      </TouchableOpacity>
                     </>
                   )}
                 </>
               ) : null}
 
-              {/* Both ticks in. The step advances on its own once the OTP
-                  passes, so this is only seen on a revisit. */}
-              {otpVerified ? (
-                <>
-                  <CustomText fontType='primary' style={styles.ok}>
-                    KYC verified.
-                  </CustomText>
-                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={() => goStep(2)}>
-                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      Continue
-                    </CustomText>
-                  </TouchableOpacity>
-                  {isEdit && isDirty ? (
-                    <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={cancel}>
-                      <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-                        Cancel
-                      </CustomText>
-                    </TouchableOpacity>
-                  ) : null}
-                </>
-              ) : null}
-            </>
-          )}
-
-          {/* ── Step 3: Driving licence ── */}
-          {step === 2 && !isReview && (
-            <>
-              <CustomText fontType='primary' weight='Bold' style={styles.h2}>
-                Driving licence verification
-              </CustomText>
-              {licenceDone ? (
-                <CustomText fontType='primary' style={styles.ok}>
-                  Your licence is on file. Submitting again replaces it.
-                </CustomText>
-              ) : null}
-
-              <Field label='Licence number' value={licenceNumber}
-                onChange={(t) => setLicenceNumber(t.toUpperCase())}
-                placeholder='KA0520190001234' autoCapitalize='characters' required />
-
-              <CustomText fontType='primary' style={styles.hint}>
-                Photograph both sides of your licence.
-              </CustomText>
-              <View style={styles.docRow}>
-                <DocCapture label='Front' uri={licenceFront || photoUrl(docs.licence?.frontImageKey)}
-                  onPress={capture(setLicenceFront)} required />
-                <DocCapture label='Back' uri={licenceBack || photoUrl(docs.licence?.backImageKey)}
-                  onPress={capture(setLicenceBack)} required />
-              </View>
-
-              {consent && consent.step === 2 ? (
-                <ConsentPrompt
-                  message={consent.message}
-                  busy={busy}
-                  onAgree={() => submitDocument(consent.path, consent.payload, consent.nextStep, true)}
-                  onRetry={() => setConsent(null)}
-                />
-              ) : (
-                <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={submitLicence}>
-                  <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                    {busy ? 'Checking…' : 'Verify and continue'}
-                  </CustomText>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
-
-          {/* ── Step 4: Live selfie ──
-              REQUIRED. There is no unconditional skip: the only way past it is a
-              camera that genuinely will not open, and only after the user has
-              re-requested permission and it failed again. */}
-          {step === 3 && !isReview && (
-            <>
-              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Take a selfie</CustomText>
-              <CustomText fontType='primary' style={styles.hint}>
-                This becomes your profile photo and helps hosts recognise you. It has to be
-                taken now with your front camera — you can&apos;t choose an existing picture.
-              </CustomText>
-
-              <View style={styles.selfieWrap}>
-                <TouchableOpacity
-                  style={styles.selfieFrame}
-                  onPress={capture(setSelfie, { front: true, isRetry: cameraDenied })}
-                >
-                  {selfie ? (
-                    <Image source={{ uri: selfie }} style={styles.selfieImage} resizeMode='cover' />
-                  ) : (
-                    <>
-                      <Icon name='camera-outline' size={30} color='#757575' />
-                      <CustomText fontType='primary' style={styles.docText}>
-                        {cameraDenied ? 'Tap to allow the camera' : 'Tap to take a selfie'}
-                      </CustomText>
-                    </>
-                  )}
-                </TouchableOpacity>
-                {selfie ? (
-                  <TouchableOpacity style={styles.linkBtn} onPress={capture(setSelfie, { front: true })}>
-                    <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>Retake</CustomText>
-                  </TouchableOpacity>
-                ) : null}
-              </View>
-
-              {/* Permission was refused — ask again before offering anything else. */}
-              {cameraDenied && !selfie ? (
+              {BYPASS_AADHAAR_VERIFY && numberConfirmed ? (
                 <View style={[styles.banner, styles.bannerWarn]}>
                   <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
-                    Camera access is blocked
+                    Manual verification
                   </CustomText>
                   <CustomText fontType='primary' style={styles.bannerBody}>
-                    Enable the camera for Cocarr in your device settings, then try again.
+                    Automatic Aadhaar verification is unavailable at the moment, so our team
+                    will check your card against this number by hand.
                   </CustomText>
-                  <TouchableOpacity
-                    style={styles.primaryBtn}
-                    disabled={busy}
-                    onPress={capture(setSelfie, { front: true, isRetry: true })}
-                  >
-                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      {cameraBlocked ? 'Try once more' : 'Allow camera and try again'}
-                    </CustomText>
-                  </TouchableOpacity>
-                  {cameraBlocked ? (
-                    <CustomText fontType='primary' style={styles.bannerBody}>
-                      Still blocked? You can continue without a photo and add it later from
-                      your profile.
-                    </CustomText>
-                  ) : null}
                 </View>
               ) : null}
 
-              <View style={[styles.banner, styles.bannerOk]}>
-                <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>Almost done</CustomText>
-                <CustomText fontType='primary' style={styles.bannerBody}>
-                  Your documents are with our team. Once they&apos;re approved you can book a
-                  ride — in the meantime, enjoy browsing our cars.
-                </CustomText>
-              </View>
+              {otpVerified ? (
+                <CustomText fontType='primary' style={styles.ok}>Aadhaar verified.</CustomText>
+              ) : null}
 
-              <TouchableOpacity style={styles.primaryBtn} disabled={busy || !selfie} onPress={saveSelfie}>
-                <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                  {busy ? 'Saving…' : 'Save and finish'}
-                </CustomText>
-              </TouchableOpacity>
-
-              {/* Edit mode already has a photo on file, so Done is always there.
-                  Otherwise this only appears once a retry has failed. */}
-              {isEdit || cameraBlocked ? (
-                <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={finish}>
-                  <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-                    {isEdit ? 'Done' : 'Continue without a photo'}
-                  </CustomText>
-                </TouchableOpacity>
+              {/* Submit. The last action of the whole wizard — everything else is
+                  already stored by the time this is pressed. */}
+              {kycProven ? (
+                <>
+                  <View style={[styles.banner, styles.bannerOk]}>
+                    <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+                      That&apos;s everything
+                    </CustomText>
+                    <CustomText fontType='primary' style={styles.bannerBody}>
+                      Submitting sends your profile to our team. Once it&apos;s approved you can
+                      book a ride — in the meantime, enjoy browsing our cars.
+                    </CustomText>
+                  </View>
+                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={finish}>
+                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                      {busy ? 'Submitting…' : 'Submit'}
+                    </CustomText>
+                  </TouchableOpacity>
+                </>
               ) : null}
             </>
           )}
 
           {/* ── Review mode: read-only sections, selected from the rail ── */}
-          {isReview && step === 0 && (
+          {isReview && step === STEP_DETAILS && (
             <View>
               <CustomText fontType='primary' weight='Bold' style={styles.h2}>Your details</CustomText>
               <ReviewList rows={[
@@ -1077,26 +1305,19 @@ const OnboardingWizardScreen = () => {
             </View>
           )}
 
-          {isReview && step === 1 && (
+          {isReview && step === STEP_AADHAAR && (
             <View>
               <View style={styles.reviewHead}>
-                <CustomText fontType='primary' weight='Bold' style={styles.h2}>Aadhaar</CustomText>
+                <CustomText fontType='primary' weight='Bold' style={styles.h2}>Aadhaar card</CustomText>
                 <DocStatus doc={docs.aadhaar} />
               </View>
-              {docs.aadhaar?.submitted ? (
+              {docs.aadhaar?.scanned ? (
                 <>
                   <ReviewList rows={[
                     ['Name on card', docs.aadhaar.holderName],
                     ['Date of birth', docs.aadhaar.dateOfBirth],
-                    // The step's two ticks, reported separately: the first says
-                    // the card could be read, the second that its holder
-                    // answered the OTP. Neither means an admin has approved it.
-                    ['Document verified', docs.aadhaar.documentVerified ? 'Yes' : 'No'],
-                    ['KYC verified', docs.aadhaar.otpVerified ? 'Yes' : 'No'],
-                    docs.aadhaar.manualConsent
-                      ? ['Manual check', 'Requested — our team will verify by hand']
-                      : null,
-                  ].filter(Boolean)} />
+                    ['Read automatically', docs.aadhaar.documentVerified ? 'Yes' : 'No'],
+                  ]} />
                   {docs.aadhaar.rejectionReason ? (
                     <CustomText fontType='primary' style={styles.error}>
                       {docs.aadhaar.rejectionReason}
@@ -1111,13 +1332,13 @@ const OnboardingWizardScreen = () => {
                 </>
               ) : (
                 <CustomText fontType='primary' style={styles.hint}>
-                  You haven&apos;t added your Aadhaar yet.
+                  You haven&apos;t added your Aadhaar card yet.
                 </CustomText>
               )}
             </View>
           )}
 
-          {isReview && step === 2 && (
+          {isReview && step === STEP_LICENCE && (
             <View>
               <View style={styles.reviewHead}>
                 <CustomText fontType='primary' weight='Bold' style={styles.h2}>Driving licence</CustomText>
@@ -1148,7 +1369,7 @@ const OnboardingWizardScreen = () => {
             </View>
           )}
 
-          {isReview && step === 3 && (
+          {isReview && step === STEP_SELFIE && (
             <View>
               <CustomText fontType='primary' weight='Bold' style={styles.h2}>Selfie</CustomText>
               {status?.profile?.profilePhoto ? (
@@ -1164,6 +1385,19 @@ const OnboardingWizardScreen = () => {
                   You haven&apos;t added a selfie. It becomes your profile photo.
                 </CustomText>
               )}
+            </View>
+          )}
+
+          {isReview && step === STEP_KYC && (
+            <View>
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Aadhaar KYC</CustomText>
+              <ReviewList rows={[
+                ['Number on file', docs.aadhaar?.numberConfirmed ? 'Yes' : 'No'],
+                ['Verified by OTP', docs.aadhaar?.otpVerified ? 'Yes' : 'No'],
+                docs.aadhaar?.manualConsent
+                  ? ['Manual check', 'Requested — our team will verify by hand']
+                  : null,
+              ].filter(Boolean)} />
             </View>
           )}
         </ScrollView>
@@ -1234,12 +1468,6 @@ const styles = StyleSheet.create({
   pickerInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pickerValue: { color: '#fff', fontSize: 14 },
   pickerPlaceholder: { color: '#6b6b73', fontSize: 14 },
-
-  checkRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    marginTop: 14, marginBottom: 2,
-  },
-  checkLabel: { flex: 1, fontSize: 13, color: '#c9c9d1', lineHeight: 19 },
 
   docRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
   docBox: {

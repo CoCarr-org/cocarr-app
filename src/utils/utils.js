@@ -194,6 +194,40 @@ export const getCurrentLocation = async (openSettingsIfBlocked = false) => {
 };
 
 
+// Camera permission, asked for explicitly.
+//
+// launchCamera asks for it implicitly and reports a refusal as an errorCode,
+// which is fine for "did it open?" but useless for "ask again": once the OS has
+// a stored refusal it never re-prompts, and the picker just fails identically
+// every time. This distinguishes the two cases, so a screen that REQUIRES the
+// camera — the onboarding selfie — can prompt when prompting will work and send
+// the user to Settings when it won't.
+//
+// Returns 'granted' | 'denied' | 'blocked' | 'unavailable'. Never throws:
+// a permission check that explodes would be a worse failure than the refusal
+// it is reporting.
+export const requestCameraPermission = async (openSettingsIfBlocked = false) => {
+  try {
+    const permission = Platform.OS === 'ios'
+      ? PERMISSIONS.IOS.CAMERA
+      : PERMISSIONS.ANDROID.CAMERA;
+
+    const result = await request(permission);
+
+    if (result === RESULTS.GRANTED || result === RESULTS.LIMITED) return 'granted';
+    if (result === RESULTS.BLOCKED) {
+      // The OS will not prompt again — Settings is the only remedy left.
+      if (openSettingsIfBlocked) openSettings().catch(() => {});
+      return 'blocked';
+    }
+    if (result === RESULTS.UNAVAILABLE) return 'unavailable';
+    return 'denied';
+  } catch (error) {
+    console.warn('[camera] permission check failed:', error?.message);
+    return 'denied';
+  }
+};
+
 export const showToast = (type, text1, text2) => {
   Toast.show({
     type: type,

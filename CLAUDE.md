@@ -29,7 +29,15 @@ Same as web: `initiated → booked → ongoing → finished`, plus `cancelled`. 
 `RideInfoScreen.jsx` used a mount-only `useEffect` to fetch booking data — since React Navigation doesn't remount an already-in-stack screen on `navigation.navigate()` back to it, this left the screen showing stale pre-start data after successfully starting a ride. Fixed with `useFocusEffect` instead — refetches on every focus, not just mount.
 
 ## Onboarding / verification — ONE wizard, three modes
-`screens/profileScreens/OnboardingWizardScreen.js` owns profile details AND identity documents. Four steps: details → Aadhaar → licence → live selfie. Steps 1–3 are mandatory; the selfie is optional.
+`screens/profileScreens/OnboardingWizardScreen.js` owns profile details AND identity documents. **Five steps: details → Aadhaar card → licence → live selfie → Aadhaar KYC.** All five are mandatory — there is no skip on any of them, including the selfie. Mirrors web's `OnboardingWizardPage.jsx` step for step; keep the two in sync.
+
+**All three uploads come first, the identity check last.** The Aadhaar *number* is not collected in step 2: OCR reads it off the card, so most users never type it, and the OTP is reached only once everything else is stored.
+
+**Failed OCR is never a dead end.** Steps 2 and 3 share one `OcrFallback` component: *Retry verification* (clears the photos) or *Continue — our team will verify it* (records `manualConsent`). The licence fallback also collects the number when OCR read none (`needsNumber` on the error body).
+
+**Step 5 is confirm-then-prove**: `POST /user/verification/aadhaar/number` settles which Aadhaar is about to be verified and returns the details on file, then `check-kyc` → `verify-kyc` → Submit. The full number is returned exactly once (by the scan call) and masked thereafter, so all three of those calls omit `kycNumber` when the screen no longer holds it and let the server fall back to the row.
+
+**Camera permission is requested explicitly**, via `requestCameraPermission()` in `utils/utils.js`, before `launchCamera` is called. The picker reports a refusal as an opaque `errorCode` and gives no way to tell "the user said no" (ask again) from "the OS will never prompt again" (Settings is the only fix) — which is exactly the distinction the mandatory selfie step needs to offer the right remedy. Neither state is a skip.
 
 Mode comes from the `mode` route param, so one screen serves all three:
 - `onboarding` (default) — a new account, straight after OTP. Cannot be abandoned.
