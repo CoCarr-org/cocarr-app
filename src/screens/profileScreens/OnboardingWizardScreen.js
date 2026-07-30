@@ -291,15 +291,23 @@ const OnboardingWizardScreen = () => {
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarFront, setAadhaarFront] = useState(null);
   const [aadhaarBack, setAadhaarBack] = useState(null);
-  // Aadhaar OTP is a prerequisite for submitting the scans — the server refuses
-  // without it, so this step is a two-phase flow rather than one form.
+  // The step runs scans → number → OTP. `scanned` gates the second half: the
+  // number field and the OTP controls stay hidden until the card has been read,
+  // because until then there is nothing to prefill and nothing to confirm.
+  const [scanned, setScanned] = useState(false);
+  // OCR read the card. NOT the same as the profile being verified — that stays
+  // an admin decision — it is the first of the step's two ticks.
+  const [documentVerified, setDocumentVerified] = useState(false);
+  // OCR could not read the number, so the user types it. The OTP still has to
+  // pass, so this changes who supplies the number, not how it is proven.
+  const [manualEntry, setManualEntry] = useState(false);
   const [aadhaarRef, setAadhaarRef] = useState('');
   const [aadhaarOtp, setAadhaarOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
-  // OCR can misread a photo. Ticking this lets the user consent, up front, to
-  // the support team checking the card by hand, so a failed OCR read does not
-  // dead-end the step. It is never pre-ticked — it records a choice the user made.
+  // Consent to the support team checking the card by hand. Set when OCR fails
+  // rather than offered up front — there is nothing to consent to while
+  // automatic reading is still working.
   const [aadhaarManualVerify, setAadhaarManualVerify] = useState(false);
   const [licenceNumber, setLicenceNumber] = useState('');
   const [licenceFront, setLicenceFront] = useState(null);
@@ -336,8 +344,19 @@ const OnboardingWizardScreen = () => {
       setInitialForm(loaded);
       const licence = res.data?.documents?.licence;
       if (licence?.licenceNumber) setLicenceNumber(licence.licenceNumber);
-      // Reopening must not ask for the OTP again if it is already done.
-      if (res.data?.documents?.aadhaar?.otpVerified) setOtpVerified(true);
+      // Reopening must resume where the step got to, not restart it.
+      const aad = res.data?.documents?.aadhaar;
+      if (aad?.otpVerified) setOtpVerified(true);
+      if (aad?.documentVerified) setDocumentVerified(true);
+      // The scans are already stored, so the number/OTP half is reachable again
+      // without re-photographing them. The number itself is not returned
+      // (Aadhaar is masked everywhere it is read back), so a manual re-entry is
+      // asked for whenever the OTP is still outstanding.
+      if (aad?.imageKey) {
+        setScanned(true);
+        if (!aad.otpVerified) setManualEntry(true);
+      }
+      if (aad?.manualConsent) setAadhaarManualVerify(true);
     } catch (e) {
       setError(e.response?.data?.error || 'Could not load your profile');
     } finally {
@@ -489,18 +508,60 @@ const OnboardingWizardScreen = () => {
     }
   };
 
+  // ── Aadhaar phase 1: read the card ───────────────────────────────────────
+  // Both faces go up, OCR reads the front, and the number it finds prefills the
+  // field. A failed read is not a dead end — it switches the step to manual
+  // entry, and the OTP that follows is the same either way, so a typed number
+  // ends up no less proven than an extracted one.
+  const scanAadhaar = async () => {
+    setError('');
+    if (!aadhaarFront || !aadhaarBack) {
+      setError('Photograph both the front and back of your Aadhaar card.'); return;
+    }
+
+    setBusy(true);
+    try {
+      const res = await axios.post(`${API_URL}/user/verification/aadhaar/scan`, {
+        frontImage: aadhaarFront,
+        backImage: aadhaarBack,
+      });
+      const data = res.data || {};
+      setScanned(true);
+
+      if (data.needsManualEntry) {
+        // OCR could not read it. Ask for the number by hand and record consent
+        // to a human checking the card.
+        setManualEntry(true);
+        setAadhaarManualVerify(true);
+        setError(data.message || 'We could not read the number. Enter it manually.');
+      } else {
+        setManualEntry(false);
+        setAadhaarManualVerify(false);
+        setAadhaarNumber(data.aadhaarNumber || '');
+        setDocumentVerified(true);
+        notify('Document verified. Now confirm the number with an OTP.');
+      }
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.error || e.response?.data?.message || 'Could not read your Aadhaar card.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const sendAadhaarOtp = async () => {
     setError('');
     const number = aadhaarNumber.replace(/\s/g, '');
     if (!/^\d{12}$/.test(number)) { setError('Enter the 12-digit Aadhaar number.'); return; }
 
-    // Cashfree OTP verification is bypassed: don't call the provider, just move
-    // the user on to photographing the card. The scans are then verified by the
-    // support team (submitAadhaar forces manual consent in this mode).
+    // Cashfree OTP verification is bypassed: don't call the provider. The scans
+    // are already stored by this point, so the card goes to the support team to
+    // be checked by hand and the step simply moves on.
     if (BYPASS_AADHAAR_VERIFY) {
       setOtpVerified(true);
       setOtpSent(false);
-      notify('Now add photos of your Aadhaar card.');
+      notify('Our team will verify your Aadhaar by hand.');
+      goStep(2);
       return;
     }
 
@@ -528,38 +589,21 @@ const OnboardingWizardScreen = () => {
         otp: aadhaarOtp.trim(),
         kycNumber: aadhaarNumber.replace(/\s/g, ''),
         uid: 'self',
+        // Only true when OCR could not read the card and the number was typed —
+        // it is what tells the reviewer this row needs human eyes.
+        manualConsent: BYPASS_AADHAAR_VERIFY || aadhaarManualVerify,
       });
       setOtpVerified(true);
       setOtpSent(false);
-      notify('Aadhaar verified. Now add photos of the card.');
+      notify('Aadhaar verified.');
       await load();
+      // The OTP is the last thing this step needs — the scans went up before it.
+      goStep(2);
     } catch (e) {
       setError(e.response?.data?.error || e.response?.data?.message || 'That OTP could not be verified.');
     } finally {
       setBusy(false);
     }
-  };
-
-  const submitAadhaar = () => {
-    if (!/^\d{12}$/.test(aadhaarNumber.replace(/\s/g, ''))) {
-      setError('Enter the 12-digit Aadhaar number.'); return;
-    }
-    // When Cashfree OTP is bypassed there is no OTP to require — the card is
-    // checked by hand instead.
-    if (!otpVerified && !BYPASS_AADHAAR_VERIFY) {
-      setError('Verify your Aadhaar with the OTP first.'); return;
-    }
-    if (!aadhaarFront || !aadhaarBack) {
-      setError('Photograph both the front and back of your Aadhaar card.'); return;
-    }
-    // Consent to manual review is implied when Cashfree is bypassed (nothing was
-    // auto-verified), and otherwise taken from the checkbox the user ticked.
-    const manualConsent = BYPASS_AADHAAR_VERIFY || aadhaarManualVerify;
-    submitDocument('/user/verification/aadhaar', {
-      aadhaarNumber: aadhaarNumber.replace(/\s/g, ''),
-      frontImage: aadhaarFront,
-      backImage: aadhaarBack,
-    }, 2, manualConsent);
   };
 
   const submitLicence = () => {
@@ -776,126 +820,111 @@ const OnboardingWizardScreen = () => {
                 Aadhaar verification
               </CustomText>
 
-              <Field label='Aadhaar number' value={aadhaarNumber}
-                onChange={(t) => setAadhaarNumber(t.replace(/[^\d\s]/g, ''))}
-                placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14}
-                editable={!otpVerified && !otpSent} required />
+              {/* Phase 1 — the scans. The card is read first so the number can
+                  be filled in from it. */}
+              <CustomText fontType='primary' style={styles.hint}>
+                Photograph both sides of your Aadhaar card. Keep the whole card in frame
+                and the text readable — we read the number straight off it.
+              </CustomText>
+              <View style={styles.docRow}>
+                <DocCapture label='Front' uri={aadhaarFront || photoUrl(docs.aadhaar?.imageKey)}
+                  onPress={capture(setAadhaarFront)} required />
+                <DocCapture label='Back' uri={aadhaarBack || photoUrl(docs.aadhaar?.backImageKey)}
+                  onPress={capture(setAadhaarBack)} required />
+              </View>
 
-              {/* Phase 1 — request the OTP. Skipped entirely when Cashfree
-                  verification is bypassed; the user goes straight to the scans. */}
-              {!BYPASS_AADHAAR_VERIFY && !otpVerified && !otpSent ? (
-                <>
-                  <CustomText fontType='primary' style={styles.hint}>
-                    We&apos;ll send a one-time code to the mobile number registered against this
-                    Aadhaar. Verifying it is required before you can continue.
+              {documentVerified ? (
+                <CustomText fontType='primary' style={styles.ok}>
+                  Document verified.
+                </CustomText>
+              ) : null}
+
+              {!otpVerified ? (
+                <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={scanAadhaar}>
+                  <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                    {busy ? 'Verifying…' : scanned ? 'Verify again' : 'Verify'}
                   </CustomText>
-                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={sendAadhaarOtp}>
-                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      {busy ? 'Sending…' : 'Send OTP'}
-                    </CustomText>
-                  </TouchableOpacity>
-                </>
+                </TouchableOpacity>
               ) : null}
 
-              {/* Phase 2 — enter it. */}
-              {!BYPASS_AADHAAR_VERIFY && !otpVerified && otpSent ? (
+              {/* Phase 2 — the number, then the OTP. Hidden until the card has
+                  been read, because until then there is nothing to confirm. */}
+              {scanned && !otpVerified ? (
                 <>
-                  <Field label='OTP' value={aadhaarOtp}
-                    onChange={(t) => setAadhaarOtp(t.replace(/\D/g, ''))}
-                    placeholder='Enter the code' keyboardType='number-pad' maxLength={8} required />
-                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={verifyAadhaarOtp}>
-                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      {busy ? 'Verifying…' : 'Verify OTP'}
-                    </CustomText>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={sendAadhaarOtp}>
-                    <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-                      Resend OTP
-                    </CustomText>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.linkBtn}
-                    disabled={busy}
-                    onPress={() => { setOtpSent(false); setAadhaarOtp(''); }}
-                  >
-                    <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-                      Change number
-                    </CustomText>
-                  </TouchableOpacity>
-                </>
-              ) : null}
-
-              {/* Phase 3 — scans. Shown once the OTP is done, or straight away
-                  when Cashfree verification is bypassed. */}
-              {otpVerified || BYPASS_AADHAAR_VERIFY ? (
-                <>
-                  {BYPASS_AADHAAR_VERIFY ? (
+                  {manualEntry ? (
                     <CustomText fontType='primary' style={styles.hint}>
-                      Automatic Aadhaar verification is currently unavailable, so our team will
-                      verify your card by hand. Photograph both sides — keep the whole card in
-                      frame and the text readable.
+                      We couldn&apos;t read the number from your photos. Type it in and we&apos;ll
+                      still confirm it by OTP — our support team will check the card by hand.
                     </CustomText>
+                  ) : null}
+
+                  <Field label='Aadhaar number' value={aadhaarNumber}
+                    onChange={(t) => setAadhaarNumber(t.replace(/[^\d\s]/g, ''))}
+                    placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14}
+                    // Locked once read by OCR, and while an OTP for it is in
+                    // flight — the code is bound to the number it was sent for.
+                    editable={!otpSent && (manualEntry || !documentVerified)} required />
+
+                  {!otpSent ? (
+                    <>
+                      <CustomText fontType='primary' style={styles.hint}>
+                        We&apos;ll send a one-time code to the mobile number registered against
+                        this Aadhaar.
+                      </CustomText>
+                      <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={sendAadhaarOtp}>
+                        <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                          {busy ? 'Sending…' : 'Send OTP'}
+                        </CustomText>
+                      </TouchableOpacity>
+                    </>
                   ) : (
                     <>
-                      <CustomText fontType='primary' style={styles.ok}>
-                        Aadhaar verified with OTP.
-                      </CustomText>
-                      <CustomText fontType='primary' style={styles.hint}>
-                        Now photograph both sides. Keep the whole card in frame and the text readable.
-                      </CustomText>
+                      <Field label='OTP' value={aadhaarOtp}
+                        onChange={(t) => setAadhaarOtp(t.replace(/\D/g, ''))}
+                        placeholder='Enter the code' keyboardType='number-pad' maxLength={8} required />
+                      <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={verifyAadhaarOtp}>
+                        <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                          {busy ? 'Verifying…' : 'Verify OTP'}
+                        </CustomText>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={sendAadhaarOtp}>
+                        <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                          Resend OTP
+                        </CustomText>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.linkBtn}
+                        disabled={busy}
+                        onPress={() => { setOtpSent(false); setAadhaarOtp(''); }}
+                      >
+                        <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                          Change number
+                        </CustomText>
+                      </TouchableOpacity>
                     </>
                   )}
-                  <View style={styles.docRow}>
-                    <DocCapture label='Front' uri={aadhaarFront || photoUrl(docs.aadhaar?.imageKey)}
-                      onPress={capture(setAadhaarFront)} required />
-                    <DocCapture label='Back' uri={aadhaarBack || photoUrl(docs.aadhaar?.backImageKey)}
-                      onPress={capture(setAadhaarBack)} required />
-                  </View>
+                </>
+              ) : null}
 
-                  {/* OCR-failure fallback: let the user opt into manual review up
-                      front. Redundant when Cashfree is bypassed (manual review is
-                      already the path), so only shown when it isn't. */}
-                  {!BYPASS_AADHAAR_VERIFY ? (
-                    <TouchableOpacity
-                      style={styles.checkRow}
-                      activeOpacity={0.7}
-                      onPress={() => setAadhaarManualVerify((v) => !v)}
-                    >
-                      <Icon
-                        name={aadhaarManualVerify ? 'checkbox' : 'square-outline'}
-                        size={22}
-                        color={aadhaarManualVerify ? BRAND_COLOR : '#6b6b73'}
-                      />
-                      <CustomText fontType='primary' style={styles.checkLabel}>
-                        If the photo can&apos;t be read automatically, let our support team verify
-                        my Aadhaar manually.
+              {/* Both ticks in. The step advances on its own once the OTP
+                  passes, so this is only seen on a revisit. */}
+              {otpVerified ? (
+                <>
+                  <CustomText fontType='primary' style={styles.ok}>
+                    KYC verified.
+                  </CustomText>
+                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={() => goStep(2)}>
+                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                      Continue
+                    </CustomText>
+                  </TouchableOpacity>
+                  {isEdit && isDirty ? (
+                    <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={cancel}>
+                      <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                        Cancel
                       </CustomText>
                     </TouchableOpacity>
                   ) : null}
-
-                  {consent && consent.step === 1 ? (
-                    <ConsentPrompt
-                      message={consent.message}
-                      busy={busy}
-                      onAgree={() => submitDocument(consent.path, consent.payload, consent.nextStep, true)}
-                      onRetry={() => setConsent(null)}
-                    />
-                  ) : (
-                    <>
-                      <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={submitAadhaar}>
-                        <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                          {busy ? 'Checking…' : 'Save and continue'}
-                        </CustomText>
-                      </TouchableOpacity>
-                      {isEdit && isDirty ? (
-                        <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={cancel}>
-                          <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-                            Cancel
-                          </CustomText>
-                        </TouchableOpacity>
-                      ) : null}
-                    </>
-                  )}
                 </>
               ) : null}
             </>
@@ -1059,8 +1088,15 @@ const OnboardingWizardScreen = () => {
                   <ReviewList rows={[
                     ['Name on card', docs.aadhaar.holderName],
                     ['Date of birth', docs.aadhaar.dateOfBirth],
-                    ['OTP verified', docs.aadhaar.otpVerified ? 'Yes' : 'No'],
-                  ]} />
+                    // The step's two ticks, reported separately: the first says
+                    // the card could be read, the second that its holder
+                    // answered the OTP. Neither means an admin has approved it.
+                    ['Document verified', docs.aadhaar.documentVerified ? 'Yes' : 'No'],
+                    ['KYC verified', docs.aadhaar.otpVerified ? 'Yes' : 'No'],
+                    docs.aadhaar.manualConsent
+                      ? ['Manual check', 'Requested — our team will verify by hand']
+                      : null,
+                  ].filter(Boolean)} />
                   {docs.aadhaar.rejectionReason ? (
                     <CustomText fontType='primary' style={styles.error}>
                       {docs.aadhaar.rejectionReason}
