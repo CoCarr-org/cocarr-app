@@ -25,17 +25,23 @@ const BADGES = {
 
 const SIZES = { sm: 16, md: 22, lg: 30 };
 
-const VerificationBadge = ({ size = 'md', ringColor = '#000' }) => {
-  const [status, setStatus] = useState(null);
+// `status` may be supplied by the caller. The shell header does that — it reads
+// the value straight from redux, so the badge stays live as the wizard dispatches
+// updates without the header issuing a request on every tab switch. Screens that
+// have no status to hand omit it and the badge fetches once on focus.
+const VerificationBadge = ({ size = 'md', ringColor = '#000', status: statusProp }) => {
+  const [fetched, setFetched] = useState(null);
+  const controlled = statusProp !== undefined;
 
-  // useFocusEffect: coming back from the wizard must re-read the status, or a
-  // profile that was just submitted still shows the old badge.
+  // useFocusEffect, not useEffect: returning from the wizard must re-read the
+  // status, or a profile just submitted still shows the old badge.
   useFocusEffect(useCallback(() => {
+    if (controlled) return undefined;
     let cancelled = false;
     (async () => {
       try {
         const res = await axios.get(`${API_URL}/user/verification`);
-        if (!cancelled) setStatus(res.data?.verificationStatus || null);
+        if (!cancelled) setFetched(res.data?.verificationStatus || null);
       } catch (error) {
         // Showing "unverified" because a request timed out would be worse than
         // showing nothing.
@@ -43,8 +49,9 @@ const VerificationBadge = ({ size = 'md', ringColor = '#000' }) => {
       }
     })();
     return () => { cancelled = true; };
-  }, []));
+  }, [controlled]));
 
+  const status = controlled ? statusProp : fetched;
   const badge = status && BADGES[status];
   if (!badge) return null;
 

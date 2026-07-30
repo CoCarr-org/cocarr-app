@@ -9,6 +9,9 @@ const initialState = {
         isPremium:false,
         contactNumber:null,
         profilePhoto:null,
+        // Mirrored here so the header avatar's badge is live without the shell
+        // header polling the API on every tab switch.
+        verificationStatus:null,
         email:null,
         licenseVerified:false,
         kycVerified:false,
@@ -80,11 +83,12 @@ const authSlice = createSlice({
       }
     },
     updateProfile: (state, action) => {
-      console.log('updateProfile', action.payload);
       return {...state,
                 userName:action.payload.userName ? action.payload.userName : state.userName,
                 email:action.payload.email ? action.payload.email : state.email,
-                profilePhoto:action.payload.profilePhoto ? action.payload.profilePhoto : state.profilePhoto
+                profilePhoto:action.payload.profilePhoto ? action.payload.profilePhoto : state.profilePhoto,
+                verificationStatus:action.payload.verificationStatus
+                  ? action.payload.verificationStatus : state.verificationStatus
       }
     },
     updateToken: (state, action) => {

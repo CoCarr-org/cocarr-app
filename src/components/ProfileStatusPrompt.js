@@ -3,6 +3,8 @@ import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import { updateProfile } from '../store/authSlice';
 import CustomText from './CustomText';
 import { API_URL, BRAND_COLOR } from '../utils/constants';
 
@@ -55,6 +57,7 @@ const COPY = {
 
 const ProfileStatusPrompt = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch();
   const [status, setStatus] = useState(null);
 
   // useFocusEffect, not useEffect: coming back from the wizard must re-read the
@@ -64,7 +67,15 @@ const ProfileStatusPrompt = () => {
     (async () => {
       try {
         const res = await axios.get(`${API_URL}/user/verification`);
-        if (!cancelled) setStatus(res.data);
+        if (cancelled) return;
+        setStatus(res.data);
+        // One fetch feeds both this prompt and the header badge.
+        if (res.data?.verificationStatus) {
+          dispatch(updateProfile({
+            verificationStatus: res.data.verificationStatus,
+            profilePhoto: res.data.profile?.profilePhoto || undefined,
+          }));
+        }
       } catch (error) {
         // A failed status read must not put a misleading banner on the screen —
         // rendering nothing is the safe outcome.

@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';
+import VerificationBadge from '../VerificationBadge';
 import CustomText from '../CustomText';
 import { photoUrl } from '../../utils/utils';
 import { API_URL, BRAND_COLOR } from '../../utils/constants';
@@ -21,7 +22,7 @@ import { API_URL, BRAND_COLOR } from '../../utils/constants';
 export default function TopBar({ title, showBack = false, rightIcon, rightRoute, rightParams }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const { userRole, userName, profilePhoto } = useSelector((s) => s.auth);
+  const { userRole, userName, profilePhoto, verificationStatus } = useSelector((s) => s.auth);
   const isCustomer = userRole !== 'host';
 
   // Wallet points sit beside the avatar for renters only. Fetched here so the
@@ -104,23 +105,30 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute,
                 <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 12 }}>{points}</CustomText>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
-              onPress={() => navigation.navigate(profileRoute)}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel={userName ? `Profile, ${userName}` : 'Profile'}
-              style={{
-                width: 38, height: 38, borderRadius: 19,
-                backgroundColor: '#1c1c1e',
-                borderWidth: 1, borderColor: '#2c2c2e',
-                alignItems: 'center', justifyContent: 'center',
-                overflow: 'hidden',
-              }}
-            >
-              {avatar
-                ? <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
-                : <Icon name="person-outline" size={19} color={BRAND_COLOR} />}
-            </TouchableOpacity>
+            {/* The badge is a SIBLING of the round avatar, not a child: the
+                avatar clips to its border radius (overflow hidden) and would cut
+                the badge in half. This wrapper is the positioning context and is
+                deliberately not clipped. */}
+            <View style={{ position: 'relative' }}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate(profileRoute)}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={userName ? `Profile, ${userName}` : 'Profile'}
+                style={{
+                  width: 38, height: 38, borderRadius: 19,
+                  backgroundColor: '#1c1c1e',
+                  borderWidth: 1, borderColor: '#2c2c2e',
+                  alignItems: 'center', justifyContent: 'center',
+                  overflow: 'hidden',
+                }}
+              >
+                {avatar
+                  ? <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
+                  : <Icon name="person-outline" size={19} color={BRAND_COLOR} />}
+              </TouchableOpacity>
+              <VerificationBadge size="sm" ringColor="#000" status={verificationStatus} />
+            </View>
           </View>
         )}
       </View>

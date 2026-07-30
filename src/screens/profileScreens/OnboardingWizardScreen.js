@@ -8,6 +8,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useDispatch } from 'react-redux';
+import { updateProfile } from '../../store/authSlice';
 import CustomText from '../../components/CustomText';
 import { API_URL, BRAND_COLOR } from '../../utils/constants';
 import { notify, photoUrl } from '../../utils/utils';
@@ -56,14 +58,17 @@ const LICENCE_RE = /^[A-Z]{2}[0-9]{2}[0-9A-Z]{10,12}$/;
 
 const Field = ({
   label, value, onChange, required, placeholder, keyboardType, maxLength,
-  autoCapitalize, error,
+  autoCapitalize, error, editable = true,
 }) => (
   <View style={styles.field}>
     <CustomText fontType='primary' style={styles.fieldLabel}>
       {label}{required ? <CustomText style={styles.req}> *</CustomText> : null}
     </CustomText>
     <TextInput
-      style={[styles.input, error && styles.inputError]}
+      // `editable` is forwarded explicitly rather than via a spread: the Aadhaar
+      // number is locked once its OTP is in flight, and a prop this component
+      // does not declare would be silently dropped, leaving it editable.
+      style={[styles.input, error && styles.inputError, !editable && styles.inputLocked]}
       value={value}
       onChangeText={onChange}
       placeholder={placeholder}
@@ -71,6 +76,7 @@ const Field = ({
       keyboardType={keyboardType}
       maxLength={maxLength}
       autoCapitalize={autoCapitalize}
+      editable={editable}
     />
     {error ? <CustomText fontType='primary' style={styles.fieldError}>{error}</CustomText> : null}
   </View>
@@ -253,6 +259,7 @@ const ConsentPrompt = ({ message, busy, onAgree, onRetry }) => (
 const OnboardingWizardScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const dispatch = useDispatch();
   const mode = route.params?.mode || 'onboarding';
   const isEdit = mode === 'edit';
   const isReview = mode === 'review';
@@ -284,12 +291,23 @@ const OnboardingWizardScreen = () => {
   const [aadhaarNumber, setAadhaarNumber] = useState('');
   const [aadhaarFront, setAadhaarFront] = useState(null);
   const [aadhaarBack, setAadhaarBack] = useState(null);
+  // Aadhaar OTP is a prerequisite for submitting the scans — the server refuses
+  // without it, so this step is a two-phase flow rather than one form.
+  const [aadhaarRef, setAadhaarRef] = useState('');
+  const [aadhaarOtp, setAadhaarOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   const [licenceNumber, setLicenceNumber] = useState('');
   const [licenceFront, setLicenceFront] = useState(null);
   const [licenceBack, setLicenceBack] = useState(null);
 
   // Step 4
   const [selfie, setSelfie] = useState(null);
+  // Set only when the user has personally re-requested camera permission and it
+  // failed again. Tracked from the retry action rather than by counting
+  // failures, so a single mis-tap on the OS prompt does not hand out a skip.
+  const [cameraBlocked, setCameraBlocked] = useState(false);
+  const [cameraDenied, setCameraDenied] = useState(false);
 
   const [consent, setConsent] = useState(null);
 
@@ -297,6 +315,11 @@ const OnboardingWizardScreen = () => {
     try {
       const res = await axios.get(`${API_URL}/user/verification`);
       setStatus(res.data);
+      // Publish to redux so the shell header's badge tracks the real status
+      // without the header itself polling.
+      if (res.data?.verificationStatus) {
+        dispatch(updateProfile({ verificationStatus: res.data.verificationStatus }));
+      }
       const p = res.data?.profile || {};
       const loaded = {
         firstName: p.firstName || '', lastName: p.lastName || '',
@@ -309,6 +332,8 @@ const OnboardingWizardScreen = () => {
       setInitialForm(loaded);
       const licence = res.data?.documents?.licence;
       if (licence?.licenceNumber) setLicenceNumber(licence.licenceNumber);
+      // Reopening must not ask for the OTP again if it is already done.
+      if (res.data?.documents?.aadhaar?.otpVerified) setOtpVerified(true);
     } catch (e) {
       setError(e.response?.data?.error || 'Could not load your profile');
     } finally {
@@ -348,7 +373,7 @@ const OnboardingWizardScreen = () => {
 
   // Camera capture, base64 so it can be posted as a data URI. `includeBase64`
   // plus a modest maxWidth keeps the payload inside the server's 12mb JSON limit.
-  const capture = (setter, { front = false } = {}) => async () => {
+  const capture = (setter, { front = false, isRetry = false } = {}) => async () => {
     const res = await launchCamera({
       mediaType: 'photo',
       cameraType: front ? 'front' : 'back',
@@ -361,13 +386,21 @@ const OnboardingWizardScreen = () => {
 
     if (res.didCancel) return;
     if (res.errorCode) {
-      // A denied camera permission is the common case and needs a route out,
-      // not a dead end — but never a gallery fallback.
-      setError(res.errorCode === 'permission'
+      const denied = res.errorCode === 'permission' || res.errorCode === 'camera_unavailable';
+      if (denied) {
+        setCameraDenied(true);
+        // Only a failed RETRY unlocks the way past a required step.
+        if (isRetry) setCameraBlocked(true);
+      }
+      setError(denied
         ? 'Camera access is blocked. Enable it for Cocarr in your device settings, then try again.'
         : res.errorMessage || 'Could not open the camera.');
       return;
     }
+
+    // It opened — clear any earlier denial so the escape hatch disappears.
+    setCameraDenied(false);
+    setCameraBlocked(false);
     const asset = res.assets?.[0];
     if (!asset?.base64) { setError('Could not read that photo. Please try again.'); return; }
 
@@ -405,6 +438,11 @@ const OnboardingWizardScreen = () => {
     try {
       const res = await axios.put(`${API_URL}/user/onboarding`, form);
       setInitialForm(form);
+      // Keep the header/profile name in step with what was just saved.
+      dispatch(updateProfile({
+        userName: [form.firstName, form.lastName].filter(Boolean).join(' ') || undefined,
+        email: form.email || undefined,
+      }));
       await load();
       // The server withdraws the approval when identity details change, because
       // the documents were verified against the old ones. Say so rather than
@@ -431,7 +469,13 @@ const OnboardingWizardScreen = () => {
       goStep(nextStep);
     } catch (e) {
       const data = e.response?.data;
-      if (data?.needsConsent) {
+      if (data?.needsOtp) {
+        // Rejected for want of an OTP — send the user back to that phase rather
+        // than showing an error they cannot act on.
+        setOtpVerified(false);
+        setOtpSent(false);
+        setError(data.error);
+      } else if (data?.needsConsent) {
         setConsent({ step, message: data.error, payload, path, nextStep });
       } else {
         setError(data?.error || 'Could not save that document.');
@@ -441,9 +485,53 @@ const OnboardingWizardScreen = () => {
     }
   };
 
+  const sendAadhaarOtp = async () => {
+    setError('');
+    const number = aadhaarNumber.replace(/\s/g, '');
+    if (!/^\d{12}$/.test(number)) { setError('Enter the 12-digit Aadhaar number.'); return; }
+
+    setBusy(true);
+    try {
+      const res = await axios.post(`${API_URL}/user/check-kyc`, { kycNumber: number, uid: 'self' });
+      setAadhaarRef(res.data?.kycRef || '');
+      setOtpSent(true);
+      notify('OTP sent to your Aadhaar-linked mobile number');
+    } catch (e) {
+      setError(e.response?.data?.error || e.response?.data?.message || 'Could not send the Aadhaar OTP.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyAadhaarOtp = async () => {
+    setError('');
+    if (!/^\d{4,8}$/.test(aadhaarOtp.trim())) { setError('Enter the OTP you received.'); return; }
+
+    setBusy(true);
+    try {
+      await axios.post(`${API_URL}/user/verify-kyc`, {
+        ref: aadhaarRef,
+        otp: aadhaarOtp.trim(),
+        kycNumber: aadhaarNumber.replace(/\s/g, ''),
+        uid: 'self',
+      });
+      setOtpVerified(true);
+      setOtpSent(false);
+      notify('Aadhaar verified. Now add photos of the card.');
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.error || e.response?.data?.message || 'That OTP could not be verified.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submitAadhaar = () => {
     if (!/^\d{12}$/.test(aadhaarNumber.replace(/\s/g, ''))) {
       setError('Enter the 12-digit Aadhaar number.'); return;
+    }
+    if (!otpVerified) {
+      setError('Verify your Aadhaar with the OTP first.'); return;
     }
     if (!aadhaarFront || !aadhaarBack) {
       setError('Photograph both the front and back of your Aadhaar card.'); return;
@@ -476,7 +564,12 @@ const OnboardingWizardScreen = () => {
     setError('');
     setBusy(true);
     try {
-      await axios.post(`${API_URL}/user/verification/selfie`, { image: selfie });
+      const res = await axios.post(`${API_URL}/user/verification/selfie`, { image: selfie });
+      // The header avatar renders from redux, not from this response — without
+      // this dispatch it keeps showing the old photo (or the placeholder) until
+      // the app is restarted.
+      const saved = res.data?.profile?.profilePhoto;
+      if (saved) dispatch(updateProfile({ profilePhoto: saved }));
       await finish();
     } catch (e) {
       setError(e.response?.data?.error || 'Could not save your photo.');
@@ -655,46 +748,104 @@ const OnboardingWizardScreen = () => {
             </>
           )}
 
-          {/* ── Step 2: Aadhaar ── */}
+          {/* ── Step 2: Aadhaar ──
+              Three phases, in order: number → OTP → scans. The scans stay locked
+              until the OTP passes, because the server refuses them without it. */}
           {step === 1 && !isReview && (
             <>
               <CustomText fontType='primary' weight='Bold' style={styles.h2}>
                 Aadhaar verification
               </CustomText>
-              {aadhaarDone ? (
-                <CustomText fontType='primary' style={styles.ok}>
-                  Your Aadhaar is on file. Submitting again replaces it.
-                </CustomText>
-              ) : null}
 
               <Field label='Aadhaar number' value={aadhaarNumber}
                 onChange={(t) => setAadhaarNumber(t.replace(/[^\d\s]/g, ''))}
-                placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14} required />
+                placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14}
+                editable={!otpVerified && !otpSent} required />
 
-              <CustomText fontType='primary' style={styles.hint}>
-                Photograph both sides. Keep the whole card in frame and the text readable.
-              </CustomText>
-              <View style={styles.docRow}>
-                <DocCapture label='Front' uri={aadhaarFront || photoUrl(docs.aadhaar?.imageKey)}
-                  onPress={capture(setAadhaarFront)} required />
-                <DocCapture label='Back' uri={aadhaarBack || photoUrl(docs.aadhaar?.backImageKey)}
-                  onPress={capture(setAadhaarBack)} required />
-              </View>
-
-              {consent && consent.step === 1 ? (
-                <ConsentPrompt
-                  message={consent.message}
-                  busy={busy}
-                  onAgree={() => submitDocument(consent.path, consent.payload, consent.nextStep, true)}
-                  onRetry={() => setConsent(null)}
-                />
-              ) : (
-                <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={submitAadhaar}>
-                  <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                    {busy ? 'Checking…' : 'Verify and continue'}
+              {/* Phase 1 — request the OTP. */}
+              {!otpVerified && !otpSent ? (
+                <>
+                  <CustomText fontType='primary' style={styles.hint}>
+                    We&apos;ll send a one-time code to the mobile number registered against this
+                    Aadhaar. Verifying it is required before you can continue.
                   </CustomText>
-                </TouchableOpacity>
-              )}
+                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={sendAadhaarOtp}>
+                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                      {busy ? 'Sending…' : 'Send OTP'}
+                    </CustomText>
+                  </TouchableOpacity>
+                </>
+              ) : null}
+
+              {/* Phase 2 — enter it. */}
+              {!otpVerified && otpSent ? (
+                <>
+                  <Field label='OTP' value={aadhaarOtp}
+                    onChange={(t) => setAadhaarOtp(t.replace(/\D/g, ''))}
+                    placeholder='Enter the code' keyboardType='number-pad' maxLength={8} required />
+                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={verifyAadhaarOtp}>
+                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                      {busy ? 'Verifying…' : 'Verify OTP'}
+                    </CustomText>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={sendAadhaarOtp}>
+                    <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                      Resend OTP
+                    </CustomText>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.linkBtn}
+                    disabled={busy}
+                    onPress={() => { setOtpSent(false); setAadhaarOtp(''); }}
+                  >
+                    <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                      Change number
+                    </CustomText>
+                  </TouchableOpacity>
+                </>
+              ) : null}
+
+              {/* Phase 3 — scans, only once the OTP is done. */}
+              {otpVerified ? (
+                <>
+                  <CustomText fontType='primary' style={styles.ok}>
+                    Aadhaar verified with OTP.
+                  </CustomText>
+                  <CustomText fontType='primary' style={styles.hint}>
+                    Now photograph both sides. Keep the whole card in frame and the text readable.
+                  </CustomText>
+                  <View style={styles.docRow}>
+                    <DocCapture label='Front' uri={aadhaarFront || photoUrl(docs.aadhaar?.imageKey)}
+                      onPress={capture(setAadhaarFront)} required />
+                    <DocCapture label='Back' uri={aadhaarBack || photoUrl(docs.aadhaar?.backImageKey)}
+                      onPress={capture(setAadhaarBack)} required />
+                  </View>
+
+                  {consent && consent.step === 1 ? (
+                    <ConsentPrompt
+                      message={consent.message}
+                      busy={busy}
+                      onAgree={() => submitDocument(consent.path, consent.payload, consent.nextStep, true)}
+                      onRetry={() => setConsent(null)}
+                    />
+                  ) : (
+                    <>
+                      <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={submitAadhaar}>
+                        <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                          {busy ? 'Checking…' : 'Save and continue'}
+                        </CustomText>
+                      </TouchableOpacity>
+                      {isEdit && isDirty ? (
+                        <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={cancel}>
+                          <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                            Cancel
+                          </CustomText>
+                        </TouchableOpacity>
+                      ) : null}
+                    </>
+                  )}
+                </>
+              ) : null}
             </>
           )}
 
@@ -741,7 +892,10 @@ const OnboardingWizardScreen = () => {
             </>
           )}
 
-          {/* ── Step 4: Live selfie ── */}
+          {/* ── Step 4: Live selfie ──
+              REQUIRED. There is no unconditional skip: the only way past it is a
+              camera that genuinely will not open, and only after the user has
+              re-requested permission and it failed again. */}
           {step === 3 && !isReview && (
             <>
               <CustomText fontType='primary' weight='Bold' style={styles.h2}>Take a selfie</CustomText>
@@ -751,13 +905,18 @@ const OnboardingWizardScreen = () => {
               </CustomText>
 
               <View style={styles.selfieWrap}>
-                <TouchableOpacity style={styles.selfieFrame} onPress={capture(setSelfie, { front: true })}>
+                <TouchableOpacity
+                  style={styles.selfieFrame}
+                  onPress={capture(setSelfie, { front: true, isRetry: cameraDenied })}
+                >
                   {selfie ? (
                     <Image source={{ uri: selfie }} style={styles.selfieImage} resizeMode='cover' />
                   ) : (
                     <>
                       <Icon name='camera-outline' size={30} color='#757575' />
-                      <CustomText fontType='primary' style={styles.docText}>Tap to take a selfie</CustomText>
+                      <CustomText fontType='primary' style={styles.docText}>
+                        {cameraDenied ? 'Tap to allow the camera' : 'Tap to take a selfie'}
+                      </CustomText>
                     </>
                   )}
                 </TouchableOpacity>
@@ -767,6 +926,33 @@ const OnboardingWizardScreen = () => {
                   </TouchableOpacity>
                 ) : null}
               </View>
+
+              {/* Permission was refused — ask again before offering anything else. */}
+              {cameraDenied && !selfie ? (
+                <View style={[styles.banner, styles.bannerWarn]}>
+                  <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+                    Camera access is blocked
+                  </CustomText>
+                  <CustomText fontType='primary' style={styles.bannerBody}>
+                    Enable the camera for Cocarr in your device settings, then try again.
+                  </CustomText>
+                  <TouchableOpacity
+                    style={styles.primaryBtn}
+                    disabled={busy}
+                    onPress={capture(setSelfie, { front: true, isRetry: true })}
+                  >
+                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                      {cameraBlocked ? 'Try once more' : 'Allow camera and try again'}
+                    </CustomText>
+                  </TouchableOpacity>
+                  {cameraBlocked ? (
+                    <CustomText fontType='primary' style={styles.bannerBody}>
+                      Still blocked? You can continue without a photo and add it later from
+                      your profile.
+                    </CustomText>
+                  ) : null}
+                </View>
+              ) : null}
 
               <View style={[styles.banner, styles.bannerOk]}>
                 <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>Almost done</CustomText>
@@ -782,12 +968,15 @@ const OnboardingWizardScreen = () => {
                 </CustomText>
               </TouchableOpacity>
 
-              {/* The only optional step, so the only one that can be deferred. */}
-              <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={finish}>
-                <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-                  Skip the photo for now
-                </CustomText>
-              </TouchableOpacity>
+              {/* Edit mode already has a photo on file, so Done is always there.
+                  Otherwise this only appears once a retry has failed. */}
+              {isEdit || cameraBlocked ? (
+                <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={finish}>
+                  <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                    {isEdit ? 'Done' : 'Continue without a photo'}
+                  </CustomText>
+                </TouchableOpacity>
+              ) : null}
             </>
           )}
 
@@ -953,6 +1142,7 @@ const styles = StyleSheet.create({
     color: '#fff', fontSize: 14,
   },
   inputError: { borderColor: '#f87171' },
+  inputLocked: { backgroundColor: '#0e0e11', color: '#6b6b73' },
   pickerInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pickerValue: { color: '#fff', fontSize: 14 },
   pickerPlaceholder: { color: '#6b6b73', fontSize: 14 },
