@@ -21,3 +21,13 @@ export const SHOULD_VERIFY_VEHICLE = false;
 // /host/vehicles/verify API call and goes straight to step 2 with the entered
 // number (fields editable). Set to false to hit the real RC verification API.
 export const BYPASS_RC_VERIFY = true;
+
+// Cashfree offline-Aadhaar (KYC) OTP bypass during rider onboarding.
+// When true, the Aadhaar step SKIPS the /user/check-kyc and /user/verify-kyc
+// calls — the backend fulfils those through Cashfree, which is currently
+// failing (the server IP is not whitelisted with the provider). The user still
+// enters their number and photographs the card; the documents are submitted for
+// the support team to verify by hand instead of being auto-checked. Flip to
+// false once Cashfree KYC is live again (the backend also needs its IP
+// whitelisted). Mirrors BYPASS_RC_VERIFY.
+export const BYPASS_AADHAAR_VERIFY = true;
