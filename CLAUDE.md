@@ -28,5 +28,27 @@ Same as web: `initiated → booked → ongoing → finished`, plus `cancelled`. 
 
 `RideInfoScreen.jsx` used a mount-only `useEffect` to fetch booking data — since React Navigation doesn't remount an already-in-stack screen on `navigation.navigate()` back to it, this left the screen showing stale pre-start data after successfully starting a ride. Fixed with `useFocusEffect` instead — refetches on every focus, not just mount.
 
+## Onboarding / verification — ONE wizard, three modes
+`screens/profileScreens/OnboardingWizardScreen.js` owns profile details AND identity documents. Four steps: details → Aadhaar → licence → live selfie. Steps 1–3 are mandatory; the selfie is optional.
+
+Mode comes from the `mode` route param, so one screen serves all three:
+- `onboarding` (default) — a new account, straight after OTP. Cannot be abandoned.
+- `edit` — cancellable. **Cancel only appears once something has actually changed**; dirty state is a comparison against the values as loaded, not a flag each input sets.
+- `review` — read-only, every section selectable from the rail, Edit in the header hands off to edit mode. This is what the profile's "Identity & documents" row opens.
+
+**Eight screens were deleted** as duplicates of these steps: `EditProfileScreen`, `VerificationScreen`, `AadhaarVerificationScreen`, `LicenceVerificationScreen`, the whole `screens/verificationScreens/` folder (`KycVerificationScreen`, `LicenseVerificationScreen`, `ProfileVerificationScreen`) and the unused `VerificationNavigator`. `PanVerificationScreen` stays — PAN is a host payout prerequisite, not part of the rider identity check.
+
+Anything that used to navigate to `EditProfile` or `Verification` now targets `OnboardingWizard` with the right `mode`. `TopBar` gained a `rightParams` prop for exactly this: without it the profile's edit action opened the wizard in its default onboarding mode and silently did the wrong thing.
+
+**The step rail is tappable backwards.** Any step already reached is a button; steps ahead of `furthest` stay inert. Review mode makes everything reachable, since nothing is being submitted.
+
+**One back control, and it is the header's.** It steps backwards within onboarding and is absent on step 1 where there is nowhere to go; in edit/review it leaves the screen. The screen previously used `CenterHeader`, whose back calls `navigation.goBack()` — on step 1 of a mandatory flow that dropped the user out of onboarding entirely — *and* carried a second "‹ Back" at the bottom of the scroll view, so two controls did different things.
+
+**Camera only, never the gallery.** Every capture uses `launchCamera`; the selfie passes `cameraType: 'front'`. A gallery pick would defeat the liveness check, and for documents it invites a screenshot instead of the card. `launchImageLibrary` appears in this file only in the comment explaining why it is absent.
+
+**Editing identity details invalidates the verification.** `PUT /user/onboarding` returns `verificationInvalidated: true` when name/DOB/address changed on an approved profile; the wizard says so via `notify` rather than letting the avatar badge quietly change.
+
+Shared helpers mirror the web app and must stay in step: `utils/indianStates.js` (36 entries, byte-identical to web's) and `utils/age.js` (18+ rule, **local** calendar dates — `toISOString()` shifts to UTC and in IST rolls the boundary back a day).
+
 ## New-user login
 `MainNavigator.tsx`'s `fetchLastBooking()` called `/booking/last-booking`, which returns bare `null` (not `{booking, review}`) for an account with zero finished bookings — reading `.review` off that threw on every brand-new user's first login (caught, but surfaced a misleading "Error fetching last booking" alert). Fixed to guard on `response.data` being non-null and stopped alerting on this non-critical background fetch.

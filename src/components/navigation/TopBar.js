@@ -15,7 +15,10 @@ import { API_URL, BRAND_COLOR } from '../../utils/constants';
 // carry a single action (e.g. edit profile) via `rightIcon`/`rightRoute`.
 //
 // The title comes from each screen's `options.title`.
-export default function TopBar({ title, showBack = false, rightIcon, rightRoute }) {
+// `rightParams` was added because the profile's edit action now targets the
+// onboarding wizard, which needs {mode:'edit'} — without it the wizard would open
+// in its default onboarding mode and the tap would silently do the wrong thing.
+export default function TopBar({ title, showBack = false, rightIcon, rightRoute, rightParams }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { userRole, userName, profilePhoto } = useSelector((s) => s.auth);
@@ -77,7 +80,7 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute 
         {/* Pushed screen: a single right action (e.g. edit profile). */}
         {showBack && rightIcon && rightRoute && (
           <TouchableOpacity
-            onPress={() => navigation.navigate(rightRoute)}
+            onPress={() => navigation.navigate(rightRoute, rightParams)}
             activeOpacity={0.8}
             accessibilityRole="button"
             style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#1c1c1e', borderWidth: 1, borderColor: '#2c2c2e', alignItems: 'center', justifyContent: 'center' }}

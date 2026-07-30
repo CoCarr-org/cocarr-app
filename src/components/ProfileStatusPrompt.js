@@ -32,7 +32,8 @@ const COPY = {
     background: '#111a2b',
     title: 'Verification in progress',
     body: 'Your profile is with our team. Browse cars in the meantime.',
-    route: 'Verification',
+    route: 'OnboardingWizard',
+    params: { mode: 'review' },
   },
   rejected: {
     icon: 'close-circle-outline',
@@ -81,7 +82,7 @@ const ProfileStatusPrompt = () => {
   return (
     <Wrapper
       style={[styles.card, { backgroundColor: copy.background, borderLeftColor: copy.colour }]}
-      onPress={copy.route ? () => navigation.navigate(copy.route) : undefined}
+      onPress={copy.route ? () => navigation.navigate(copy.route, copy.params) : undefined}
       activeOpacity={0.8}
     >
       <Icon name={copy.icon} size={22} color={copy.colour} />

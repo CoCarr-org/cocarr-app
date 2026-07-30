@@ -54,10 +54,13 @@ export function ProfileScreen() {
       description: 'Refer your friends to earn rewards',
     },
     {
-      onPress: 'Verification',
+      // Opens the wizard read-only; editing is one tap further, behind the Edit
+      // action there. `onPress` is normally a screen NAME here, but params need a
+      // function — the renderer already supports both.
+      onPress: () => navigation.navigate('OnboardingWizard', { mode: 'review' }),
       icon: <Ionicons name="shield-checkmark-outline" size={16} color="#fff" />,
-      title: 'Profile Verification',
-      description: 'Complete your details and submit for review',
+      title: 'Identity & documents',
+      description: 'View your details, Aadhaar and licence',
     },
     {
       onPress: 'PanVerification',

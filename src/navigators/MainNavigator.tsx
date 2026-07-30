@@ -27,14 +27,11 @@ import PremiumMembershipScreen from '../screens/profileScreens/PremiumMembership
 import HostHomeScreen from '../screens/host/homeScreens/HostHomeScreen.js';
 import { HostNavigator } from './HostNavigator.js';
 import { ProfileScreen } from '../screens/profileScreens/ProfileScreen.js';
-import { EditProfileScreen } from '../screens/profileScreens/EditProfileScreen.js';
 import ReferralPage from '../screens/profileScreens/ReferralPage.js';
 import OffersScreen  from '../screens/profileScreens/Offers.js';
 import WalletPage from '../screens/profileScreens/WalletPage.js';
 import { RidesScreen } from '../screens/rideScreens/RidesScreen.jsx';
 import RideInfoScreen from '../screens/rideScreens/RideInfoScreen.jsx';
-import { KycVerificationScreen } from '../screens/verificationScreens/KycVerificationScreen.js';
-import { LicenseVerificationScreen } from '../screens/verificationScreens/LicenseVerificationScreen.js';
 import { HostEndBookingScreen } from '../screens/host/bookingScreens/HostEndBookingScreen.js';
 import AddCar from '../screens/host/homeScreens/AddCar.js';
 import { CarsInfoScreen } from '../screens/homeScreens/carinfo/CarInfoScreen.js';
@@ -49,10 +46,7 @@ import { EndBookingScreen } from '../screens/rideScreens/EndBookingScreen.js';
 import { RescheduleScreen } from '../screens/rideScreens/RescheduleScreen.js';
 import { HostDamageScreen } from '../screens/host/bookingScreens/HostDamageScreen.js';
 import TermsAndConditionsScreen from '../screens/host/bookingScreens/TermsAndConditionsScreen.js';
-import VerificationScreen from '../screens/profileScreens/VerificationScreen.js';
 import OnboardingWizardScreen from '../screens/profileScreens/OnboardingWizardScreen.js';
-import LicenceVerificationScreen from '../screens/profileScreens/LicenceVerificationScreen.js';
-import AadhaarVerificationScreen from '../screens/profileScreens/AadhaarVerificationScreen.js';
 import PanVerificationScreen from '../screens/profileScreens/PanVerificationScreen.js';
 import { useNavigation } from '@react-navigation/native';
 
@@ -216,9 +210,8 @@ export function MainNavigator() {
           {/* Profile screens are pushed from TopBar's avatar; the shared header
               gives them a back control and a title. */}
           {/* Profile screens carry an edit-profile action in the header. */}
-          <Stack.Screen name="ProfileIndex" component={ProfileScreen} options={{ headerShown: true, header: () => <TopBar title="Profile" showBack rightIcon="create-outline" rightRoute="EditProfile" /> }} />
-          <Stack.Screen name="HostProfileScreen" component={HostProfile} options={{ headerShown: true, header: () => <TopBar title="Profile" showBack rightIcon="create-outline" rightRoute="EditProfile" /> }} />
-          <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="ProfileIndex" component={ProfileScreen} options={{ headerShown: true, header: () => <TopBar title="Profile" showBack rightIcon="create-outline" rightRoute="OnboardingWizard" rightParams={{ mode: 'edit' }} /> }} />
+          <Stack.Screen name="HostProfileScreen" component={HostProfile} options={{ headerShown: true, header: () => <TopBar title="Profile" showBack rightIcon="create-outline" rightRoute="OnboardingWizard" rightParams={{ mode: 'edit' }} /> }} />
           <Stack.Screen name="Referral" component={ReferralPage} options={{ title: 'Refer & Earn' }}/>
           <Stack.Screen name="Offers" component={OffersScreen} options={{ title: 'Offers' }} />
           <Stack.Screen name="Wallet" component={WalletPage} options={{ title: 'Wallet' }} />
@@ -235,8 +228,6 @@ export function MainNavigator() {
           <Stack.Screen name="RideInfo" component={RideInfoScreen} options={{ headerShown: false }} />
         </Stack.Group>
         <Stack.Group>
-          <Stack.Screen name="KycVerification" component={KycVerificationScreen} options={{ title: 'Verify KYC' }}/>
-          <Stack.Screen name="LicenseVerification" component={LicenseVerificationScreen} options={{ title: 'Verify Licence' }}/>
         </Stack.Group>
 
         <Stack.Group>
@@ -245,9 +236,6 @@ export function MainNavigator() {
               too is what lets the post-sign-in push above reach them without
               having to address a nested navigator. */}
           <Stack.Screen name="OnboardingWizard" component={OnboardingWizardScreen} options={{ headerShown: false }}/>
-          <Stack.Screen name="Verification" component={VerificationScreen} options={{ headerShown: false }}/>
-          <Stack.Screen name="LicenceVerification" component={LicenceVerificationScreen} options={{ headerShown: false }}/>
-          <Stack.Screen name="AadhaarVerification" component={AadhaarVerificationScreen} options={{ headerShown: false }}/>
           <Stack.Screen name="PanVerification" component={PanVerificationScreen} options={{ headerShown: false }}/>
         </Stack.Group>
       </Stack.Navigator>
