@@ -11,7 +11,7 @@ import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/nativ
 import { useDispatch } from 'react-redux';
 import { updateProfile } from '../../store/authSlice';
 import CustomText from '../../components/CustomText';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL, BRAND_COLOR, BYPASS_AADHAAR_VERIFY } from '../../utils/constants';
 import { notify, photoUrl } from '../../utils/utils';
 import { ALL_STATES } from '../../utils/indianStates';
 import {
@@ -297,6 +297,10 @@ const OnboardingWizardScreen = () => {
   const [aadhaarOtp, setAadhaarOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+  // OCR can misread a photo. Ticking this lets the user consent, up front, to
+  // the support team checking the card by hand, so a failed OCR read does not
+  // dead-end the step. It is never pre-ticked — it records a choice the user made.
+  const [aadhaarManualVerify, setAadhaarManualVerify] = useState(false);
   const [licenceNumber, setLicenceNumber] = useState('');
   const [licenceFront, setLicenceFront] = useState(null);
   const [licenceBack, setLicenceBack] = useState(null);
@@ -490,6 +494,16 @@ const OnboardingWizardScreen = () => {
     const number = aadhaarNumber.replace(/\s/g, '');
     if (!/^\d{12}$/.test(number)) { setError('Enter the 12-digit Aadhaar number.'); return; }
 
+    // Cashfree OTP verification is bypassed: don't call the provider, just move
+    // the user on to photographing the card. The scans are then verified by the
+    // support team (submitAadhaar forces manual consent in this mode).
+    if (BYPASS_AADHAAR_VERIFY) {
+      setOtpVerified(true);
+      setOtpSent(false);
+      notify('Now add photos of your Aadhaar card.');
+      return;
+    }
+
     setBusy(true);
     try {
       const res = await axios.post(`${API_URL}/user/check-kyc`, { kycNumber: number, uid: 'self' });
@@ -530,17 +544,22 @@ const OnboardingWizardScreen = () => {
     if (!/^\d{12}$/.test(aadhaarNumber.replace(/\s/g, ''))) {
       setError('Enter the 12-digit Aadhaar number.'); return;
     }
-    if (!otpVerified) {
+    // When Cashfree OTP is bypassed there is no OTP to require — the card is
+    // checked by hand instead.
+    if (!otpVerified && !BYPASS_AADHAAR_VERIFY) {
       setError('Verify your Aadhaar with the OTP first.'); return;
     }
     if (!aadhaarFront || !aadhaarBack) {
       setError('Photograph both the front and back of your Aadhaar card.'); return;
     }
+    // Consent to manual review is implied when Cashfree is bypassed (nothing was
+    // auto-verified), and otherwise taken from the checkbox the user ticked.
+    const manualConsent = BYPASS_AADHAAR_VERIFY || aadhaarManualVerify;
     submitDocument('/user/verification/aadhaar', {
       aadhaarNumber: aadhaarNumber.replace(/\s/g, ''),
       frontImage: aadhaarFront,
       backImage: aadhaarBack,
-    }, 2);
+    }, 2, manualConsent);
   };
 
   const submitLicence = () => {
@@ -762,8 +781,9 @@ const OnboardingWizardScreen = () => {
                 placeholder='0000 0000 0000' keyboardType='number-pad' maxLength={14}
                 editable={!otpVerified && !otpSent} required />
 
-              {/* Phase 1 — request the OTP. */}
-              {!otpVerified && !otpSent ? (
+              {/* Phase 1 — request the OTP. Skipped entirely when Cashfree
+                  verification is bypassed; the user goes straight to the scans. */}
+              {!BYPASS_AADHAAR_VERIFY && !otpVerified && !otpSent ? (
                 <>
                   <CustomText fontType='primary' style={styles.hint}>
                     We&apos;ll send a one-time code to the mobile number registered against this
@@ -778,7 +798,7 @@ const OnboardingWizardScreen = () => {
               ) : null}
 
               {/* Phase 2 — enter it. */}
-              {!otpVerified && otpSent ? (
+              {!BYPASS_AADHAAR_VERIFY && !otpVerified && otpSent ? (
                 <>
                   <Field label='OTP' value={aadhaarOtp}
                     onChange={(t) => setAadhaarOtp(t.replace(/\D/g, ''))}
@@ -805,21 +825,53 @@ const OnboardingWizardScreen = () => {
                 </>
               ) : null}
 
-              {/* Phase 3 — scans, only once the OTP is done. */}
-              {otpVerified ? (
+              {/* Phase 3 — scans. Shown once the OTP is done, or straight away
+                  when Cashfree verification is bypassed. */}
+              {otpVerified || BYPASS_AADHAAR_VERIFY ? (
                 <>
-                  <CustomText fontType='primary' style={styles.ok}>
-                    Aadhaar verified with OTP.
-                  </CustomText>
-                  <CustomText fontType='primary' style={styles.hint}>
-                    Now photograph both sides. Keep the whole card in frame and the text readable.
-                  </CustomText>
+                  {BYPASS_AADHAAR_VERIFY ? (
+                    <CustomText fontType='primary' style={styles.hint}>
+                      Automatic Aadhaar verification is currently unavailable, so our team will
+                      verify your card by hand. Photograph both sides — keep the whole card in
+                      frame and the text readable.
+                    </CustomText>
+                  ) : (
+                    <>
+                      <CustomText fontType='primary' style={styles.ok}>
+                        Aadhaar verified with OTP.
+                      </CustomText>
+                      <CustomText fontType='primary' style={styles.hint}>
+                        Now photograph both sides. Keep the whole card in frame and the text readable.
+                      </CustomText>
+                    </>
+                  )}
                   <View style={styles.docRow}>
                     <DocCapture label='Front' uri={aadhaarFront || photoUrl(docs.aadhaar?.imageKey)}
                       onPress={capture(setAadhaarFront)} required />
                     <DocCapture label='Back' uri={aadhaarBack || photoUrl(docs.aadhaar?.backImageKey)}
                       onPress={capture(setAadhaarBack)} required />
                   </View>
+
+                  {/* OCR-failure fallback: let the user opt into manual review up
+                      front. Redundant when Cashfree is bypassed (manual review is
+                      already the path), so only shown when it isn't. */}
+                  {!BYPASS_AADHAAR_VERIFY ? (
+                    <TouchableOpacity
+                      style={styles.checkRow}
+                      activeOpacity={0.7}
+                      onPress={() => setAadhaarManualVerify((v) => !v)}
+                    >
+                      <Icon
+                        name={aadhaarManualVerify ? 'checkbox' : 'square-outline'}
+                        size={22}
+                        color={aadhaarManualVerify ? BRAND_COLOR : '#6b6b73'}
+                      />
+                      <CustomText fontType='primary' style={styles.checkLabel}>
+                        If the photo can&apos;t be read automatically, let our support team verify
+                        my Aadhaar manually.
+                      </CustomText>
+                    </TouchableOpacity>
+                  ) : null}
 
                   {consent && consent.step === 1 ? (
                     <ConsentPrompt
@@ -1146,6 +1198,12 @@ const styles = StyleSheet.create({
   pickerInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   pickerValue: { color: '#fff', fontSize: 14 },
   pickerPlaceholder: { color: '#6b6b73', fontSize: 14 },
+
+  checkRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    marginTop: 14, marginBottom: 2,
+  },
+  checkLabel: { flex: 1, fontSize: 13, color: '#c9c9d1', lineHeight: 19 },
 
   docRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
   docBox: {
