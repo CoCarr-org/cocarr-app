@@ -1,0 +1,27 @@
+# Managed by RepoGuard. Local edits are overwritten on the next `repo enforce`.
+#
+# Every line maps a path pattern to the accounts or teams that must review
+# changes to it. The last matching pattern wins, so put the most specific
+# patterns at the bottom.
+#
+# For an organisation-owned repository, replace the owner below with a team
+# (`@org/team-name`): teams survive people changing roles, individuals do not.
+#
+# Reference: https://docs.github.com/articles/about-code-owners
+
+# Default owner for everything in the repository.
+*       @iappwizapps-bot
+
+# Build, CI and automation.
+/.github/           @iappwizapps-bot
+/Makefile           @iappwizapps-bot
+/scripts/           @iappwizapps-bot
+
+# Dependency manifests: changes here affect the whole supply chain.
+/go.mod             @iappwizapps-bot
+/go.sum             @iappwizapps-bot
+/package.json       @iappwizapps-bot
+/package-lock.json  @iappwizapps-bot
+/requirements.txt   @iappwizapps-bot
+/Gemfile            @iappwizapps-bot
+/pom.xml            @iappwizapps-bot
