@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -25,6 +25,17 @@ export function MobileInputScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState('');
   const [showReferralInput, setShowReferralInput] = useState(false);
+  // Only offer the referral-code entry when the referral programme is actually
+  // running (an active campaign exists). Public endpoint — no account yet.
+  const [referralAvailable, setReferralAvailable] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    axios.get(`${API_URL}/referral/status`)
+      .then((res) => { if (active) setReferralAvailable(!!res.data?.programActive); })
+      .catch(() => { if (active) setReferralAvailable(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleSubmit = async () => {
     if (mobileNumber.length !== 10) {
@@ -95,11 +106,13 @@ export function MobileInputScreen({ navigation }) {
               />
           </View>
         </View>
-        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12,paddingHorizontal:0}}>
+        {referralAvailable && (
+          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12,paddingHorizontal:0}}>
             {
               showReferralInput ? <TextInput maxLength={6} placeholderTextColor='#454545' style={styles.referralInput} value={referralCode} onChangeText={(text) => setReferralCode(text)} placeholder='REFERRAL CODE' /> : <CustomText style={{color:'#a3a3a3',fontSize:11,fontWeight:'700',letterSpacing:-.05,textDecorationLine:'underline'}} onPress={() => setShowReferralInput(true)}>HAVE A REFERRAL CODE?</CustomText>
             }
-        </View>
+          </View>
+        )}
         <View>
               <Text style={styles.noticeText}>
                 By submitting, you agree to our{' '}
