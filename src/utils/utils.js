@@ -194,18 +194,24 @@ export const getCurrentLocation = async (openSettingsIfBlocked = false) => {
 };
 
 
-// Camera permission, asked for explicitly.
+// Camera permission — a DIAGNOSTIC, never a gate.
 //
-// launchCamera asks for it implicitly and reports a refusal as an errorCode,
-// which is fine for "did it open?" but useless for "ask again": once the OS has
-// a stored refusal it never re-prompts, and the picker just fails identically
-// every time. This distinguishes the two cases, so a screen that REQUIRES the
-// camera — the onboarding selfie — can prompt when prompting will work and send
-// the user to Settings when it won't.
+// Call this only AFTER the image picker has already failed with a permission
+// error, to work out which remedy to offer: ask again, or send the user to
+// Settings because the OS has stopped asking.
 //
-// Returns 'granted' | 'denied' | 'blocked' | 'unavailable'. Never throws:
-// a permission check that explodes would be a worse failure than the refusal
-// it is reporting.
+// It must not be used as a pre-check. `react-native-permissions` reports
+// UNAVAILABLE for any permission whose native handler is not linked into the
+// build, and on iOS the Camera handler is opt-in via `setup_permissions` in the
+// Podfile — so on any build where that line is missing, a pre-check reports
+// "no camera" on a device whose camera works and whose permission is granted.
+// That is exactly the bug this comment exists to prevent a repeat of. The
+// picker's own implicit request is the authority on whether the camera opens;
+// this only explains a refusal after the fact.
+//
+// Returns 'granted' | 'denied' | 'blocked' | 'unknown'. Never throws: a
+// permission check that explodes would be a worse failure than the refusal it
+// is reporting.
 export const requestCameraPermission = async (openSettingsIfBlocked = false) => {
   try {
     const permission = Platform.OS === 'ios'
@@ -220,11 +226,14 @@ export const requestCameraPermission = async (openSettingsIfBlocked = false) => 
       if (openSettingsIfBlocked) openSettings().catch(() => {});
       return 'blocked';
     }
-    if (result === RESULTS.UNAVAILABLE) return 'unavailable';
+    // UNAVAILABLE usually means the handler is not in this build, not that the
+    // device has no camera. Reported as 'unknown' so no caller can mistake it
+    // for a hardware verdict.
+    if (result === RESULTS.UNAVAILABLE) return 'unknown';
     return 'denied';
   } catch (error) {
     console.warn('[camera] permission check failed:', error?.message);
-    return 'denied';
+    return 'unknown';
   }
 };
 

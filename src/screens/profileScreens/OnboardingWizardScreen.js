@@ -3,7 +3,7 @@ import {
   View, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView,
   ActivityIndicator, KeyboardAvoidingView, Platform, Modal, FlatList, Alert,
 } from 'react-native';
-import { launchCamera } from 'react-native-image-picker';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
@@ -52,9 +52,11 @@ import {
 // LicenceVerificationScreen and the whole verificationScreens/ folder — eight
 // screens collecting the same fields with their own copies of the validation.
 //
-// Every camera capture here uses launchCamera, never launchImageLibrary. That is
-// deliberate for the selfie (a gallery pick would defeat the liveness check) and
-// consistent for documents (a photo of the actual card, not a screenshot).
+// DOCUMENTS may be taken with the camera or chosen from the gallery. The SELFIE
+// is camera-only — a gallery pick would defeat the whole point of a live
+// capture. Documents carry no such requirement: a licence photographed last week
+// reads exactly as well as one photographed now, and forcing the camera turns a
+// blocked permission into a blocked signup.
 
 const STEPS = ['Details', 'Aadhaar', 'Licence', 'Selfie', 'KYC'];
 
@@ -252,27 +254,41 @@ const ReviewImage = ({ src, label }) => (
 //
 // `children` is where the licence step slots in its number field: a licence
 // nobody can read still needs a number for support to look it up.
-const OcrFallback = ({ message, busy, onRetry, onManual, manualLabel, children }) => (
+// `children` carries the manual number field, revealed in place once the user
+// picks that option. Nothing here clears the photographs: OCR fails for reasons
+// that have nothing to do with the image — a provider timeout, an IP off the
+// allowlist — and sending someone back to re-photograph a document that was fine
+// is the wrong response to our outage.
+const OcrFallback = ({
+  message, busy, onRetry, onManual, manualOpen, manualLabel, children,
+}) => (
   <View style={[styles.banner, styles.bannerWarn]}>
     <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
       We couldn&apos;t verify that automatically
     </CustomText>
     <CustomText fontType='primary' style={styles.bannerBody}>{message}</CustomText>
     <CustomText fontType='primary' style={styles.bannerBody}>
-      Take another photo — good light, the whole document in frame, no glare — or ask our
-      team to check it by hand. A manual check usually takes a little longer.
+      {manualOpen
+        ? 'Enter the number and our team will check your document by hand. That usually takes '
+          + 'a little longer than an automatic check.'
+        : 'Your photos are saved — we can read them again, or you can enter the number '
+          + 'yourself and our team will check the document by hand.'}
     </CustomText>
     {children}
-    <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={onRetry}>
-      <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-        Retry verification
-      </CustomText>
-    </TouchableOpacity>
-    <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={onManual}>
-      <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
-        {busy ? 'Submitting…' : (manualLabel || 'Continue — our team will verify it')}
-      </CustomText>
-    </TouchableOpacity>
+    {!manualOpen ? (
+      <>
+        <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={onRetry}>
+          <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+            {busy ? 'Reading again…' : 'Retry verification'}
+          </CustomText>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.linkBtn} disabled={busy} onPress={onManual}>
+          <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+            {manualLabel || 'Enter the number manually'}
+          </CustomText>
+        </TouchableOpacity>
+      </>
+    ) : null}
   </View>
 );
 
@@ -327,7 +343,14 @@ const OnboardingWizardScreen = () => {
   const [licenceFront, setLicenceFront] = useState(null);
   const [licenceBack, setLicenceBack] = useState(null);
   // Set from the server's `needsConsent`: OCR could not read the licence.
+  const [licenceScanned, setLicenceScanned] = useState(false);
+  // Set when OCR could not read the licence. Carries the message and, once the
+  // user picks manual entry, `manualOpen` — which reveals the number field in
+  // place instead of sending them anywhere.
   const [licenceFallback, setLicenceFallback] = useState(null);
+  // Same idea for Aadhaar, whose failure state is already three flags, so this
+  // one only tracks whether the number field has been revealed.
+  const [aadhaarManualOpen, setAadhaarManualOpen] = useState(false);
 
   // ── Step 4: the selfie ──
   const [selfie, setSelfie] = useState(null);
@@ -371,8 +394,18 @@ const OnboardingWizardScreen = () => {
       const aad = res.data?.documents?.aadhaar;
       if (aad?.scanned) setAadhaarScanned(true);
       if (aad?.documentVerified) setDocumentVerified(true);
-      if (aad?.scanned && !aad?.documentVerified) setAadhaarOcrFailed(true);
+      // Uploaded but unreadable, and no number settled on yet — the step is
+      // still sitting on its fallback, so restore it rather than showing a
+      // fresh upload prompt over photos that are already on file.
+      if (aad?.scanned && !aad?.documentVerified && !aad?.numberConfirmed) setAadhaarOcrFailed(true);
       if (aad?.manualConsent) setAadhaarManualVerify(true);
+      if (licence?.scanned) setLicenceScanned(true);
+      if (licence?.scanned && !licence?.licenceNumber) {
+        setLicenceFallback((f) => f || {
+          message: 'We could not read your driving licence automatically.',
+          manualOpen: false,
+        });
+      }
       // A number already settled on means step 5's first phase is done, whether
       // or not the OTP has been taken yet — otherwise reopening the screen asks
       // for a number the user cannot supply, because it is masked from here on.
@@ -416,36 +449,53 @@ const OnboardingWizardScreen = () => {
     ]);
   };
 
-  // Camera capture, base64 so it can be posted as a data URI. `includeBase64`
-  // plus a modest maxWidth keeps the payload inside the server's 12mb JSON limit.
-  //
-  // Permission is requested EXPLICITLY first rather than left to launchCamera:
-  // the picker reports a refusal as an opaque errorCode and gives no way to tell
-  // "the user said no" from "the OS will never ask again", which is exactly the
-  // distinction the mandatory selfie step needs in order to offer the right
-  // remedy.
-  const capture = (setter, { front = false, openSettingsIfBlocked = false } = {}) => async () => {
-    const permission = await requestCameraPermission(openSettingsIfBlocked);
-    setCameraPermission(permission);
-    if (permission !== 'granted') {
-      setError(permission === 'unavailable'
-        ? 'This device has no camera we can use.'
-        : 'Camera access is needed to take this photo.');
-      return;
-    }
+  // base64 so the image can be posted as a data URI. `includeBase64` plus a
+  // modest maxWidth keeps the payload inside the server's 12mb JSON limit.
+  const PICKER_OPTIONS = {
+    mediaType: 'photo',
+    includeBase64: true,
+    quality: 0.8,
+    maxWidth: 1600,
+    maxHeight: 1600,
+    saveToPhotos: false,
+  };
 
-    const res = await launchCamera({
-      mediaType: 'photo',
-      cameraType: front ? 'front' : 'back',
-      includeBase64: true,
-      quality: 0.8,
-      maxWidth: 1600,
-      maxHeight: 1600,
-      saveToPhotos: false,
-    });
+  // Runs a picker and stores whatever comes back.
+  //
+  // The picker is called FIRST and asks for permission itself. An explicit
+  // pre-check here was a bug: react-native-permissions reports UNAVAILABLE for
+  // any permission whose native handler is not linked into the build, and the
+  // iOS Camera handler is opt-in via the Podfile — so the pre-check refused to
+  // open the camera on devices whose camera worked and whose permission was
+  // already granted. `requestCameraPermission` is now only consulted AFTER a
+  // refusal, to decide which remedy to offer.
+  const runPicker = (setter, launcher, options) => async () => {
+    const res = await launcher({ ...PICKER_OPTIONS, ...options });
 
     if (res.didCancel) return;
     if (res.errorCode) {
+      const denied = res.errorCode === 'permission' || res.errorCode === 'camera_unavailable';
+      if (denied) {
+        // Ask again — that usually IS the fix, since a first refusal is often a
+        // mis-tap. The verdict tells the banner whether to offer another prompt
+        // or a trip to Settings.
+        const verdict = await requestCameraPermission(false);
+        setCameraPermission(verdict);
+        if (verdict === 'granted') {
+          // Granted on the second ask, so just go again rather than making the
+          // user tap through an error they have already resolved.
+          const retry = await launcher({ ...PICKER_OPTIONS, ...options });
+          if (retry.didCancel) return;
+          if (!retry.errorCode && retry.assets?.[0]?.base64) {
+            const a = retry.assets[0];
+            setError('');
+            setter(`data:${a.type || 'image/jpeg'};base64,${a.base64}`);
+            return;
+          }
+        }
+        setError('We need permission to use your camera for this photo.');
+        return;
+      }
       setError(res.errorMessage || 'Could not open the camera.');
       return;
     }
@@ -454,8 +504,26 @@ const OnboardingWizardScreen = () => {
     if (!asset?.base64) { setError('Could not read that photo. Please try again.'); return; }
 
     setError('');
+    setCameraPermission('granted');
     setter(`data:${asset.type || 'image/jpeg'};base64,${asset.base64}`);
   };
+
+  // Documents may come from the camera OR the gallery. A licence photographed
+  // last week is just as readable as one photographed now, and forcing the
+  // camera turns a blocked permission into a blocked signup. Liveness is the
+  // selfie's job, not the document's.
+  const captureDocument = (setter) => () => {
+    Alert.alert('Add photo', 'How would you like to add this document?', [
+      { text: 'Take photo', onPress: runPicker(setter, launchCamera, { cameraType: 'back' }) },
+      { text: 'Choose from library', onPress: runPicker(setter, launchImageLibrary, { selectionLimit: 1 }) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  // The selfie is camera-only, deliberately. A gallery pick would defeat the
+  // whole point of a live capture — anyone could submit a photo of anyone.
+  const captureSelfie = (options = {}) =>
+    runPicker(setSelfie, launchCamera, { cameraType: 'front', ...options });
 
   // ── Step 1: your details ──────────────────────────────────────────────────
   const saveProfile = async () => {
@@ -548,81 +616,128 @@ const OnboardingWizardScreen = () => {
     }
   };
 
-  // "Our team will verify it for me". The scans are already stored, so this
-  // records the choice rather than re-uploading several megabytes to set a flag.
-  const consentToManualAadhaar = async () => {
+  // "Read my photos again." The scans are already stored server-side, so this
+  // re-runs OCR against them — the user is never asked to re-photograph a
+  // document that was fine. OCR fails for reasons that have nothing to do with
+  // the image (provider timeout, an IP off the allowlist), and those are worth
+  // one more attempt.
+  const retryOcr = async (kind) => {
     setError('');
     setBusy(true);
     try {
-      await axios.post(`${API_URL}/user/verification/aadhaar/scan`, { manualConsent: true });
-      setAadhaarManualVerify(true);
+      const res = await axios.post(`${API_URL}/user/verification/${kind}/retry-ocr`);
+      const failed = !!res.data?.needsManualEntry;
+
+      if (kind === 'aadhaar') {
+        setDocumentVerified(!failed);
+        setAadhaarOcrFailed(failed);
+        if (failed) {
+          setAadhaarOcrMessage(res.data?.message || 'We still could not read your Aadhaar card.');
+        } else {
+          setAadhaarManualVerify(false);
+          setAadhaarNumber(res.data?.aadhaarNumber || '');
+          notify('Aadhaar card read successfully.');
+        }
+      } else if (failed) {
+        setLicenceFallback((f) => ({
+          ...(f || {}),
+          message: res.data?.message || 'We still could not read your licence.',
+          manualOpen: false,
+        }));
+      } else {
+        setLicenceFallback(null);
+        setLicenceNumber(res.data?.licenceNumber || '');
+        notify('Driving licence read successfully.');
+      }
       await load();
-      goStep(STEP_LICENCE);
     } catch (e) {
-      setError(e.response?.data?.error || 'Could not record that. Please try again.');
+      const data = e.response?.data;
+      if (data?.needsScan) setError(data.error);
+      else setError(data?.error || 'Could not read that document again.');
     } finally {
       setBusy(false);
     }
   };
 
-  // Clears the photos so the next attempt is genuinely a new one — leaving the
-  // old ones in the slots invites pressing Verify again on the same image.
-  const retryAadhaar = () => {
-    setAadhaarFront(null);
-    setAadhaarBack(null);
-    setAadhaarOcrFailed(false);
-    setAadhaarOcrMessage('');
+  // Manual entry for the Aadhaar number, in this step rather than deferred to
+  // step 5 — the user is looking at the card right now.
+  const saveAadhaarNumberManually = async () => {
     setError('');
+    const number = aadhaarNumber.replace(/\s/g, '');
+    if (!/^\d{12}$/.test(number)) { setError('Enter the 12-digit Aadhaar number.'); return; }
+
+    setBusy(true);
+    try {
+      const res = await axios.post(`${API_URL}/user/verification/aadhaar/number`, {
+        aadhaarNumber: number,
+      });
+      setNumberConfirmed(true);
+      setAadhaarDetails(res.data);
+      if (res.data?.manualVerification) setAadhaarManualVerify(true);
+      await load();
+      goStep(STEP_LICENCE);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Could not save that Aadhaar number.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   // ── Step 3: upload the driving licence ────────────────────────────────────
   // The number is not asked for up front: OCR reads it off the front. It is only
   // collected when OCR could not, because support cannot look up a licence with
   // no number attached.
-  const submitLicence = async ({ manualConsent = false } = {}) => {
+  const scanLicence = async () => {
     setError('');
     if (!licenceFront || !licenceBack) {
       setError('Photograph both the front and back of your licence.'); return;
     }
 
-    const typed = licenceNumber.trim().toUpperCase().replace(/[\s-]/g, '');
-    if (typed && !LICENCE_RE.test(typed)) {
-      setError('Enter a valid licence number, for example KA0520190001234.'); return;
-    }
-    // Agreeing to a manual check with no number to check is not a submission
-    // anyone can act on.
-    if (manualConsent && licenceFallback?.needsNumber && !typed) {
-      setError('Enter your licence number so our team can check it.'); return;
-    }
-
     setBusy(true);
     try {
-      const res = await axios.post(`${API_URL}/user/verification/licence`, {
-        licenceNumber: typed || undefined,
+      const res = await axios.post(`${API_URL}/user/verification/licence/scan`, {
         frontImage: licenceFront,
         backImage: licenceBack,
-        manualConsent,
       });
-      setStatus(res.data);
-      setLicenceFallback(null);
-      goStep(STEP_SELFIE);
-    } catch (e) {
-      const data = e.response?.data;
-      if (data?.needsConsent || data?.needsNumber) {
-        setLicenceFallback({ message: data.error, needsNumber: !!data.needsNumber });
+      setLicenceScanned(true);
+
+      if (res.data?.needsManualEntry) {
+        setLicenceFallback({
+          message: res.data?.message || 'We could not read your driving licence.',
+          manualOpen: false,
+        });
+        await load();
       } else {
-        setError(data?.error || 'Could not save that document.');
+        setLicenceFallback(null);
+        setLicenceNumber(res.data?.licenceNumber || '');
+        await load();
+        goStep(STEP_SELFIE);
       }
+    } catch (e) {
+      setError(e.response?.data?.error || 'Could not read your driving licence.');
     } finally {
       setBusy(false);
     }
   };
 
-  const retryLicence = () => {
-    setLicenceFront(null);
-    setLicenceBack(null);
-    setLicenceFallback(null);
+  const saveLicenceNumberManually = async () => {
     setError('');
+    const number = licenceNumber.trim().toUpperCase().replace(/[\s-]/g, '');
+    if (!LICENCE_RE.test(number)) {
+      setError('Enter a valid licence number, for example KA0520190001234.'); return;
+    }
+
+    setBusy(true);
+    try {
+      await axios.post(`${API_URL}/user/verification/licence/number`, { licenceNumber: number });
+      setLicenceFallback(null);
+      await load();
+      goStep(STEP_SELFIE);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Could not save that licence number.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   // ── Step 4: the live selfie ───────────────────────────────────────────────
@@ -930,9 +1045,9 @@ const OnboardingWizardScreen = () => {
 
               <View style={styles.docRow}>
                 <DocCapture label='Front' uri={aadhaarFront || photoUrl(docs.aadhaar?.imageKey)}
-                  onPress={capture(setAadhaarFront)} required />
+                  onPress={captureDocument(setAadhaarFront)} required />
                 <DocCapture label='Back' uri={aadhaarBack || photoUrl(docs.aadhaar?.backImageKey)}
-                  onPress={capture(setAadhaarBack)} required />
+                  onPress={captureDocument(setAadhaarBack)} required />
               </View>
 
               {documentVerified ? (
@@ -946,7 +1061,7 @@ const OnboardingWizardScreen = () => {
                 </View>
               ) : null}
 
-              {aadhaarManualVerify && !documentVerified ? (
+              {aadhaarManualVerify && !documentVerified && !aadhaarOcrFailed ? (
                 <View style={[styles.banner, styles.bannerWarn]}>
                   <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
                     Manual check requested
@@ -957,13 +1072,39 @@ const OnboardingWizardScreen = () => {
                 </View>
               ) : null}
 
-              {aadhaarOcrFailed && !aadhaarManualVerify ? (
+              {/* OCR could not read the card. Retry re-reads the photos already
+                  on file — nothing is cleared and nothing is re-photographed —
+                  and manual entry opens the number field right here. */}
+              {aadhaarOcrFailed ? (
                 <OcrFallback
                   message={aadhaarOcrMessage}
                   busy={busy}
-                  onRetry={retryAadhaar}
-                  onManual={consentToManualAadhaar}
-                />
+                  manualOpen={aadhaarManualOpen}
+                  onRetry={() => retryOcr('aadhaar')}
+                  onManual={() => setAadhaarManualOpen(true)}
+                  manualLabel='Enter my Aadhaar number instead'
+                >
+                  {aadhaarManualOpen ? (
+                    <>
+                      <Field label='Aadhaar number' value={aadhaarNumber}
+                        onChange={(t) => setAadhaarNumber(t.replace(/[^\d\s]/g, ''))}
+                        placeholder='0000 0000 0000' keyboardType='number-pad'
+                        maxLength={14} required />
+                      <TouchableOpacity style={styles.primaryBtn} disabled={busy}
+                        onPress={saveAadhaarNumberManually}>
+                        <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                          {busy ? 'Saving…' : 'Save and continue'}
+                        </CustomText>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.linkBtn} disabled={busy}
+                        onPress={() => setAadhaarManualOpen(false)}>
+                        <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                          Try reading my photos again
+                        </CustomText>
+                      </TouchableOpacity>
+                    </>
+                  ) : null}
+                </OcrFallback>
               ) : (
                 <>
                   <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={scanAadhaar}>
@@ -1009,33 +1150,50 @@ const OnboardingWizardScreen = () => {
 
               <View style={styles.docRow}>
                 <DocCapture label='Front' uri={licenceFront || photoUrl(docs.licence?.frontImageKey)}
-                  onPress={capture(setLicenceFront)} required />
+                  onPress={captureDocument(setLicenceFront)} required />
                 <DocCapture label='Back' uri={licenceBack || photoUrl(docs.licence?.backImageKey)}
-                  onPress={capture(setLicenceBack)} required />
+                  onPress={captureDocument(setLicenceBack)} required />
               </View>
 
+              {/* Same two options as the Aadhaar step: read the stored photos
+                  again, or type the number here. The photos are never cleared. */}
               {licenceFallback ? (
                 <OcrFallback
                   message={licenceFallback.message}
                   busy={busy}
-                  onRetry={retryLicence}
-                  onManual={() => submitLicence({ manualConsent: true })}
+                  manualOpen={licenceFallback.manualOpen}
+                  onRetry={() => retryOcr('licence')}
+                  onManual={() => setLicenceFallback((f) => ({ ...f, manualOpen: true }))}
+                  manualLabel='Enter my licence number instead'
                 >
-                  {/* Only when OCR read no number at all. Support has to be able
-                      to look the licence up, and an unreadable photo is exactly
-                      the case where they cannot get the number from the scan. */}
-                  {licenceFallback.needsNumber ? (
-                    <Field label='Licence number' value={licenceNumber}
-                      onChange={(t) => setLicenceNumber(t.toUpperCase())}
-                      placeholder='KA0520190001234' autoCapitalize='characters' required />
+                  {/* Support has to be able to look the licence up, and an
+                      unreadable photo is exactly the case where they cannot get
+                      the number from the scan either. */}
+                  {licenceFallback.manualOpen ? (
+                    <>
+                      <Field label='Licence number' value={licenceNumber}
+                        onChange={(t) => setLicenceNumber(t.toUpperCase())}
+                        placeholder='KA0520190001234' autoCapitalize='characters' required />
+                      <TouchableOpacity style={styles.primaryBtn} disabled={busy}
+                        onPress={saveLicenceNumberManually}>
+                        <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                          {busy ? 'Saving…' : 'Save and continue'}
+                        </CustomText>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.linkBtn} disabled={busy}
+                        onPress={() => setLicenceFallback((f) => ({ ...f, manualOpen: false }))}>
+                        <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                          Try reading my photos again
+                        </CustomText>
+                      </TouchableOpacity>
+                    </>
                   ) : null}
                 </OcrFallback>
               ) : (
                 <>
-                  <TouchableOpacity style={styles.primaryBtn} disabled={busy}
-                    onPress={() => submitLicence()}>
+                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={scanLicence}>
                     <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      {busy ? 'Reading…' : 'Upload and verify'}
+                      {busy ? 'Reading…' : licenceScanned ? 'Upload again' : 'Upload and verify'}
                     </CustomText>
                   </TouchableOpacity>
                   {licenceDone ? (
@@ -1067,7 +1225,7 @@ const OnboardingWizardScreen = () => {
               <View style={styles.selfieWrap}>
                 <TouchableOpacity
                   style={styles.selfieFrame}
-                  onPress={capture(setSelfie, { front: true })}
+                  onPress={captureSelfie()}
                 >
                   {selfie ? (
                     <Image source={{ uri: selfie }} style={styles.selfieImage} resizeMode='cover' />
@@ -1081,47 +1239,43 @@ const OnboardingWizardScreen = () => {
                   )}
                 </TouchableOpacity>
                 {selfie ? (
-                  <TouchableOpacity style={styles.linkBtn} onPress={capture(setSelfie, { front: true })}>
+                  <TouchableOpacity style={styles.linkBtn} onPress={captureSelfie()}>
                     <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>Retake</CustomText>
                   </TouchableOpacity>
                 ) : null}
               </View>
 
-              {/* Permission refused. Asking again is the remedy while the OS will
-                  still prompt; once it is 'blocked' the same button takes the
-                  user to Settings instead, because nothing else can fix it. */}
+              {/* Only shown once a capture has actually been refused — never on
+                  a pre-check, which is what used to report "no camera" on a
+                  working phone. 'blocked' means the OS has stopped prompting, so
+                  the button goes to Settings; anything else gets another prompt. */}
               {cameraPermission && cameraPermission !== 'granted' && !selfie ? (
                 <View style={[styles.banner, styles.bannerWarn]}>
                   <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
-                    {cameraPermission === 'unavailable'
-                      ? 'No camera available'
-                      : 'Camera access is needed'}
+                    Camera access is needed
                   </CustomText>
                   <CustomText fontType='primary' style={styles.bannerBody}>
                     {cameraPermission === 'blocked'
-                      ? 'You\'ve turned the camera off for Cocarr, so we can\'t ask again from '
+                      ? 'The camera is turned off for Cocarr, so we can\'t ask again from '
                         + 'here. Open Settings, allow the camera, then come back and tap the circle.'
-                      : cameraPermission === 'unavailable'
-                        ? 'We couldn\'t find a camera on this device. Your other details are '
-                          + 'saved — finish this step on a phone with a front camera.'
-                        : 'Your selfie is required. Allow the camera and we\'ll take it now.'}
+                      : 'Your selfie has to be taken now, so we need the camera. Allow it and '
+                        + 'we\'ll go straight to it.'}
                   </CustomText>
-                  {cameraPermission !== 'unavailable' ? (
-                    <TouchableOpacity
-                      style={styles.primaryBtn}
-                      disabled={busy}
-                      onPress={capture(setSelfie, {
-                        front: true,
-                        // Only jump to Settings when the OS has stopped asking —
-                        // otherwise the in-app prompt is the better experience.
-                        openSettingsIfBlocked: cameraPermission === 'blocked',
-                      })}
-                    >
-                      <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                        {cameraPermission === 'blocked' ? 'Open Settings' : 'Allow camera'}
-                      </CustomText>
-                    </TouchableOpacity>
-                  ) : null}
+                  <TouchableOpacity
+                    style={styles.primaryBtn}
+                    disabled={busy}
+                    onPress={async () => {
+                      // Only jump to Settings when the OS has stopped asking —
+                      // otherwise the in-app prompt is the better experience.
+                      const verdict = await requestCameraPermission(cameraPermission === 'blocked');
+                      setCameraPermission(verdict);
+                      if (verdict !== 'blocked') captureSelfie()();
+                    }}
+                  >
+                    <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                      {cameraPermission === 'blocked' ? 'Open Settings' : 'Allow camera'}
+                    </CustomText>
+                  </TouchableOpacity>
                 </View>
               ) : null}
 

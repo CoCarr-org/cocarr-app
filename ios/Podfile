@@ -24,7 +24,12 @@ setup_permissions([
   # 'Bluetooth',
   'Calendars',
   'CalendarsWriteOnly',
-  # 'Camera',
+  # Needed for requestCameraPermission() to return a real verdict on iOS.
+  # Without it react-native-permissions reports UNAVAILABLE for the camera even
+  # when access is granted. NOTE: the app never gates a capture on that check —
+  # it is a diagnostic used after the picker fails — so an older build missing
+  # this handler still works; it just cannot tell "denied" from "blocked".
+  'Camera',
   # 'Contacts',
   # 'FaceID',
   'LocationAccuracy',
