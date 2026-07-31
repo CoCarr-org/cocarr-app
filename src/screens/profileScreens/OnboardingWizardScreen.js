@@ -944,6 +944,33 @@ const OnboardingWizardScreen = () => {
         <ScrollView ref={scroller} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps='handled'>
           <StepRail step={step} furthest={furthest} onGo={goStep} allReachable={isReview} />
 
+          {/* Why the profile came back. The single most useful thing on this
+              screen for a rejected user, and it was not rendered anywhere —
+              the API returned it and nothing showed it, so someone rejected
+              was sent round the wizard again with no idea what to change.
+
+              `previousRejectionReason` keeps it visible AFTER they start
+              editing: the current reason is cleared the moment they save a
+              field, which would make the explanation disappear exactly when
+              they are acting on it. */}
+          {!isReview && (status?.rejectionReason || status?.previousRejectionReason) ? (
+            <View style={[styles.banner, styles.bannerError]}>
+              <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+                {status?.verificationStatus === 'rejected'
+                  ? 'Your profile needs changes'
+                  : 'What we asked you to fix'}
+              </CustomText>
+              <CustomText fontType='primary' style={styles.bannerBody}>
+                {status.rejectionReason || status.previousRejectionReason}
+              </CustomText>
+              {status?.verificationStatus !== 'rejected' ? (
+                <CustomText fontType='primary' style={styles.bannerBody}>
+                  Update what&apos;s mentioned above, then submit again.
+                </CustomText>
+              ) : null}
+            </View>
+          ) : null}
+
           {error ? (
             <CustomText fontType='primary' style={styles.error}>{error}</CustomText>
           ) : null}
@@ -1653,6 +1680,7 @@ const styles = StyleSheet.create({
   banner: { borderRadius: 10, padding: 14, marginTop: 16 },
   bannerOk: { backgroundColor: '#0f2a1c' },
   bannerWarn: { backgroundColor: '#2a1d0c' },
+  bannerError: { backgroundColor: '#2b1212' },
   bannerTitle: { fontSize: 14, color: '#fff', marginBottom: 5 },
   bannerBody: { fontSize: 12.5, color: '#c9c9d1', lineHeight: 19, marginBottom: 6 },
 
