@@ -213,6 +213,30 @@ const ReviewList = ({ rows }) => {
   );
 };
 
+// Turn a provider field key like "father_name" into a label ("Father name").
+const humanizeKey = (key) =>
+  String(key).replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim();
+
+// Everything OCR read off the document. Renders the full provider reading
+// (`allFields`) when available, else the parsed subset (`extracted`). Surfaced
+// by product decision — including the full document number.
+const OcrDetails = ({ ocr }) => {
+  if (!ocr) return null;
+  const source = ocr.allFields && Object.keys(ocr.allFields).length ? ocr.allFields : ocr.extracted;
+  const rows = Object.entries(source || {})
+    .filter(([, v]) => v !== null && v !== undefined && String(v) !== '')
+    .map(([k, v]) => [humanizeKey(k), String(v)]);
+  if (!rows.length) return null;
+  return (
+    <View style={styles.ocrDetails}>
+      <CustomText fontType='primary' weight='Bold' style={styles.ocrDetailsTitle}>
+        What we read from your document
+      </CustomText>
+      <ReviewList rows={rows} />
+    </View>
+  );
+};
+
 // The document's OWN status, not the profile's — a verified document on a
 // pending profile is a normal, meaningful state.
 const DocStatus = ({ doc }) => {
@@ -1504,12 +1528,11 @@ const OnboardingWizardScreen = () => {
                       {docs.aadhaar.rejectionReason}
                     </CustomText>
                   ) : null}
-                  {/* The number is masked server-side and deliberately not shown —
-                      there is nothing useful a user can do with it. */}
                   <View style={styles.docRow}>
                     <ReviewImage src={docs.aadhaar.imageKey} label='Front' />
                     <ReviewImage src={docs.aadhaar.backImageKey} label='Back' />
                   </View>
+                  <OcrDetails ocr={docs.aadhaar.ocr} />
                 </>
               ) : (
                 <CustomText fontType='primary' style={styles.hint}>
@@ -1541,6 +1564,7 @@ const OnboardingWizardScreen = () => {
                     <ReviewImage src={docs.licence.frontImageKey} label='Front' />
                     <ReviewImage src={docs.licence.backImageKey} label='Back' />
                   </View>
+                  <OcrDetails ocr={docs.licence.ocr} />
                 </>
               ) : (
                 <CustomText fontType='primary' style={styles.hint}>
@@ -1698,6 +1722,14 @@ const styles = StyleSheet.create({
   reviewLabel: { fontSize: 12, color: '#9a9aa2' },
   reviewValue: { fontSize: 13, color: '#fff', flexShrink: 1, textAlign: 'right' },
   reviewEmpty: { color: '#6b6b73', fontStyle: 'italic' },
+
+  ocrDetails: {
+    marginTop: 8, padding: 14, backgroundColor: '#242426',
+    borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, borderColor: '#2e2e31',
+  },
+  ocrDetailsTitle: {
+    fontSize: 11, letterSpacing: 0.6, color: BRAND_COLOR, marginBottom: 8, textTransform: 'uppercase',
+  },
 
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   pillText: { fontSize: 10.5, letterSpacing: 0.4 },
