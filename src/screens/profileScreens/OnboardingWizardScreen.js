@@ -158,6 +158,81 @@ const DocCapture = ({ label, uri, onPress, required }) => (
   </TouchableOpacity>
 );
 
+// What OCR read off the document the user just uploaded.
+//
+// Module scope, like Field and DocCapture — a component defined inside a render
+// is a new type every render and gets remounted, which in this file has already
+// cost focus on a TextInput and a closed lightbox. See the note on Field.
+//
+// Shown to the USER, not just the reviewer. A misread name is the commonest
+// reason a profile is rejected, and it is invisible until an admin says so, a
+// day later. Showing the reading here turns that into a thirty-second retake.
+// The mismatch is called out rather than left to be spotted: two names differing
+// by one transposed letter look identical at a glance, which is exactly how they
+// get submitted.
+const OcrRow = ({ label, value }) => (
+  <View style={styles.ocrRow}>
+    <CustomText fontType='primary' style={styles.ocrLabel}>{label}</CustomText>
+    <CustomText fontType='primary' style={styles.ocrValue}>{value}</CustomText>
+  </View>
+);
+
+const OcrReadout = ({ ocr, profileName }) => {
+  const [showAll, setShowAll] = useState(false);
+  if (!ocr || ocr.status !== 'VALID') return null;
+  const e = ocr.extracted || {};
+  const rows = [
+    ['Number', e.documentNumber || e.licenceNumber],
+    ['Name', e.holderName],
+    ['Date of birth', e.dateOfBirth],
+    ['Expires', e.expiryDate],
+    ['Gender', e.gender],
+    ['Address', e.address],
+  ].filter(([, v]) => v);
+  if (!rows.length) return null;
+
+  const extra = Object.entries(ocr.additional || {});
+
+  return (
+    <View style={[styles.banner, styles.bannerOk]}>
+      <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+        What we read from your document
+      </CustomText>
+      <CustomText fontType='primary' style={styles.bannerBody}>
+        Check this against the card in your hand. If anything is wrong, retake the
+        photo — it is much quicker than being turned down later.
+      </CustomText>
+
+      {rows.map(([label, value]) => <OcrRow key={label} label={label} value={String(value)} />)}
+
+      {ocr.nameMatchesProfile === false ? (
+        <CustomText fontType='primary' style={styles.ocrMismatch}>
+          This name doesn&apos;t match your profile{profileName ? ` (${profileName})` : ''}.
+          Either retake the photo, or correct your name in step 1 so it matches the
+          document exactly.
+        </CustomText>
+      ) : null}
+
+      {extra.length ? (
+        <>
+          <TouchableOpacity onPress={() => setShowAll((v) => !v)}>
+            <CustomText fontType='primary' style={styles.ocrToggle}>
+              {showAll ? 'Hide' : 'Everything else we read'}
+            </CustomText>
+          </TouchableOpacity>
+          {showAll ? extra.map(([k, v]) => (
+            <OcrRow
+              key={k}
+              label={k.replace(/[_-]/g, ' ').replace(/^./, (c) => c.toUpperCase())}
+              value={String(v)}
+            />
+          )) : null}
+        </>
+      ) : null}
+    </View>
+  );
+};
+
 // Every already-reached step is tappable so the user can go back to it; steps
 // ahead stay inert because their prerequisites may not be met. In review mode
 // nothing is being submitted, so everything is reachable.
@@ -1078,14 +1153,10 @@ const OnboardingWizardScreen = () => {
               </View>
 
               {documentVerified ? (
-                <View style={[styles.banner, styles.bannerOk]}>
-                  <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
-                    Aadhaar card read
-                  </CustomText>
-                  <CustomText fontType='primary' style={styles.bannerBody}>
-                    We read your card. You&apos;ll confirm the number in the last step.
-                  </CustomText>
-                </View>
+                <OcrReadout
+                  ocr={docs.aadhaar?.ocr}
+                  profileName={[form.firstName, form.lastName].filter(Boolean).join(' ')}
+                />
               ) : null}
 
               {aadhaarManualVerify && !documentVerified && !aadhaarOcrFailed ? (
@@ -1181,6 +1252,16 @@ const OnboardingWizardScreen = () => {
                 <DocCapture label='Back' uri={licenceBack || photoUrl(docs.licence?.backImageKey)}
                   onPress={captureDocument(setLicenceBack)} required />
               </View>
+
+              {/* Same readout as the Aadhaar step — the licence number and expiry
+                  are read off the front, so this is the user's chance to catch a
+                  misread before it becomes a rejection. */}
+              {licenceDone ? (
+                <OcrReadout
+                  ocr={docs.licence?.ocr}
+                  profileName={[form.firstName, form.lastName].filter(Boolean).join(' ')}
+                />
+              ) : null}
 
               {/* Same two options as the Aadhaar step: read the stored photos
                   again, or type the number here. The photos are never cleared. */}
@@ -1683,6 +1764,12 @@ const styles = StyleSheet.create({
   bannerError: { backgroundColor: '#2b1212' },
   bannerTitle: { fontSize: 14, color: '#fff', marginBottom: 5 },
   bannerBody: { fontSize: 12.5, color: '#c9c9d1', lineHeight: 19, marginBottom: 6 },
+
+  ocrRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 4 },
+  ocrLabel: { fontSize: 12, color: '#8f8f98' },
+  ocrValue: { fontSize: 12.5, color: '#fff', flexShrink: 1, textAlign: 'right' },
+  ocrMismatch: { fontSize: 12.5, color: '#ffb4a8', lineHeight: 19, marginTop: 8 },
+  ocrToggle: { fontSize: 12.5, color: BRAND_COLOR, marginTop: 10 },
 
   headerAction: { width: 44, alignItems: 'flex-end', justifyContent: 'center' },
   headerActionText: { color: BRAND_COLOR, fontSize: 14 },
