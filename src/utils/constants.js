@@ -1,8 +1,27 @@
-//export const API_URL = 'https://api.cocarr.com/v1';
-//export const API_URL = 'https://cocarr-web-production.up.railway.app/v1';
-//export const API_URL = 'http://172.20.10.2:3030/v1';
-export const API_URL = 'https://api-dev.cocarr.com/v1';
-// export const API_URL = 'https://cocarr-apitest.infantsurya.in/v1';
+// THE API IS NOW THE PLATFORM GATEWAY, not the legacy monolith.
+//
+// Two things changed together and neither works without the other:
+//
+//   host  api-dev.cocarr.com  ->  apis-dev.cocarr.com   (note the `s`)
+//   path  /v1                 ->  /v1/core
+//
+// The gateway routes by prefix (`/v1/core` -> core service, `/v1/workspace` ->
+// workspace, and so on) and strips that prefix before proxying, so the core
+// service still sees the same `/v1/user`, `/v1/booking`, `/v1/image` paths it
+// always did. Every call in this app is relative to API_URL, so no endpoint
+// string changes — but pointing at `apis-dev.cocarr.com/v1` WITHOUT `/core`
+// reaches the gateway and 404s on everything, which looks like the whole
+// backend is down rather than like a wrong prefix.
+//
+// `api-dev.cocarr.com` (no `s`) is the LEGACY monolith. It still answers on the
+// old `/v1` paths, which is exactly why a half-done migration is hard to spot:
+// both hosts respond, and only one of them is this platform.
+export const API_URL = 'https://apis-dev.cocarr.com/v1/core';
+
+// Previous values, kept for local work:
+//   https://api-dev.cocarr.com/v1                        legacy monolith (dev)
+//   https://api.cocarr.com/v1                            legacy monolith (prod)
+//   http://172.20.10.2:3030/v1                           core service on a LAN device
 
 export const BOOKING_INITIATED = "initiated"
 export const BOOKING_BOOKED = "booked"
