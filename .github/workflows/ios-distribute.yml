@@ -121,7 +121,47 @@ jobs:
           KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
           CERT_PATH="$RUNNER_TEMP/dist-cert.p12"
 
-          echo "$IOS_DIST_CERT_P12_BASE64" | base64 -d > "$CERT_PATH"
+          # DECODE, THEN SAY WHICH SECRET IS WRONG.
+          #
+          # `security import` reports every one of these as the same thing:
+          #
+          #     MAC verification failed during PKCS12 import (wrong password?)
+          #
+          # It is emitted for a wrong password AND for a file that is not a
+          # valid PKCS#12 at all — so a mangled base64 blob is reported as a
+          # password problem, and the obvious response (re-enter the password)
+          # cannot fix it. That ambiguity is expensive: the two secrets are
+          # re-entered by hand whenever this repo is set up, and neither can be
+          # read back to check.
+          #
+          # Whitespace is stripped first because the base64 is pasted through
+          # shells, editors and the GitHub UI, all of which can introduce
+          # newlines or a trailing space. `base64 -d` on macOS rejects those,
+          # having already truncated the output file.
+          printf '%s' "$IOS_DIST_CERT_P12_BASE64" | tr -d '[:space:]' | base64 -d > "$CERT_PATH" || {
+            echo "::error::IOS_DIST_CERT_P12_BASE64 is not valid base64. Re-create it with: base64 -i dist.p12 | pbcopy"
+            exit 1
+          }
+          if [ ! -s "$CERT_PATH" ]; then
+            echo "::error::IOS_DIST_CERT_P12_BASE64 decoded to an empty file — the secret is empty or truncated."
+            exit 1
+          fi
+
+          # Is the decoded file a DER structure at all? This is deliberately a
+          # STRUCTURE check and involves no password and no cipher support.
+          #
+          # `openssl pkcs12` is NOT used to validate the password here, however
+          # tempting: this runner's PATH puts Homebrew OpenSSL 3 ahead of
+          # LibreSSL, and OpenSSL 3 refuses legacy RC2-encrypted .p12 files
+          # (the format Keychain Access still exports) without -legacy. It
+          # would fail on a perfectly good file with the correct password, and
+          # a check that confidently reports the WRONG cause is worse than the
+          # ambiguous error it was meant to replace.
+          if ! openssl asn1parse -inform DER -in "$CERT_PATH" >/dev/null 2>&1; then
+            echo "::error::IOS_DIST_CERT_P12_BASE64 decoded to something that is not a .p12 — it is corrupt, truncated, or double-encoded. Re-create it with: base64 -i dist.p12 | gh secret set IOS_DIST_CERT_P12_BASE64 --repo CoCarr-org/cocarr-app"
+            exit 1
+          fi
+          echo "Decoded a well-formed .p12 ($(wc -c < "$CERT_PATH") bytes)."
 
           # Create an ephemeral keychain and import the distribution identity
           # (certificate AND private key). Do NOT pass "-t cert": that imports
@@ -130,9 +170,16 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          # The base64 has already been proven well-formed above, so if this
+          # still fails on "MAC verification" the remaining cause is the
+          # password — say so, rather than repeating a message that offers
+          # "wrong password?" as one of several guesses.
           security import "$CERT_PATH" -P "$IOS_DIST_CERT_PASSWORD" \
             -A -f pkcs12 -k "$KEYCHAIN_PATH" \
-            -T /usr/bin/codesign -T /usr/bin/xcodebuild
+            -T /usr/bin/codesign -T /usr/bin/xcodebuild || {
+            echo "::error::The .p12 decoded cleanly, so IOS_DIST_CERT_PASSWORD does not match this certificate. A TRAILING NEWLINE counts as part of the password — \`echo\` adds one, so set it with printf: printf %s 'thepassword' | gh secret set IOS_DIST_CERT_PASSWORD --repo CoCarr-org/cocarr-app"
+            exit 1
+          }
 
           # Import the Apple WWDR intermediate certificates so the distribution
           # cert's chain validates in this ephemeral keychain. Without them the
