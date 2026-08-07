@@ -206,15 +206,60 @@ jobs:
           # device is registered (once), every future build includes it, so
           # Firebase stops asking them to register on each push.
           mkdir -p "$RUNNER_TEMP/asc"
-          cat > "$RUNNER_TEMP/asc/api_key.json" <<EOF
-          {
-            "key_id": "${ASC_KEY_ID}",
-            "issuer_id": "${ASC_ISSUER_ID}",
-            "key": "${ASC_KEY_P8_BASE64}",
-            "is_key_content_base64": true,
-            "in_house": false
+
+          # ACCEPT THE .p8 IN EITHER FORM — base64, or the raw PEM.
+          #
+          # This file is JSON, and a JSON string cannot contain a literal
+          # newline. A raw .p8 is PEM: a BEGIN line, wrapped base64, an END
+          # line. Interpolating that straight in produces a multi-line "key"
+          # value and fastlane dies in its JSON parser with `unexpected token`
+          # — an error that points at neither the secret nor the newline, and
+          # that Actions prints with every line masked as *** so the shape of
+          # the value cannot even be seen.
+          #
+          # Both forms are reasonable things to have put in the secret: the
+          # file Apple gives you is the PEM, while `is_key_content_base64`
+          # wants it encoded. So detect and normalise rather than demanding one.
+          if printf '%s' "$ASC_KEY_P8_BASE64" | grep -q 'BEGIN .*PRIVATE KEY'; then
+            echo "APP_STORE_CONNECT_KEY_P8 holds a raw .p8 — encoding it."
+            ASC_KEY_B64="$(printf '%s' "$ASC_KEY_P8_BASE64" | base64 | tr -d '\n')"
+          else
+            # Already base64. Strip whitespace: `base64` wraps at 76 columns on
+            # Linux, and a value pasted through a browser or editor can pick up
+            # newlines either way.
+            ASC_KEY_B64="$(printf '%s' "$ASC_KEY_P8_BASE64" | tr -d '[:space:]')"
+          fi
+
+          # Round-trip it: the decoded bytes must PARSE as a private key.
+          #
+          # Deliberately `openssl pkey` and not a grep for the BEGIN line. A
+          # truncated paste keeps its opening line — the BEGIN survives, the
+          # key does not — so a grep passes it and the failure resurfaces
+          # later inside fastlane as an opaque Spaceship error. Parsing is what
+          # actually distinguishes a whole key from the start of one.
+          if ! printf '%s' "$ASC_KEY_B64" | base64 -d 2>/dev/null | openssl pkey -noout 2>/dev/null; then
+            echo "::error::APP_STORE_CONNECT_KEY_P8 does not decode to a private key. Set it from the file Apple gave you: base64 -i AuthKey_XXXXXXXX.p8 | tr -d '\\n' | gh secret set APP_STORE_CONNECT_KEY_P8 --repo CoCarr-org/cocarr-app"
+            exit 1
+          fi
+
+          # Built with jq so every value is escaped as JSON rather than pasted
+          # into a template — the failure above was a quoting bug, and hand-quoting
+          # is what produced it.
+          jq -n \
+            --arg key_id "$ASC_KEY_ID" \
+            --arg issuer_id "$ASC_ISSUER_ID" \
+            --arg key "$ASC_KEY_B64" \
+            '{key_id: $key_id, issuer_id: $issuer_id, key: $key,
+              is_key_content_base64: true, in_house: false}' \
+            > "$RUNNER_TEMP/asc/api_key.json"
+
+          # Prove it parses before fastlane tries to, so a malformed file is
+          # reported here with a name attached instead of as a Ruby backtrace.
+          jq -e . "$RUNNER_TEMP/asc/api_key.json" >/dev/null || {
+            echo "::error::Failed to build a valid App Store Connect api_key.json."
+            exit 1
           }
-          EOF
+          echo "App Store Connect API key file built and parsed cleanly."
 
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           fastlane sigh \
