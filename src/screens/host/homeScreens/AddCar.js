@@ -1107,34 +1107,6 @@ const PanFallback = ({ message, busy, onRetry, onManual, manualOpen, children })
   </View>
 );
 
-// One document face. Same visual language as the RC step's upload tile — dashed
-// border when empty, brand-coloured once filled, cloud-upload affordance — but
-// sized to sit two-up so a card can be captured front and back. Module scope for
-// the same reason as PanFallback.
-const DocTile = ({ label, uri, onPress }) => (
-  <View style={{flex:1}}>
-    <TouchableOpacity
-      onPress={onPress}
-      activeOpacity={0.8}
-      style={{borderRadius:12,borderWidth:1,borderColor: uri ? BRAND_COLOR : '#33333a',borderStyle: uri ? 'solid' : 'dashed',backgroundColor:'#101012',overflow:'hidden'}}
-    >
-      {uri ? (
-        <Image source={{ uri }} style={{ width: '100%', height: 110 }} resizeMode='cover' />
-      ) : (
-        <View style={{height:110,justifyContent:'center',alignItems:'center',gap:6,paddingHorizontal:8}}>
-          <Icon name='cloud-upload-outline' size={24} color='#5a5a62' />
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:11,textAlign:'center'}}>{label}</CustomText>
-        </View>
-      )}
-    </TouchableOpacity>
-    {uri ? (
-      <TouchableOpacity onPress={onPress} style={{marginTop:8,alignSelf:'center'}}>
-        <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:11}}>Replace {label.toLowerCase()}</CustomText>
-      </TouchableOpacity>
-    ) : null}
-  </View>
-);
-
 // ── Step 7: Bank details (payout account) ─────────────────────────────────────
 // Mirrors the web listing wizard: an existing account shows and can be kept, or
 // one is added and verified via /host/bank before continuing. Stored once per
@@ -1259,8 +1231,7 @@ const StepPan = ({ handleNext }) => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [adding, setAdding] = useState(false);
-  const [image, setImage] = useState(null);      // base64 data URI — FRONT, the face OCR reads
-  const [backImage, setBackImage] = useState(null); // base64 data URI — back, for the reviewer
+  const [image, setImage] = useState(null);      // base64 data URI
   const [readout, setReadout] = useState(null);   // { panNumber, holderName }
   const [failed, setFailed] = useState(false);
   const [message, setMessage] = useState('');
@@ -1285,23 +1256,18 @@ const StepPan = ({ handleNext }) => {
   };
   useEffect(() => { load(); }, []);
 
-  // Capturing either face resets the read state — the previous readout described
-  // a different photo. Deliberately does NOT clear the other face: replacing a
-  // blurry back should not cost the front that scanned fine.
-  const setFromAsset = (side) => (res) => {
+  const setFromAsset = (res) => {
     if (res.didCancel || res.errorCode) return;
     const a = res.assets?.[0];
     if (!a?.base64) { setError('Could not read that photo.'); return; }
-    (side === 'back' ? setBackImage : setImage)(`data:${a.type || 'image/jpeg'};base64,${a.base64}`);
+    setImage(`data:${a.type || 'image/jpeg'};base64,${a.base64}`);
     setReadout(null); setFailed(false); setMessage(''); setManualOpen(false); setError('');
   };
   const PICK = { mediaType: 'photo', includeBase64: true, quality: 0.7, maxWidth: 1600, maxHeight: 1600 };
-  const chooseSource = (side) => {
-    const face = side === 'back' ? 'back' : 'front';
-    const onPick = setFromAsset(side);
-    Alert.alert('Add PAN', `Add a photo of the ${face} of your PAN card`, [
-      { text: 'Take Photo', onPress: () => launchCamera({ ...PICK, cameraType: 'back' }, onPick) },
-      { text: 'Choose from Gallery', onPress: () => launchImageLibrary({ ...PICK, selectionLimit: 1 }, onPick) },
+  const chooseSource = () => {
+    Alert.alert('Add PAN', 'Add a photo of your PAN card', [
+      { text: 'Take Photo', onPress: () => launchCamera({ ...PICK, cameraType: 'back' }, setFromAsset) },
+      { text: 'Choose from Gallery', onPress: () => launchImageLibrary({ ...PICK, selectionLimit: 1 }, setFromAsset) },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -1327,13 +1293,10 @@ const StepPan = ({ handleNext }) => {
   };
 
   const scan = async () => {
-    if (!image) { setError('Add a photo of the front of your PAN card.'); return; }
-    if (!backImage) { setError('Add a photo of the back of your PAN card.'); return; }
+    if (!image) { setError('Upload a photo of your PAN card.'); return; }
     setBusy(true); setError(''); setFailed(false); setMessage('');
     try {
-      // Both faces are stored; only the front is OCR'd — the number and the
-      // printed name are not on the back.
-      const res = await axios.post(`${API_URL}/user/verification/pan/scan`, { frontImage: image, backImage });
+      const res = await axios.post(`${API_URL}/user/verification/pan/scan`, { frontImage: image });
       const d = res.data || {};
       if (d.holderName) setPanName(d.holderName);
       if (d.needsManualEntry) { setFailed(true); setMessage(d.message || "We couldn't read your PAN card automatically."); return; }
@@ -1366,7 +1329,7 @@ const StepPan = ({ handleNext }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
         <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>PAN card</CustomText>
         <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
-          Take a photo of both sides of your PAN card — we'll read the details for you, just like your KYC. Required for payouts and TDS, and saved once for every car.
+          Take a photo of your PAN card — we'll read the details for you, just like your KYC. Required for payouts and TDS, and saved once for every car.
         </CustomText>
 
         {loading ? (
@@ -1386,11 +1349,23 @@ const StepPan = ({ handleNext }) => {
           </View>
         ) : (
           <>
-            {/* Both faces, captured the same way the RC card is. */}
-            <View style={{flexDirection:'row',gap:10,marginTop:18}}>
-              <DocTile label='PAN front' uri={image} onPress={() => chooseSource('front')} />
-              <DocTile label='PAN back' uri={backImage} onPress={() => chooseSource('back')} />
-            </View>
+            {/* Front only — a PAN card carries the number and the printed name
+                on that face, and nothing we read or review is on the back. */}
+            <TouchableOpacity onPress={chooseSource} activeOpacity={0.8} style={{marginTop:18,borderRadius:12,borderWidth:1,borderColor: image ? BRAND_COLOR : '#33333a',borderStyle: image ? 'solid' : 'dashed',backgroundColor:'#101012',overflow:'hidden'}}>
+              {image ? (
+                <Image source={{ uri: image }} style={{ width: '100%', height: 190 }} resizeMode='cover' />
+              ) : (
+                <View style={{height:150,justifyContent:'center',alignItems:'center',gap:8}}>
+                  <Icon name='cloud-upload-outline' size={30} color='#5a5a62' />
+                  <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12}}>Tap to capture or upload your PAN</CustomText>
+                </View>
+              )}
+            </TouchableOpacity>
+            {image ? (
+              <TouchableOpacity onPress={chooseSource} style={{marginTop:10,alignSelf:'center'}}>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12}}>Retake / choose another</CustomText>
+              </TouchableOpacity>
+            ) : null}
 
             {readout ? (
               <View style={{marginTop:14,backgroundColor:'#12251a',borderRadius:10,borderWidth:1,borderColor:'#2a5c3e',padding:14}}>
@@ -1414,9 +1389,6 @@ const StepPan = ({ handleNext }) => {
                     <TextInput value={panNumber} autoCapitalize='characters' maxLength={10} placeholder='ABCDE1234F' placeholderTextColor='#757575'
                       onChangeText={(t) => setPanNumber(t.toUpperCase().replace(/\s/g, ''))}
                       style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#cbb98a',fontSize:11,textTransform:'uppercase',marginTop:10,marginBottom:4}}>Name as printed on the card</CustomText>
-                    <TextInput value={panName} placeholder='Full name' placeholderTextColor='#757575' onChangeText={setPanName}
-                      style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
                     <TouchableOpacity disabled={busy || !panNumber.trim()} onPress={() => confirm()}
                       style={{marginTop:12,backgroundColor: (busy || !panNumber.trim()) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:14}}>
                       {busy ? <ActivityIndicator size='small' color='#000' /> : (
@@ -1433,7 +1405,7 @@ const StepPan = ({ handleNext }) => {
 
       {!loading && (hasPan && !adding) ? (
         <View style={{gap:10,marginVertical:14}}>
-          <TouchableOpacity onPress={() => { setError(''); setAdding(true); setImage(null); setBackImage(null); setReadout(null); setFailed(false); setManualOpen(false); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
+          <TouchableOpacity onPress={() => { setError(''); setAdding(true); setImage(null); setReadout(null); setFailed(false); setManualOpen(false); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
             <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different PAN</CustomText>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
@@ -1442,7 +1414,7 @@ const StepPan = ({ handleNext }) => {
         </View>
       ) : (!loading && !failed) ? (
         <View style={{gap:10,marginVertical:14}}>
-          <TouchableOpacity disabled={busy || !image || !backImage} onPress={scan} style={{backgroundColor: (busy || !image || !backImage) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+          <TouchableOpacity disabled={busy || !image} onPress={scan} style={{backgroundColor: (busy || !image) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
             {busy ? <ActivityIndicator size='small' color='#000' /> : (
               <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Scan & continue</CustomText>
             )}

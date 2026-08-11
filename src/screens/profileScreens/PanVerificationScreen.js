@@ -19,7 +19,6 @@ const PanVerificationScreen = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [panNumber, setPanNumber] = useState('');
-  const [panName, setPanName] = useState('');
   const [image, setImage] = useState(null);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -36,7 +35,6 @@ const PanVerificationScreen = () => {
         const res = await axios.get(`${API_URL}/user/profile?populate=true`);
         const u = res.data?.user || res.data?.data || res.data || {};
         setProfile(u);
-        if (u.panName) setPanName(u.panName);
       } catch (e) {
         setError('Could not load your profile');
       } finally {
@@ -81,13 +79,14 @@ const PanVerificationScreen = () => {
     // Validated here as well as on the server so a typo is caught before the
     // upload rather than after it.
     if (!PAN_RE.test(pan)) { setError('Enter a valid PAN — ten characters, like ABCDE1234F.'); return; }
-    if (!panName.trim()) { setError('Enter the name exactly as printed on the card.'); return; }
     if (!image && !p.panImage) { setError('Add a photo of your PAN card.'); return; }
 
     setSaving(true);
     try {
       const panImage = image ? await uploadPan(image) : p.panImage;
-      await axios.put(`${API_URL}/user/update-pan`, { panNumber: pan, panName: panName.trim(), panImage });
+      // No typed name: OCR reads the holder off the card and the PAN registry
+      // check confirms it, so a hand-typed one only ever disagreed with them.
+      await axios.put(`${API_URL}/user/update-pan`, { panNumber: pan, panImage });
       setSubmitted(true);
       notify('PAN submitted for review');
     } catch (e) {
@@ -145,19 +144,6 @@ const PanVerificationScreen = () => {
               maxLength={10}
             />
 
-            <CustomText fontType='primary' weight='SemiBold' style={styles.label}>NAME AS ON CARD</CustomText>
-            <TextInput
-              style={styles.input}
-              value={panName}
-              onChangeText={setPanName}
-              placeholder='Full name printed on the PAN'
-              placeholderTextColor='#5a5a5f'
-            />
-            {/* A name mismatch is the first thing a reviewer checks, so say it
-                up front rather than failing the review later. */}
-            <CustomText fontType='primary' style={styles.hint}>
-              This must match the card exactly, even if it differs from your account name.
-            </CustomText>
 
             <CustomText fontType='primary' weight='SemiBold' style={[styles.label, { marginTop: 20 }]}>
               PAN CARD PHOTO
