@@ -17,13 +17,9 @@ platform :ios do
       output_name: "cocarrApp.ipa",
       skip_package_ipa: false,
       skip_package_pkg: true,
-      destination_timeout: 300,
       buildlog_path: "build/logs",
       suppress_xcode_output: false,
-      xcargs: "-allowProvisioningUpdates",
-      code_signing_identity: "iPhone Developer",
-      provisioning_profile_specifier: "",
-      automatic_code_signing: true
+      xcargs: "-allowProvisioningUpdates"
     )
 
     # Upload to Firebase App Distribution
@@ -54,13 +50,9 @@ platform :ios do
       output_name: "cocarrApp.ipa",
       skip_package_ipa: false,
       skip_package_pkg: true,
-      destination_timeout: 300,
       buildlog_path: "build/logs",
       suppress_xcode_output: false,
-      xcargs: "-allowProvisioningUpdates",
-      code_signing_identity: "iPhone Developer",
-      provisioning_profile_specifier: "",
-      automatic_code_signing: true
+      xcargs: "-allowProvisioningUpdates"
     )
 
     UI.success("✅ Successfully built beta IPA")
