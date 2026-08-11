@@ -452,29 +452,8 @@ const StepRc = ({ carDetails, applyRcPayload, handleChange, handleNext }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
         <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Upload your Vehicle RC</CustomText>
         <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
-          Take a photo of the RC card like the sample below — we'll read the details for you, just like your KYC. If we can't read it, enter your car number below.
+          Take a photo of the RC card — we'll read the details for you, just like your KYC. If we can't read it, enter your car number below.
         </CustomText>
-
-        {/* Sample RC card */}
-        <View style={{marginTop:18,backgroundColor:'#141416',borderRadius:12,borderWidth:1,borderColor:'#26262a',padding:14}}>
-          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between'}}>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#9a9a9a',fontSize:9,letterSpacing:.5}}>SAMPLE · REGISTRATION CERTIFICATE</CustomText>
-            <View style={{width:26,height:20,borderRadius:3,backgroundColor:'#c9a94a'}} />
-          </View>
-          <View style={{flexDirection:'row',marginTop:12,gap:12}}>
-            <View style={{width:52,height:64,borderRadius:6,backgroundColor:'#232327',justifyContent:'center',alignItems:'center'}}>
-              <Icon name='person' size={22} color='#3a3a40' />
-            </View>
-            <View style={{flex:1,justifyContent:'center',gap:7}}>
-              {['70%','90%','60%','80%'].map((w, i) => (
-                <View key={i} style={{height:7,width:w,borderRadius:4,backgroundColor:'#26262b'}} />
-              ))}
-            </View>
-          </View>
-          <View style={{marginTop:12,alignSelf:'flex-start',backgroundColor:'#1e1e22',borderRadius:4,paddingVertical:4,paddingHorizontal:8}}>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#c9a94a',fontSize:12,letterSpacing:1}}>UP12 KD 1234</CustomText>
-          </View>
-        </View>
 
         {/* Upload / preview */}
         <TouchableOpacity onPress={chooseSource} activeOpacity={0.8} style={{marginTop:18,borderRadius:12,borderWidth:1,borderColor: image ? BRAND_COLOR : '#33333a',borderStyle: image ? 'solid' : 'dashed',backgroundColor:'#101012',overflow:'hidden'}}>
@@ -1128,6 +1107,34 @@ const PanFallback = ({ message, busy, onRetry, onManual, manualOpen, children })
   </View>
 );
 
+// One document face. Same visual language as the RC step's upload tile — dashed
+// border when empty, brand-coloured once filled, cloud-upload affordance — but
+// sized to sit two-up so a card can be captured front and back. Module scope for
+// the same reason as PanFallback.
+const DocTile = ({ label, uri, onPress }) => (
+  <View style={{flex:1}}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={{borderRadius:12,borderWidth:1,borderColor: uri ? BRAND_COLOR : '#33333a',borderStyle: uri ? 'solid' : 'dashed',backgroundColor:'#101012',overflow:'hidden'}}
+    >
+      {uri ? (
+        <Image source={{ uri }} style={{ width: '100%', height: 110 }} resizeMode='cover' />
+      ) : (
+        <View style={{height:110,justifyContent:'center',alignItems:'center',gap:6,paddingHorizontal:8}}>
+          <Icon name='cloud-upload-outline' size={24} color='#5a5a62' />
+          <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:11,textAlign:'center'}}>{label}</CustomText>
+        </View>
+      )}
+    </TouchableOpacity>
+    {uri ? (
+      <TouchableOpacity onPress={onPress} style={{marginTop:8,alignSelf:'center'}}>
+        <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:11}}>Replace {label.toLowerCase()}</CustomText>
+      </TouchableOpacity>
+    ) : null}
+  </View>
+);
+
 // ── Step 7: Bank details (payout account) ─────────────────────────────────────
 // Mirrors the web listing wizard: an existing account shows and can be kept, or
 // one is added and verified via /host/bank before continuing. Stored once per
@@ -1252,7 +1259,8 @@ const StepPan = ({ handleNext }) => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [adding, setAdding] = useState(false);
-  const [image, setImage] = useState(null);      // base64 data URI
+  const [image, setImage] = useState(null);      // base64 data URI — FRONT, the face OCR reads
+  const [backImage, setBackImage] = useState(null); // base64 data URI — back, for the reviewer
   const [readout, setReadout] = useState(null);   // { panNumber, holderName }
   const [failed, setFailed] = useState(false);
   const [message, setMessage] = useState('');
@@ -1277,18 +1285,23 @@ const StepPan = ({ handleNext }) => {
   };
   useEffect(() => { load(); }, []);
 
-  const setFromAsset = (res) => {
+  // Capturing either face resets the read state — the previous readout described
+  // a different photo. Deliberately does NOT clear the other face: replacing a
+  // blurry back should not cost the front that scanned fine.
+  const setFromAsset = (side) => (res) => {
     if (res.didCancel || res.errorCode) return;
     const a = res.assets?.[0];
     if (!a?.base64) { setError('Could not read that photo.'); return; }
-    setImage(`data:${a.type || 'image/jpeg'};base64,${a.base64}`);
+    (side === 'back' ? setBackImage : setImage)(`data:${a.type || 'image/jpeg'};base64,${a.base64}`);
     setReadout(null); setFailed(false); setMessage(''); setManualOpen(false); setError('');
   };
   const PICK = { mediaType: 'photo', includeBase64: true, quality: 0.7, maxWidth: 1600, maxHeight: 1600 };
-  const chooseSource = () => {
-    Alert.alert('Add PAN', 'Add a photo of your PAN card', [
-      { text: 'Take Photo', onPress: () => launchCamera({ ...PICK, cameraType: 'back' }, setFromAsset) },
-      { text: 'Choose from Gallery', onPress: () => launchImageLibrary({ ...PICK, selectionLimit: 1 }, setFromAsset) },
+  const chooseSource = (side) => {
+    const face = side === 'back' ? 'back' : 'front';
+    const onPick = setFromAsset(side);
+    Alert.alert('Add PAN', `Add a photo of the ${face} of your PAN card`, [
+      { text: 'Take Photo', onPress: () => launchCamera({ ...PICK, cameraType: 'back' }, onPick) },
+      { text: 'Choose from Gallery', onPress: () => launchImageLibrary({ ...PICK, selectionLimit: 1 }, onPick) },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
@@ -1303,16 +1316,24 @@ const StepPan = ({ handleNext }) => {
       await axios.post(`${API_URL}/user/verification/pan/number`, body);
       setSubmitted(true); setFailed(false); setManualOpen(false);
       await load();
+      // PAN is the last thing collected, so a successful submission IS the end
+      // of data entry — go straight to Review rather than leaving the host on a
+      // finished step. Every route into here (scan, retry, manual) means the
+      // same thing.
+      handleNext();
     } catch (e) {
       setError(apiError(e, 'Could not verify this PAN.'));
     } finally { setBusy(false); }
   };
 
   const scan = async () => {
-    if (!image) { setError('Upload a photo of your PAN card.'); return; }
+    if (!image) { setError('Add a photo of the front of your PAN card.'); return; }
+    if (!backImage) { setError('Add a photo of the back of your PAN card.'); return; }
     setBusy(true); setError(''); setFailed(false); setMessage('');
     try {
-      const res = await axios.post(`${API_URL}/user/verification/pan/scan`, { frontImage: image });
+      // Both faces are stored; only the front is OCR'd — the number and the
+      // printed name are not on the back.
+      const res = await axios.post(`${API_URL}/user/verification/pan/scan`, { frontImage: image, backImage });
       const d = res.data || {};
       if (d.holderName) setPanName(d.holderName);
       if (d.needsManualEntry) { setFailed(true); setMessage(d.message || "We couldn't read your PAN card automatically."); return; }
@@ -1345,7 +1366,7 @@ const StepPan = ({ handleNext }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
         <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>PAN card</CustomText>
         <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
-          Your PAN is required for payouts and TDS, and is verified the same way as your KYC. Saved once and reused for every car.
+          Take a photo of both sides of your PAN card — we'll read the details for you, just like your KYC. Required for payouts and TDS, and saved once for every car.
         </CustomText>
 
         {loading ? (
@@ -1365,21 +1386,11 @@ const StepPan = ({ handleNext }) => {
           </View>
         ) : (
           <>
-            <TouchableOpacity onPress={chooseSource} activeOpacity={0.8} style={{marginTop:18,borderRadius:12,borderWidth:1,borderColor: image ? BRAND_COLOR : '#33333a',borderStyle: image ? 'solid' : 'dashed',backgroundColor:'#101012',overflow:'hidden'}}>
-              {image ? (
-                <Image source={{ uri: image }} style={{ width: '100%', height: 190 }} resizeMode='cover' />
-              ) : (
-                <View style={{height:150,justifyContent:'center',alignItems:'center',gap:8}}>
-                  <Icon name='cloud-upload-outline' size={30} color='#5a5a62' />
-                  <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12}}>Tap to capture or upload your PAN</CustomText>
-                </View>
-              )}
-            </TouchableOpacity>
-            {image ? (
-              <TouchableOpacity onPress={chooseSource} style={{marginTop:10,alignSelf:'center'}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12}}>Retake / choose another</CustomText>
-              </TouchableOpacity>
-            ) : null}
+            {/* Both faces, captured the same way the RC card is. */}
+            <View style={{flexDirection:'row',gap:10,marginTop:18}}>
+              <DocTile label='PAN front' uri={image} onPress={() => chooseSource('front')} />
+              <DocTile label='PAN back' uri={backImage} onPress={() => chooseSource('back')} />
+            </View>
 
             {readout ? (
               <View style={{marginTop:14,backgroundColor:'#12251a',borderRadius:10,borderWidth:1,borderColor:'#2a5c3e',padding:14}}>
@@ -1422,7 +1433,7 @@ const StepPan = ({ handleNext }) => {
 
       {!loading && (hasPan && !adding) ? (
         <View style={{gap:10,marginVertical:14}}>
-          <TouchableOpacity onPress={() => { setError(''); setAdding(true); setImage(null); setReadout(null); setFailed(false); setManualOpen(false); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
+          <TouchableOpacity onPress={() => { setError(''); setAdding(true); setImage(null); setBackImage(null); setReadout(null); setFailed(false); setManualOpen(false); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
             <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different PAN</CustomText>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
@@ -1431,9 +1442,9 @@ const StepPan = ({ handleNext }) => {
         </View>
       ) : (!loading && !failed) ? (
         <View style={{gap:10,marginVertical:14}}>
-          <TouchableOpacity disabled={busy || !image} onPress={scan} style={{backgroundColor: (busy || !image) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+          <TouchableOpacity disabled={busy || !image || !backImage} onPress={scan} style={{backgroundColor: (busy || !image || !backImage) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
             {busy ? <ActivityIndicator size='small' color='#000' /> : (
-              <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Scan & verify PAN</CustomText>
+              <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Scan & continue</CustomText>
             )}
           </TouchableOpacity>
           {hasPan ? (
