@@ -59,18 +59,23 @@ const SEAT_OPTIONS = [
   { id: '8', name: '8 Seater' },
 ];
 
-// Labeled photo slots — `type` matches the Image model's enum.
+// Labeled photo slots. `type` is a free-text string on the Image model (the
+// `enum` there is documentation, not a DB constraint), so the interior slots
+// below need no migration. Front is the cover; four exterior angles plus three
+// named interior shots give renters a full look at the car.
 const IMAGE_SLOTS = [
   { type: 'front', label: 'Front' },
   { type: 'back', label: 'Rear' },
   { type: 'driverSide', label: 'Driver Side' },
   { type: 'passengerSide', label: 'Passenger Side' },
-  { type: 'other', label: 'Interior' },
+  { type: 'dashboard', label: 'Dashboard', interior: true },
+  { type: 'frontSeats', label: 'Front Seats', interior: true },
+  { type: 'rearSeats', label: 'Rear Seats', interior: true },
 ];
 
 const LOCATION_RADIUS_M = 30000; // 30km booking radius around the pickup point.
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 9;
 const STEP_LABELS = {
   1: 'Step 1: Vehicle RC',
   2: 'Step 2: Vehicle Details',
@@ -78,7 +83,9 @@ const STEP_LABELS = {
   4: 'Step 4: Location',
   5: 'Step 5: Preferences',
   6: 'Step 6: Pricing',
-  7: 'Step 7: Review & Host',
+  7: 'Step 7: Bank Details',
+  8: 'Step 8: PAN',
+  9: 'Step 9: Review & Host',
 };
 
 // Which detail fields are locked (pre-filled from the RC and not editable).
@@ -324,7 +331,9 @@ const AddCar = ({ route }) => {
       case 4: return <StepLocation carDetails={data} handleChange={handleChange} handleNext={handleNext} />;
       case 5: return <StepPreferences carDetails={data} handleChange={handleChange} handleNext={handleNext} />;
       case 6: return <StepPricing carDetails={data} handleChange={handleChange} handleNext={handleNext} />;
-      case 7: return <StepReview carDetails={data} navigation={navigation} />;
+      case 7: return <StepBank handleNext={handleNext} />;
+      case 8: return <StepPan handleNext={handleNext} />;
+      case 9: return <StepReview carDetails={data} navigation={navigation} />;
       default: return null;
     }
   };
@@ -443,7 +452,7 @@ const StepRc = ({ carDetails, applyRcPayload, handleChange, handleNext }) => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
         <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Upload your Vehicle RC</CustomText>
         <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
-          Take a photo of the RC card like the sample below. We'll read the details for you.
+          Take a photo of the RC card like the sample below — we'll read the details for you, just like your KYC. If we can't read it, enter your car number below.
         </CustomText>
 
         {/* Sample RC card */}
@@ -755,8 +764,8 @@ const StepImages = ({ carDetails, handleChange, handleNext }) => {
           Add a clear photo for each angle. The front photo is used as the cover.
         </CustomText>
 
-        <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between',marginTop:16}}>
-          {IMAGE_SLOTS.map((slot) => {
+        {(() => {
+          const renderSlot = (slot) => {
             const asset = slots[slot.type];
             const uri = asset ? (asset.uri || photoUrl(asset.url)) : null;
             return (
@@ -783,8 +792,23 @@ const StepImages = ({ carDetails, handleChange, handleNext }) => {
                 <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:11,marginTop:5,textAlign:'center'}}>{slot.label}</CustomText>
               </View>
             );
-          })}
-        </View>
+          };
+          const exterior = IMAGE_SLOTS.filter((s) => !s.interior);
+          const interior = IMAGE_SLOTS.filter((s) => s.interior);
+          return (
+            <>
+              <CustomText fontType='primary' weight='Bold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.5,marginTop:18,marginBottom:8}}>Exterior</CustomText>
+              <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'}}>
+                {exterior.map(renderSlot)}
+              </View>
+              <CustomText fontType='primary' weight='Bold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.5,marginTop:10,marginBottom:2}}>Interior</CustomText>
+              <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginBottom:8}}>Show renters inside the car — the dashboard and the seats.</CustomText>
+              <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'}}>
+                {interior.map(renderSlot)}
+              </View>
+            </>
+          );
+        })()}
       </ScrollView>
 
       <TouchableOpacity disabled={busy || filled.length === 0} onPress={submit} style={{backgroundColor: (busy || filled.length === 0) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15,marginVertical:16}}>
@@ -1071,13 +1095,359 @@ const StepPricing = ({ carDetails, handleChange, handleNext }) => {
         <PricingField label='Weekend Pricing (per hour)' field='weekendPricing' placeholder='Enter weekend pricing' value={carDetails.weekendPricing} onChange={handleChange} />
       </ScrollView>
       <TouchableOpacity disabled={!canContinue} onPress={handleNext} style={{ backgroundColor: canContinue ? BRAND_COLOR : '#959595', borderRadius: 8, paddingVertical: 15, marginTop: 20 }}>
-        <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: -0.15, textAlign: 'center' }}>Review Listing</CustomText>
+        <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: -0.15, textAlign: 'center' }}>Continue</CustomText>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 };
 
-// ── Step 7: Review & publish ──────────────────────────────────────────────────
+// OCR-failure fallback for the PAN step, mirroring the KYC onboarding wizard:
+// read the stored scan again, or type the number by hand. Never a dead end and
+// never discards the uploaded photo. Hoisted to module scope (a nested component
+// remounts every render and drops the TextInput's focus).
+const PanFallback = ({ message, busy, onRetry, onManual, manualOpen, children }) => (
+  <View style={{marginTop:14,backgroundColor:'#2a2416',borderRadius:10,borderWidth:1,borderColor:'#5c4a2a',padding:14}}>
+    <CustomText fontType='primary' weight='Bold' style={{color:'#e8c877',fontSize:13,marginBottom:4}}>We couldn't verify that automatically</CustomText>
+    <CustomText fontType='primary' weight='Regular' style={{color:'#cbb98a',fontSize:12}}>{message}</CustomText>
+    <CustomText fontType='primary' weight='Regular' style={{color:'#cbb98a',fontSize:12,marginTop:6}}>
+      {manualOpen
+        ? 'Enter the number and our team will check your card by hand.'
+        : 'Your photo is saved — we can read it again, or you can enter the PAN yourself.'}
+    </CustomText>
+    {children}
+    {!manualOpen ? (
+      <View style={{marginTop:10,gap:8}}>
+        <TouchableOpacity disabled={busy} onPress={onRetry} style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:13}}>
+          <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>{busy ? 'Reading again…' : 'Retry verification'}</CustomText>
+        </TouchableOpacity>
+        <TouchableOpacity disabled={busy} onPress={onManual} style={{paddingVertical:8}}>
+          <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12,textAlign:'center'}}>Enter my PAN instead</CustomText>
+        </TouchableOpacity>
+      </View>
+    ) : null}
+  </View>
+);
+
+// ── Step 7: Bank details (payout account) ─────────────────────────────────────
+// Mirrors the web listing wizard: an existing account shows and can be kept, or
+// one is added and verified via /host/bank before continuing. Stored once per
+// host and reused for every car.
+const StepBank = ({ handleNext }) => {
+  const [loading, setLoading] = useState(true);
+  const [account, setAccount] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ accountNumber: '', ifscCode: '', hostProvidedName: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await axios.get(`${API_URL}/host/bank`);
+      const acc = res.data?.data || res.data || null;
+      const has = acc && (acc.id || acc.accountNumber);
+      setAccount(has ? acc : null);
+      setAdding(!has);
+    } catch (e) {
+      if (e?.response?.status && e.response.status !== 404) setError(apiError(e, 'Could not load your payout account.'));
+      setAccount(null); setAdding(true);
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    setError(''); setSaving(true);
+    try {
+      await axios.post(`${API_URL}/host/bank`, form);
+      setForm({ accountNumber: '', ifscCode: '', hostProvidedName: '' });
+      await load();
+    } catch (e) {
+      setError(apiError(e, 'Could not verify this account.'));
+    } finally { setSaving(false); }
+  };
+
+  const label = (t) => (
+    <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4,marginTop:14}}>{t}</CustomText>
+  );
+
+  return (
+    <KeyboardAvoidingView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, justifyContent: 'space-between' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
+        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Payout account</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+          We pay your earnings into this account. It has to be verified before your car can go live.
+        </CustomText>
+
+        {loading ? (
+          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={BRAND_COLOR} /></View>
+        ) : (account && !adding) ? (
+          <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14}}>
+            {[
+              ['Account holder', account.accountHolderName],
+              ['Account', account.accountNumber ? `•••• ${String(account.accountNumber).slice(-4)}` : '—'],
+              ['IFSC', account.ifscCode],
+              ['Bank', account.bankName],
+              ['Status', account.isVerified ? 'Verified' : 'Not verified'],
+            ].map(([l, v]) => (
+              <View key={l} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5}}>
+                <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{l}</CustomText>
+                <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12}}>{v || '—'}</CustomText>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <>
+            {label('Account holder name')}
+            <TextInput value={form.hostProvidedName} onChangeText={(t) => setForm((f) => ({ ...f, hostProvidedName: t }))}
+              placeholder='Exactly as on your bank record' placeholderTextColor='#757575'
+              style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+            {label('Account number')}
+            <TextInput value={form.accountNumber} keyboardType='numeric' onChangeText={(t) => setForm((f) => ({ ...f, accountNumber: t.replace(/\s/g, '') }))}
+              placeholder='Account number' placeholderTextColor='#757575'
+              style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+            {label('IFSC code')}
+            <TextInput value={form.ifscCode} autoCapitalize='characters' maxLength={11} onChangeText={(t) => setForm((f) => ({ ...f, ifscCode: t.toUpperCase().replace(/\s/g, '') }))}
+              placeholder='e.g. HDFC0001234' placeholderTextColor='#757575'
+              style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+          </>
+        )}
+
+        {error ? <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12,marginTop:12}}>{error}</CustomText> : null}
+      </ScrollView>
+
+      {!loading && (account && !adding) ? (
+        <View style={{gap:10,marginVertical:14}}>
+          <TouchableOpacity onPress={() => { setError(''); setAdding(true); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different account</CustomText>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Continue to PAN</CustomText>
+          </TouchableOpacity>
+        </View>
+      ) : !loading ? (
+        <View style={{gap:10,marginVertical:14}}>
+          <TouchableOpacity disabled={saving || !form.accountNumber || !form.ifscCode || !form.hostProvidedName} onPress={save}
+            style={{backgroundColor: (saving || !form.accountNumber || !form.ifscCode || !form.hostProvidedName) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+            {saving ? <ActivityIndicator size='small' color='#000' /> : (
+              <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify & save account</CustomText>
+            )}
+          </TouchableOpacity>
+          {account ? (
+            <TouchableOpacity onPress={() => { setAdding(false); setError(''); }} style={{paddingVertical:10}}>
+              <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12,textAlign:'center'}}>Cancel</CustomText>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+    </KeyboardAvoidingView>
+  );
+};
+
+// ── Step 8: PAN (per-host payout document, KYC-style) ─────────────────────────
+// Captured the same way as the rider's Aadhaar/licence: scan the card, read it,
+// and fall back to retry / manual entry that never discards the photo. Stored
+// once per host (on the user), reused for every car.
+const StepPan = ({ handleNext }) => {
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [adding, setAdding] = useState(false);
+  const [image, setImage] = useState(null);      // base64 data URI
+  const [readout, setReadout] = useState(null);   // { panNumber, holderName }
+  const [failed, setFailed] = useState(false);
+  const [message, setMessage] = useState('');
+  const [manualOpen, setManualOpen] = useState(false);
+  const [panNumber, setPanNumber] = useState('');
+  const [panName, setPanName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const load = async () => {
+    setLoading(true); setError('');
+    try {
+      const res = await axios.get(`${API_URL}/user/profile?populate=true`);
+      const u = res.data?.user || res.data?.data || res.data || {};
+      setProfile(u);
+      setAdding(!(u.panVerified || (u.panNumber && u.panImage)));
+    } catch (e) {
+      if (e?.response?.status && e.response.status !== 404) setError(apiError(e, 'Could not load your PAN.'));
+      setProfile(null); setAdding(true);
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const setFromAsset = (res) => {
+    if (res.didCancel || res.errorCode) return;
+    const a = res.assets?.[0];
+    if (!a?.base64) { setError('Could not read that photo.'); return; }
+    setImage(`data:${a.type || 'image/jpeg'};base64,${a.base64}`);
+    setReadout(null); setFailed(false); setMessage(''); setManualOpen(false); setError('');
+  };
+  const PICK = { mediaType: 'photo', includeBase64: true, quality: 0.7, maxWidth: 1600, maxHeight: 1600 };
+  const chooseSource = () => {
+    Alert.alert('Add PAN', 'Add a photo of your PAN card', [
+      { text: 'Take Photo', onPress: () => launchCamera({ ...PICK, cameraType: 'back' }, setFromAsset) },
+      { text: 'Choose from Gallery', onPress: () => launchImageLibrary({ ...PICK, selectionLimit: 1 }, setFromAsset) },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const confirm = async ({ name } = {}) => {
+    const n = String(panNumber).trim().toUpperCase();
+    const nm = String(name ?? panName ?? '').trim();
+    if (n && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(n)) { setError('Enter a valid PAN — like ABCDE1234F'); return; }
+    const body = {}; if (n) body.panNumber = n; if (nm) body.panName = nm;
+    setBusy(true); setError('');
+    try {
+      await axios.post(`${API_URL}/user/verification/pan/number`, body);
+      setSubmitted(true); setFailed(false); setManualOpen(false);
+      await load();
+    } catch (e) {
+      setError(apiError(e, 'Could not verify this PAN.'));
+    } finally { setBusy(false); }
+  };
+
+  const scan = async () => {
+    if (!image) { setError('Upload a photo of your PAN card.'); return; }
+    setBusy(true); setError(''); setFailed(false); setMessage('');
+    try {
+      const res = await axios.post(`${API_URL}/user/verification/pan/scan`, { frontImage: image });
+      const d = res.data || {};
+      if (d.holderName) setPanName(d.holderName);
+      if (d.needsManualEntry) { setFailed(true); setMessage(d.message || "We couldn't read your PAN card automatically."); return; }
+      setReadout({ panNumber: d.panNumber, holderName: d.holderName });
+      await confirm({ name: d.holderName || panName });
+    } catch (e) {
+      setError(apiError(e, 'Could not scan your PAN card.'));
+    } finally { setBusy(false); }
+  };
+
+  const retry = async () => {
+    setBusy(true); setError('');
+    try {
+      const res = await axios.post(`${API_URL}/user/verification/pan/retry-ocr`);
+      const d = res.data || {};
+      if (d.holderName) setPanName(d.holderName);
+      if (d.needsManualEntry) { setMessage(d.message || "We still couldn't read your PAN card."); return; }
+      setFailed(false); setReadout({ panNumber: d.panNumber, holderName: d.holderName });
+      await confirm({ name: d.holderName || panName });
+    } catch (e) {
+      setError(apiError(e, 'Could not read your PAN again.'));
+    } finally { setBusy(false); }
+  };
+
+  const hasPan = submitted || !!(profile && (profile.panVerified || (profile.panNumber && profile.panImage)));
+
+  return (
+    <KeyboardAvoidingView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, justifyContent: 'space-between' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
+        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>PAN card</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+          Your PAN is required for payouts and TDS, and is verified the same way as your KYC. Saved once and reused for every car.
+        </CustomText>
+
+        {loading ? (
+          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={BRAND_COLOR} /></View>
+        ) : (hasPan && !adding) ? (
+          <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14}}>
+            {[
+              ['PAN', profile?.panNumber ? `••••••${String(profile.panNumber).slice(-4)}` : (submitted ? 'Submitted' : '—')],
+              ['Name on card', profile?.panName || panName || '—'],
+              ['Status', profile?.panVerified ? 'Verified' : 'Awaiting review'],
+            ].map(([l, v]) => (
+              <View key={l} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5}}>
+                <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{l}</CustomText>
+                <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12}}>{v}</CustomText>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <>
+            <TouchableOpacity onPress={chooseSource} activeOpacity={0.8} style={{marginTop:18,borderRadius:12,borderWidth:1,borderColor: image ? BRAND_COLOR : '#33333a',borderStyle: image ? 'solid' : 'dashed',backgroundColor:'#101012',overflow:'hidden'}}>
+              {image ? (
+                <Image source={{ uri: image }} style={{ width: '100%', height: 190 }} resizeMode='cover' />
+              ) : (
+                <View style={{height:150,justifyContent:'center',alignItems:'center',gap:8}}>
+                  <Icon name='cloud-upload-outline' size={30} color='#5a5a62' />
+                  <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12}}>Tap to capture or upload your PAN</CustomText>
+                </View>
+              )}
+            </TouchableOpacity>
+            {image ? (
+              <TouchableOpacity onPress={chooseSource} style={{marginTop:10,alignSelf:'center'}}>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12}}>Retake / choose another</CustomText>
+              </TouchableOpacity>
+            ) : null}
+
+            {readout ? (
+              <View style={{marginTop:14,backgroundColor:'#12251a',borderRadius:10,borderWidth:1,borderColor:'#2a5c3e',padding:14}}>
+                <CustomText fontType='primary' weight='Bold' style={{color:'#8fe6b0',fontSize:12,marginBottom:6}}>What we read from your PAN</CustomText>
+                {[['PAN', readout.panNumber], ['Name on card', readout.holderName]].filter(([, v]) => v).map(([l, v]) => (
+                  <View key={l} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:3}}>
+                    <CustomText fontType='primary' weight='Regular' style={{color:'#8aa596',fontSize:12}}>{l}</CustomText>
+                    <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12}}>{v}</CustomText>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+            {error ? <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12,marginTop:12}}>{error}</CustomText> : null}
+
+            {failed ? (
+              <PanFallback message={message} busy={busy} manualOpen={manualOpen} onRetry={retry} onManual={() => setManualOpen(true)}>
+                {manualOpen ? (
+                  <View style={{marginTop:10}}>
+                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#cbb98a',fontSize:11,textTransform:'uppercase',marginBottom:4}}>PAN number</CustomText>
+                    <TextInput value={panNumber} autoCapitalize='characters' maxLength={10} placeholder='ABCDE1234F' placeholderTextColor='#757575'
+                      onChangeText={(t) => setPanNumber(t.toUpperCase().replace(/\s/g, ''))}
+                      style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#cbb98a',fontSize:11,textTransform:'uppercase',marginTop:10,marginBottom:4}}>Name as printed on the card</CustomText>
+                    <TextInput value={panName} placeholder='Full name' placeholderTextColor='#757575' onChangeText={setPanName}
+                      style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+                    <TouchableOpacity disabled={busy || !panNumber.trim()} onPress={() => confirm()}
+                      style={{marginTop:12,backgroundColor: (busy || !panNumber.trim()) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:14}}>
+                      {busy ? <ActivityIndicator size='small' color='#000' /> : (
+                        <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify PAN</CustomText>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+              </PanFallback>
+            ) : null}
+          </>
+        )}
+      </ScrollView>
+
+      {!loading && (hasPan && !adding) ? (
+        <View style={{gap:10,marginVertical:14}}>
+          <TouchableOpacity onPress={() => { setError(''); setAdding(true); setImage(null); setReadout(null); setFailed(false); setManualOpen(false); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different PAN</CustomText>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Review Listing</CustomText>
+          </TouchableOpacity>
+        </View>
+      ) : (!loading && !failed) ? (
+        <View style={{gap:10,marginVertical:14}}>
+          <TouchableOpacity disabled={busy || !image} onPress={scan} style={{backgroundColor: (busy || !image) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+            {busy ? <ActivityIndicator size='small' color='#000' /> : (
+              <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Scan & verify PAN</CustomText>
+            )}
+          </TouchableOpacity>
+          {hasPan ? (
+            <TouchableOpacity onPress={() => { setAdding(false); setError(''); }} style={{paddingVertical:10}}>
+              <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12,textAlign:'center'}}>Cancel</CustomText>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ) : null}
+    </KeyboardAvoidingView>
+  );
+};
+
+// ── Step 9: Review & publish ──────────────────────────────────────────────────
 // Hoisted out of StepReview for the same reason as PricingField: nested
 // definitions remount their whole subtree on every parent render, which made the
 // review images reload from scratch each time.
@@ -1097,12 +1467,23 @@ const Card = ({ title, children }) => (
 
 const StepReview = ({ carDetails, navigation }) => {
   const [busy, setBusy] = useState(false);
+  // Bank + PAN are stored per host, not on the listing payload — read them back
+  // so the review shows what will pay the host out, same as the web wizard.
+  const [bank, setBank] = useState(null);
+  const [pan, setPan] = useState(null);
   const prefs = carDetails.preferences || {};
   const enabledPrefs = [
     prefs.midnightBooking && 'Midnight booking',
     prefs.selfPickup && 'Self pickup',
     prefs.deliverAvailable && 'Delivery',
   ].filter(Boolean);
+
+  useEffect(() => {
+    (async () => {
+      try { const r = await axios.get(`${API_URL}/host/bank`); setBank(r.data?.data || r.data || null); } catch (e) { /* non-blocking */ }
+      try { const r = await axios.get(`${API_URL}/user/profile?populate=true`); setPan(r.data?.user || r.data?.data || r.data || null); } catch (e) { /* non-blocking */ }
+    })();
+  }, []);
 
   const publish = async () => {
     try {
@@ -1176,6 +1557,19 @@ const StepReview = ({ carDetails, navigation }) => {
           <Row label='Fuel' value={FUEL_TYPES.find((f) => f.id === carDetails.vehicleFuelType)?.name} />
           <Row label='Transmission' value={TRANSMISSIONS.find((t) => t.id === carDetails.vehicleTransmission)?.name} />
           <Row label='Seats' value={SEAT_OPTIONS.find((o) => o.id === String(carDetails.vehicleSeats))?.name} />
+        </Card>
+
+        <Card title='Payout account'>
+          <Row label='Account holder' value={bank?.accountHolderName} />
+          <Row label='Account' value={bank?.accountNumber ? `•••• ${String(bank.accountNumber).slice(-4)}` : null} />
+          <Row label='Bank' value={bank?.bankName} />
+          <Row label='Status' value={bank ? (bank.isVerified ? 'Verified' : 'Not verified') : '—'} />
+        </Card>
+
+        <Card title='PAN'>
+          <Row label='PAN' value={pan?.panNumber ? `••••••${String(pan.panNumber).slice(-4)}` : (pan?.panImage ? 'Submitted' : null)} />
+          <Row label='Name on card' value={pan?.panName} />
+          <Row label='Status' value={pan?.panVerified ? 'Verified' : (pan?.panImage ? 'Awaiting review' : 'Not provided')} />
         </Card>
 
         <Card title='Pickup'>

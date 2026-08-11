@@ -54,6 +54,8 @@
 	<string>We require access to your reminders to help you keep track of upcoming car bookings and returns.</string>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>We require tracking to provide personalized offers and improve the user experience.</string>
+	<key>RCTNewArchEnabled</key>
+	<true/>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Geist-Regular.ttf</string>
