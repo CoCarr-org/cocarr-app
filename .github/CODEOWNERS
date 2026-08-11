@@ -10,18 +10,18 @@
 # Reference: https://docs.github.com/articles/about-code-owners
 
 # Default owner for everything in the repository.
-*       @iappwizapps-bot
+*       @CoCarr-org/engineering
 
 # Build, CI and automation.
-/.github/           @iappwizapps-bot
-/Makefile           @iappwizapps-bot
-/scripts/           @iappwizapps-bot
+/.github/           @CoCarr-org/engineering
+/Makefile           @CoCarr-org/engineering
+/scripts/           @CoCarr-org/engineering
 
 # Dependency manifests: changes here affect the whole supply chain.
-/go.mod             @iappwizapps-bot
-/go.sum             @iappwizapps-bot
-/package.json       @iappwizapps-bot
-/package-lock.json  @iappwizapps-bot
-/requirements.txt   @iappwizapps-bot
-/Gemfile            @iappwizapps-bot
-/pom.xml            @iappwizapps-bot
+/go.mod             @CoCarr-org/engineering
+/go.sum             @CoCarr-org/engineering
+/package.json       @CoCarr-org/engineering
+/package-lock.json  @CoCarr-org/engineering
+/requirements.txt   @CoCarr-org/engineering
+/Gemfile            @CoCarr-org/engineering
+/pom.xml            @CoCarr-org/engineering
