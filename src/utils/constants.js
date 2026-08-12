@@ -36,10 +36,27 @@ export const BRAND_COLOR = '#EDBF31';
 // RC_VERIFICATION_ENABLED=true there).
 export const SHOULD_VERIFY_VEHICLE = false;
 
+// ⚠ THESE ARE NO LONGER THE SWITCH. THE SERVER IS.
+//
+// Both of these were hardcoded `true`, so the SHIPPING APP skipped the real RC
+// check and the real Aadhaar OTP for every user, with nothing in any admin
+// screen saying so. Whether verification actually runs is not a decision a
+// mobile build should be making: it cannot be changed without an app-store
+// release, and nobody operating the platform can see what it is set to.
+//
+// It is now the `verification.providerBypass` feature flag, switchable in the
+// ops portal and OFF unless someone deliberately turns it on. The server skips
+// the provider calls; the client only needs to know so it does not show an OTP
+// box when no code is going to arrive, and it learns that from
+// `providerBypass` on GET /user/verification.
+//
+// These stay at FALSE as the local escape hatch for a developer working against
+// a server they cannot configure. Never commit either as `true`.
+
 // Verify-by-car-number bypass. When true, clicking "Verify" skips the
 // /host/vehicles/verify API call and goes straight to step 2 with the entered
-// number (fields editable). Set to false to hit the real RC verification API.
-export const BYPASS_RC_VERIFY = true;
+// number (fields editable).
+export const BYPASS_RC_VERIFY = false;
 
 // Cashfree offline-Aadhaar (KYC) OTP bypass during rider onboarding.
 // When true, the Aadhaar step SKIPS the /user/check-kyc and /user/verify-kyc
@@ -49,4 +66,7 @@ export const BYPASS_RC_VERIFY = true;
 // the support team to verify by hand instead of being auto-checked. Flip to
 // false once Cashfree KYC is live again (the backend also needs its IP
 // whitelisted). Mirrors BYPASS_RC_VERIFY.
-export const BYPASS_AADHAAR_VERIFY = true;
+//
+// Superseded by the server flag — see the note above. Left as a local escape
+// hatch only, and it must stay false in anything that ships.
+export const BYPASS_AADHAAR_VERIFY = false;

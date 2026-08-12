@@ -1107,7 +1107,20 @@ const OnboardingWizardScreen = () => {
   // With the provider bypassed there is no OTP to take, so the card goes to the
   // support team instead. The number is still confirmed — it is what the card is
   // checked against — but the step ends at Submit rather than at a code.
-  const kycProven = otpVerified || (BYPASS_AADHAAR_VERIFY && numberConfirmed);
+  // THE SERVER DECIDES WHETHER THE PROVIDER WAS CALLED, NOT THIS BUILD.
+  //
+  // `providerBypass` comes back on GET /user/verification and reflects the
+  // `verification.providerBypass` feature flag in the ops portal. When it is on
+  // the server answers the Aadhaar OTP locally and still writes the same row, so
+  // `otpVerified` becomes true through the ordinary path — the client needs this
+  // only to avoid asking for a code that is never going to arrive.
+  //
+  // Undefined (an older server, or a request that failed) is falsy, so the real
+  // flow is what a client gets when it cannot establish otherwise. The local
+  // BYPASS_AADHAAR_VERIFY constant is kept as a developer escape hatch and is
+  // false in anything that ships.
+  const providerBypass = !!status?.providerBypass || BYPASS_AADHAAR_VERIFY;
+  const kycProven = otpVerified || (providerBypass && numberConfirmed);
 
   return (
     <View style={styles.container}>
@@ -1619,7 +1632,7 @@ const OnboardingWizardScreen = () => {
 
               {/* Phase 2 — the OTP. Skipped entirely when the provider is
                   bypassed; the card goes to the support team instead. */}
-              {numberConfirmed && !otpVerified && !BYPASS_AADHAAR_VERIFY ? (
+              {numberConfirmed && !otpVerified && !providerBypass ? (
                 <>
                   {!otpSent ? (
                     <>
@@ -1662,7 +1675,10 @@ const OnboardingWizardScreen = () => {
                 </>
               ) : null}
 
-              {BYPASS_AADHAAR_VERIFY && numberConfirmed ? (
+              {/* Names which of the two this is: a development setting somebody
+                  switched on, not a provider outage, and not a promise that a
+                  human is going to check the card. */}
+              {providerBypass && numberConfirmed ? (
                 <View style={[styles.banner, styles.bannerWarn]}>
                   <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
                     Manual verification
