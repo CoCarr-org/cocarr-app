@@ -75,7 +75,16 @@ const IMAGE_SLOTS = [
 
 const LOCATION_RADIUS_M = 30000; // 30km booking radius around the pickup point.
 
-const TOTAL_STEPS = 9;
+// KYC SITS WITH THE PAYOUT STEPS, NOT WITH THE CAR. Steps 1-6 are about the
+// vehicle; KYC, Bank and PAN are all about the person being paid, all stored per
+// HOST and reused by every car they list. Putting identity first would make
+// someone prove who they are before they could even see what listing involves.
+//
+// It is the SAME Aadhaar check the rider onboarding wizard runs, against the
+// same endpoints and the same row — a host is a user, and there is no second
+// identity to verify. A host who verified as a rider arrives here already done,
+// and the step says so instead of asking again.
+const TOTAL_STEPS = 10;
 const STEP_LABELS = {
   1: 'Step 1: Vehicle RC',
   2: 'Step 2: Vehicle Details',
@@ -83,9 +92,10 @@ const STEP_LABELS = {
   4: 'Step 4: Location',
   5: 'Step 5: Preferences',
   6: 'Step 6: Pricing',
-  7: 'Step 7: Bank Details',
-  8: 'Step 8: PAN',
-  9: 'Step 9: Review & Host',
+  7: 'Step 7: KYC',
+  8: 'Step 8: Bank Details',
+  9: 'Step 9: PAN',
+  10: 'Step 10: Review & Host',
 };
 
 // Which detail fields are locked (pre-filled from the RC and not editable).
@@ -331,9 +341,10 @@ const AddCar = ({ route }) => {
       case 4: return <StepLocation carDetails={data} handleChange={handleChange} handleNext={handleNext} />;
       case 5: return <StepPreferences carDetails={data} handleChange={handleChange} handleNext={handleNext} />;
       case 6: return <StepPricing carDetails={data} handleChange={handleChange} handleNext={handleNext} />;
-      case 7: return <StepBank handleNext={handleNext} />;
-      case 8: return <StepPan handleNext={handleNext} />;
-      case 9: return <StepReview carDetails={data} navigation={navigation} />;
+      case 7: return <StepKyc handleNext={handleNext} />;
+      case 8: return <StepBank handleNext={handleNext} />;
+      case 9: return <StepPan handleNext={handleNext} />;
+      case 10: return <StepReview carDetails={data} navigation={navigation} />;
       default: return null;
     }
   };
@@ -1111,6 +1122,254 @@ const PanFallback = ({ message, busy, onRetry, onManual, manualOpen, children })
 // Mirrors the web listing wizard: an existing account shows and can be kept, or
 // one is added and verified via /host/bank before continuing. Stored once per
 // host and reused for every car.
+// ── Step 7: Aadhaar KYC ─────────────────────────────────────────────────────
+// The SAME check the rider onboarding wizard runs, against the same endpoints
+// and the same kycDocuments row. A host is a user; there is no second identity
+// to verify. So somebody who verified as a rider is already done here, and this
+// screen says so rather than walking them through it twice.
+//
+// Two phases, in this order and for a reason: settle WHICH Aadhaar first (a
+// typo, a number already on another account, or one that disagrees with a card
+// already on file are all caught before a code is sent to anyone's phone), then
+// prove it with the OTP that goes to the mobile registered against it.
+const StepKyc = ({ handleNext }) => {
+  const [loading, setLoading] = useState(true);
+  const [doc, setDoc] = useState(null);        // documents.aadhaar
+  const [redoing, setRedoing] = useState(false);
+  const [number, setNumber] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [details, setDetails] = useState(null);
+  const [ref, setRef] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [justVerified, setJustVerified] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true); setError('');
+    try {
+      // `documents.aadhaar`, not `.kyc` — the table is kycDocuments but the
+      // projection keys it by the document's name. Reading `.kyc` yields
+      // undefined, which looks exactly like "not verified yet" and would ask
+      // every already-verified host to do it all again.
+      const res = await axios.get(`${API_URL}/user/verification`);
+      const data = res.data?.data || res.data || {};
+      setDoc(data?.documents?.aadhaar || null);
+    } catch (e) {
+      // Never a dead end: if the state cannot be read, show the form. The worst
+      // case is verifying something already verified, which the server treats
+      // as a new submission and is harmless.
+      setDoc(null);
+      if (e?.response?.status && e.response.status !== 404) setError(apiError(e, 'Could not check your KYC.'));
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  // Done means the OTP was passed — that is the proof the person holds the
+  // Aadhaar. `verified` is the admin's later decision on the same row, a
+  // stronger statement, so either counts. Deliberately NOT gated on our review
+  // queue: the host has done everything asked of them.
+  const done = justVerified || !!(doc && (doc.otpVerified || doc.verified));
+
+  const confirmNumber = async () => {
+    setError('');
+    const n = number.replace(/\s/g, '');
+    if (n && !/^\d{12}$/.test(n)) { setError('An Aadhaar number is 12 digits.'); return; }
+    setBusy(true);
+    try {
+      // `aadhaarNumber`, NOT `kycNumber` — the confirm endpoint and the two OTP
+      // endpoints disagree on the field name, and the wrong one here is
+      // silently read as "use whatever is on file".
+      const res = await axios.post(`${API_URL}/user/verification/aadhaar/number`, n ? { aadhaarNumber: n } : {});
+      setDetails(res.data?.data || res.data || null);
+      setConfirmed(true);
+    } catch (e) {
+      setError(apiError(e, 'That Aadhaar number could not be confirmed.'));
+    } finally { setBusy(false); }
+  };
+
+  const sendOtp = async () => {
+    setError(''); setBusy(true);
+    try {
+      const n = number.replace(/\s/g, '');
+      const res = await axios.post(`${API_URL}/user/check-kyc`, { uid: 'self', ...(n ? { kycNumber: n } : {}) });
+      setRef(res.data?.kycRef || res.data?.data?.kycRef || '');
+      setOtpSent(true);
+    } catch (e) {
+      setError(apiError(e, 'Could not send the Aadhaar OTP.'));
+    } finally { setBusy(false); }
+  };
+
+  const verifyOtp = async () => {
+    setError('');
+    if (!/^\d{4,8}$/.test(otp.trim())) { setError('Enter the OTP you received.'); return; }
+    setBusy(true);
+    try {
+      const n = number.replace(/\s/g, '');
+      await axios.post(`${API_URL}/user/verify-kyc`, {
+        ref, otp: otp.trim(), uid: 'self', ...(n ? { kycNumber: n } : {}),
+      });
+      setJustVerified(true); setOtpSent(false); setRedoing(false); setOtp('');
+      await load();
+    } catch (e) {
+      setError(apiError(e, 'That OTP could not be verified.'));
+    } finally { setBusy(false); }
+  };
+
+  const label = (t) => (
+    <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4,marginTop:14}}>{t}</CustomText>
+  );
+  const row = (l, v) => (
+    <View key={l} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5}}>
+      <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{l}</CustomText>
+      <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12}}>{v || '—'}</CustomText>
+    </View>
+  );
+  const input = {backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14};
+
+  return (
+    <KeyboardAvoidingView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, justifyContent: 'space-between' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
+        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Aadhaar KYC</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+          We verify your identity with Aadhaar and the mobile number registered against it.
+          It&apos;s done once for your account and covers both riding and hosting.
+        </CustomText>
+
+        {loading ? (
+          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={BRAND_COLOR} /></View>
+        ) : (done && !redoing) ? (
+          <>
+            <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14,borderWidth:1,borderColor:'#1f9d55'}}>
+              <CustomText fontType='primary' weight='Bold' style={{color:'#6ee6b0',fontSize:12,marginBottom:6}}>
+                ✓ {justVerified ? 'Verified just now' : 'Your KYC is already done'}
+              </CustomText>
+              {/* The Aadhaar number is returned exactly once, by the scan, and
+                  masked in every response after it — so there is genuinely
+                  nothing to print. Show what IS known rather than a row of dots
+                  that reads as missing data. */}
+              {row('Name on card', doc?.holderName)}
+              {row('Verified by OTP', (doc?.otpVerified || justVerified) ? 'Yes' : 'No')}
+            </View>
+            <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:11,marginTop:10,lineHeight:16}}>
+              There&apos;s nothing to do here. Re-verify only if you need to change which
+              Aadhaar is on your account.
+            </CustomText>
+          </>
+        ) : (
+          <>
+            {redoing ? (
+              <CustomText fontType='primary' weight='Regular' style={{color:'#f0c869',fontSize:11,marginTop:12,lineHeight:16}}>
+                Verifying a different Aadhaar replaces the one on your account.
+              </CustomText>
+            ) : null}
+
+            {!confirmed ? (
+              <>
+                {label('Aadhaar number')}
+                <TextInput value={number} keyboardType='numeric' maxLength={14}
+                  onChangeText={(t) => setNumber(t.replace(/[^\d\s]/g, ''))}
+                  placeholder='0000 0000 0000' placeholderTextColor='#757575' style={input} />
+                {!redoing ? (
+                  <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:11,marginTop:6}}>
+                    Leave this blank to use the Aadhaar already on your account.
+                  </CustomText>
+                ) : null}
+              </>
+            ) : null}
+
+            {confirmed && details ? (
+              <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14}}>
+                {row('Aadhaar', details.aadhaarNumber)}
+                {row('Name on card', details.holderName)}
+                {row('Date of birth', details.dateOfBirth)}
+              </View>
+            ) : null}
+
+            {confirmed && !otpSent ? (
+              <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:11,marginTop:12,lineHeight:16}}>
+                We&apos;ll send a one-time code to the mobile number registered against this Aadhaar.
+              </CustomText>
+            ) : null}
+
+            {otpSent ? (
+              <>
+                {label('One-time code')}
+                <TextInput value={otp} keyboardType='numeric' maxLength={8}
+                  onChangeText={(t) => setOtp(t.replace(/\D/g, ''))}
+                  placeholder='Enter the code' placeholderTextColor='#757575' style={input} />
+              </>
+            ) : null}
+          </>
+        )}
+
+        {error ? <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12,marginTop:12}}>{error}</CustomText> : null}
+      </ScrollView>
+
+      {!loading ? (
+        <View style={{gap:10,marginVertical:14}}>
+          {(done && !redoing) ? (
+            <>
+              <TouchableOpacity disabled={busy} onPress={() => {
+                setError(''); setRedoing(true);
+                // A fresh run, not a resumed one: a stale confirmed number or an
+                // unspent OTP reference would verify the wrong Aadhaar.
+                setNumber(''); setConfirmed(false); setDetails(null);
+                setRef(''); setOtp(''); setOtpSent(false); setJustVerified(false);
+              }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
+                <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Re-verify with a different Aadhaar</CustomText>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+                <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Continue to bank details</CustomText>
+              </TouchableOpacity>
+            </>
+          ) : otpSent ? (
+            <>
+              <TouchableOpacity disabled={busy} onPress={verifyOtp}
+                style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+                {busy ? <ActivityIndicator size='small' color='#000' /> : (
+                  <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify OTP</CustomText>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity disabled={busy} onPress={sendOtp} style={{paddingVertical:10}}>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12,textAlign:'center'}}>Send the code again</CustomText>
+              </TouchableOpacity>
+            </>
+          ) : confirmed ? (
+            <>
+              <TouchableOpacity disabled={busy} onPress={sendOtp}
+                style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+                {busy ? <ActivityIndicator size='small' color='#000' /> : (
+                  <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Send Aadhaar OTP</CustomText>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity disabled={busy} onPress={() => { setConfirmed(false); setDetails(null); }} style={{paddingVertical:10}}>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:'#c9c9c9',fontSize:12,textAlign:'center'}}>Use a different number</CustomText>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity disabled={busy} onPress={confirmNumber}
+                style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
+                {busy ? <ActivityIndicator size='small' color='#000' /> : (
+                  <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify and fetch details</CustomText>
+                )}
+              </TouchableOpacity>
+              {redoing ? (
+                <TouchableOpacity disabled={busy} onPress={() => { setRedoing(false); setError(''); }} style={{paddingVertical:10}}>
+                  <CustomText fontType='primary' weight='SemiBold' style={{color:'#c9c9c9',fontSize:12,textAlign:'center'}}>Keep my current Aadhaar</CustomText>
+                </TouchableOpacity>
+              ) : null}
+            </>
+          )}
+        </View>
+      ) : null}
+    </KeyboardAvoidingView>
+  );
+};
+
 const StepBank = ({ handleNext }) => {
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState(null);
@@ -1149,6 +1408,12 @@ const StepBank = ({ handleNext }) => {
     <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4,marginTop:14}}>{t}</CustomText>
   );
 
+  // Mirrors the server's rule exactly — see the note beside the banner below.
+  const lockedUntil = account?.createdAt
+    ? new Date(new Date(account.createdAt).getTime() + 72 * 60 * 60 * 1000)
+    : null;
+  const replaceLocked = !!lockedUntil && lockedUntil > new Date();
+
   return (
     <KeyboardAvoidingView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, justifyContent: 'space-between' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
@@ -1156,12 +1421,21 @@ const StepBank = ({ handleNext }) => {
         <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Payout account</CustomText>
         <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
           We pay your earnings into this account. It has to be verified before your car can go live.
+          You can have one payout account at a time — adding another replaces it.
         </CustomText>
 
         {loading ? (
           <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={BRAND_COLOR} /></View>
         ) : (account && !adding) ? (
-          <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14}}>
+          <>
+          {/* Presented as SELECTED, not as information. There is exactly one
+              payout account per host, so this account IS what the car will be
+              paid into unless it is replaced — an unmarked summary card reads as
+              something to note rather than as the answer. */}
+          <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14,borderWidth:1,borderColor:BRAND_COLOR}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:BRAND_COLOR,fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:8}}>
+              ✓ Selected — this car&apos;s earnings are paid here
+            </CustomText>
             {[
               ['Account holder', account.accountHolderName],
               ['Account', account.accountNumber ? `•••• ${String(account.accountNumber).slice(-4)}` : '—'],
@@ -1175,8 +1449,42 @@ const StepBank = ({ handleNext }) => {
               </View>
             ))}
           </View>
+
+          {/* THE 72-HOUR LOCK IS THE SERVER'S, AND IT IS SHOWN RATHER THAN HIT.
+              `createHostPayoutBankAccount` refuses a replacement within 72 hours
+              of an account being added — a guard against payouts being
+              redirected. The host cannot know that, so without this the form
+              accepts everything, verifies against the bank, and only THEN 400s
+              with a rule nobody mentioned. */}
+          {replaceLocked ? (
+            <View style={{marginTop:14,backgroundColor:'#241f10',borderRadius:10,padding:14,borderLeftWidth:3,borderLeftColor:'#f0c869'}}>
+              <CustomText fontType='primary' weight='Bold' style={{color:'#f0c869',fontSize:12,marginBottom:4}}>
+                You can&apos;t change this account yet
+              </CustomText>
+              <CustomText fontType='primary' weight='Regular' style={{color:'#c9b98a',fontSize:11,lineHeight:16}}>
+                A payout account can only be replaced 72 hours after it was added — it protects
+                your earnings from being redirected. You&apos;ll be able to change it from
+                {' '}{lockedUntil.toLocaleString()}. If these details are wrong, contact support.
+              </CustomText>
+            </View>
+          ) : null}
+          </>
         ) : (
           <>
+            {/* Replacing is destructive and must say so BEFORE the form, not
+                after it: once this one verifies, every future payout follows. */}
+            {adding && account ? (
+              <View style={{marginTop:16,backgroundColor:'#241f10',borderRadius:10,padding:14,borderLeftWidth:3,borderLeftColor:'#f0c869'}}>
+                <CustomText fontType='primary' weight='Bold' style={{color:'#f0c869',fontSize:12,marginBottom:4}}>
+                  This replaces your current account
+                </CustomText>
+                <CustomText fontType='primary' weight='Regular' style={{color:'#c9b98a',fontSize:11,lineHeight:16}}>
+                  You can have one payout account at a time. Once this one verifies, ••••
+                  {String(account.accountNumber || '').slice(-4)} stops being used and all
+                  earnings go here instead.
+                </CustomText>
+              </View>
+            ) : null}
             {label('Account holder name')}
             <TextInput value={form.hostProvidedName} onChangeText={(t) => setForm((f) => ({ ...f, hostProvidedName: t }))}
               placeholder='Exactly as on your bank record' placeholderTextColor='#757575'
@@ -1197,9 +1505,11 @@ const StepBank = ({ handleNext }) => {
 
       {!loading && (account && !adding) ? (
         <View style={{gap:10,marginVertical:14}}>
-          <TouchableOpacity onPress={() => { setError(''); setAdding(true); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different account</CustomText>
-          </TouchableOpacity>
+          {!replaceLocked ? (
+            <TouchableOpacity onPress={() => { setError(''); setAdding(true); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
+              <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different account</CustomText>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
             <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Continue to PAN</CustomText>
           </TouchableOpacity>

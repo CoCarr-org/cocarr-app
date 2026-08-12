@@ -58,13 +58,27 @@ import {
 // reads exactly as well as one photographed now, and forcing the camera turns a
 // blocked permission into a blocked signup.
 
-const STEPS = ['Details', 'Aadhaar', 'Licence', 'Selfie', 'KYC'];
+const STEPS = ['Details', 'Aadhaar', 'Licence', 'Selfie', 'KYC', 'Preview'];
 
 const STEP_DETAILS = 0;
 const STEP_AADHAAR = 1;
 const STEP_LICENCE = 2;
 const STEP_SELFIE = 3;
 const STEP_KYC = 4;
+// THE LAST THING BEFORE SUBMIT IS EVERYTHING, ON ONE SCREEN.
+//
+// Submit used to sit at the bottom of the KYC step, so the wizard ended on the
+// narrowest screen in it — the user pressed Submit having last seen an OTP box,
+// with no chance to check the name, date of birth or scans they entered four
+// steps earlier. Sending a profile for review puts it in a human queue that
+// comes back days later, and it was the only step with nothing to look at first.
+const STEP_PREVIEW = 5;
+
+// The rail in review mode stops before Preview: review mode IS the preview, so
+// an entry pointing at itself would be a step that goes nowhere.
+const RAIL_STEPS_REVIEW = STEPS.slice(0, STEP_PREVIEW);
+// Section keys, in step order — what ReviewSection switches on.
+const SECTION_KEYS = ['details', 'aadhaar', 'licence', 'selfie', 'kyc'];
 
 const LICENCE_RE = /^[A-Z]{2}[0-9]{2}[0-9A-Z]{10,12}$/;
 
@@ -236,9 +250,9 @@ const OcrReadout = ({ ocr, profileName }) => {
 // Every already-reached step is tappable so the user can go back to it; steps
 // ahead stay inert because their prerequisites may not be met. In review mode
 // nothing is being submitted, so everything is reachable.
-const StepRail = ({ step, furthest, onGo, allReachable = false }) => (
+const StepRail = ({ step, furthest, onGo, allReachable = false, steps = STEPS }) => (
   <View style={styles.rail}>
-    {STEPS.map((label, i) => {
+    {steps.map((label, i) => {
       const reachable = (allReachable || i <= furthest) && i !== step;
       const done = i < step || i < furthest;
       return (
@@ -368,6 +382,141 @@ const OcrFallback = ({
 );
 
 // ───────────────────────────────────────────────────────────────────────────
+
+// ONE RENDERER FOR "WHAT IS ON FILE", USED TWICE.
+//
+// The Preview step and review mode answer the same question and must never
+// answer it differently — a preview that shows less than the review screen means
+// the user approved something they were not shown. So both render this: review
+// mode shows the one section picked from the rail, Preview stacks all five and
+// wraps each in its own Edit affordance.
+//
+// Module scope, like everything else here — a component defined inside another
+// component's render remounts on every keystroke.
+function ReviewSection({ which, form, docs, status }) {
+  if (which === 'details') {
+    return (
+          <View>
+            <CustomText fontType='primary' weight='Bold' style={styles.h2}>Your details</CustomText>
+            <ReviewList rows={[
+              ['Full name', [form.firstName, form.lastName].filter(Boolean).join(' ')],
+              ['Date of birth', form.dateOfBirth],
+              ['Email', form.email],
+              ['Address', form.address],
+              ['City', form.city],
+              ['State', form.state],
+              ['PIN code', form.pincode],
+            ]} />
+          </View>
+    );
+  }
+
+  if (which === 'aadhaar') {
+    return (
+          <View>
+            <View style={styles.reviewHead}>
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Aadhaar card</CustomText>
+              <DocStatus doc={docs.aadhaar} />
+            </View>
+            {docs.aadhaar?.scanned ? (
+              <>
+                <ReviewList rows={[
+                  ['Name on card', docs.aadhaar.holderName],
+                  ['Date of birth', docs.aadhaar.dateOfBirth],
+                  ['Read automatically', docs.aadhaar.documentVerified ? 'Yes' : 'No'],
+                ]} />
+                {docs.aadhaar.rejectionReason ? (
+                  <CustomText fontType='primary' style={styles.error}>
+                    {docs.aadhaar.rejectionReason}
+                  </CustomText>
+                ) : null}
+                {/* The number is masked server-side and deliberately not shown —
+                    there is nothing useful a user can do with it. */}
+                <View style={styles.docRow}>
+                  <ReviewImage src={docs.aadhaar.imageKey} label='Front' />
+                  <ReviewImage src={docs.aadhaar.backImageKey} label='Back' />
+                </View>
+              </>
+            ) : (
+              <CustomText fontType='primary' style={styles.hint}>
+                You haven&apos;t added your Aadhaar card yet.
+              </CustomText>
+            )}
+          </View>
+    );
+  }
+
+  if (which === 'licence') {
+    return (
+          <View>
+            <View style={styles.reviewHead}>
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Driving licence</CustomText>
+              <DocStatus doc={docs.licence} />
+            </View>
+            {docs.licence?.submitted ? (
+              <>
+                <ReviewList rows={[
+                  ['Licence number', docs.licence.licenceNumber],
+                  ['Name on licence', docs.licence.holderName],
+                  ['Expires', docs.licence.expiryDate],
+                ]} />
+                {docs.licence.rejectionReason ? (
+                  <CustomText fontType='primary' style={styles.error}>
+                    {docs.licence.rejectionReason}
+                  </CustomText>
+                ) : null}
+                <View style={styles.docRow}>
+                  <ReviewImage src={docs.licence.frontImageKey} label='Front' />
+                  <ReviewImage src={docs.licence.backImageKey} label='Back' />
+                </View>
+              </>
+            ) : (
+              <CustomText fontType='primary' style={styles.hint}>
+                You haven&apos;t added your driving licence yet.
+              </CustomText>
+            )}
+          </View>
+    );
+  }
+
+  if (which === 'selfie') {
+    return (
+          <View>
+            <CustomText fontType='primary' weight='Bold' style={styles.h2}>Selfie</CustomText>
+            {status?.profile?.profilePhoto ? (
+              <View style={styles.selfieWrap}>
+                <Image
+                  source={{ uri: photoUrl(status.profile.profilePhoto) }}
+                  style={styles.selfieFrame}
+                  resizeMode='cover'
+                />
+              </View>
+            ) : (
+              <CustomText fontType='primary' style={styles.hint}>
+                You haven&apos;t added a selfie. It becomes your profile photo.
+              </CustomText>
+            )}
+          </View>
+    );
+  }
+
+  if (which === 'kyc') {
+    return (
+          <View>
+            <CustomText fontType='primary' weight='Bold' style={styles.h2}>Aadhaar KYC</CustomText>
+            <ReviewList rows={[
+              ['Number on file', docs.aadhaar?.numberConfirmed ? 'Yes' : 'No'],
+              ['Verified by OTP', docs.aadhaar?.otpVerified ? 'Yes' : 'No'],
+              docs.aadhaar?.manualConsent
+                ? ['Manual check', 'Requested — our team will verify by hand']
+                : null,
+            ].filter(Boolean)} />
+          </View>
+    );
+  }
+
+  return null;
+}
 
 const OnboardingWizardScreen = () => {
   const navigation = useNavigation();
@@ -1017,7 +1166,8 @@ const OnboardingWizardScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView ref={scroller} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps='handled'>
-          <StepRail step={step} furthest={furthest} onGo={goStep} allReachable={isReview} />
+          <StepRail step={step} furthest={furthest} onGo={goStep} allReachable={isReview}
+            steps={isReview ? RAIL_STEPS_REVIEW : STEPS} />
 
           {/* Why the profile came back. The single most useful thing on this
               screen for a rejected user, and it was not rendered anywhere —
@@ -1530,20 +1680,22 @@ const OnboardingWizardScreen = () => {
 
               {/* Submit. The last action of the whole wizard — everything else is
                   already stored by the time this is pressed. */}
+              {/* Everything is already stored by the time this is pressed — it
+                  only moves on to the preview, where Submit lives. */}
               {kycProven ? (
                 <>
                   <View style={[styles.banner, styles.bannerOk]}>
                     <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
-                      That&apos;s everything
+                      That&apos;s everything collected
                     </CustomText>
                     <CustomText fontType='primary' style={styles.bannerBody}>
-                      Submitting sends your profile to our team. Once it&apos;s approved you can
-                      book a ride — in the meantime, enjoy browsing our cars.
+                      Take a look at what you&apos;re sending us before it goes to our team.
                     </CustomText>
                   </View>
-                  <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={finish}>
+                  <TouchableOpacity style={styles.primaryBtn} disabled={busy}
+                    onPress={() => goStep(STEP_PREVIEW)}>
                     <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
-                      {busy ? 'Submitting…' : 'Submit'}
+                      Preview and submit
                     </CustomText>
                   </TouchableOpacity>
                 </>
@@ -1551,116 +1703,49 @@ const OnboardingWizardScreen = () => {
             </>
           )}
 
-          {/* ── Review mode: read-only sections, selected from the rail ── */}
-          {isReview && step === STEP_DETAILS && (
+          {/* ── Preview: everything on file, then Submit ──
+              One stack rather than a rail selection: the point is to see the
+              whole submission at once. Each section's Edit returns to its own
+              step, and coming back lands here again. */}
+          {step === STEP_PREVIEW && !isReview && (
             <View>
-              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Your details</CustomText>
-              <ReviewList rows={[
-                ['Full name', [form.firstName, form.lastName].filter(Boolean).join(' ')],
-                ['Date of birth', form.dateOfBirth],
-                ['Email', form.email],
-                ['Address', form.address],
-                ['City', form.city],
-                ['State', form.state],
-                ['PIN code', form.pincode],
-              ]} />
-            </View>
-          )}
+              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Check your details</CustomText>
+              <CustomText fontType='primary' style={styles.hint}>
+                This is what our team will see. Anything wrong is still fixable — every
+                section has an Edit.
+              </CustomText>
 
-          {isReview && step === STEP_AADHAAR && (
-            <View>
-              <View style={styles.reviewHead}>
-                <CustomText fontType='primary' weight='Bold' style={styles.h2}>Aadhaar card</CustomText>
-                <DocStatus doc={docs.aadhaar} />
-              </View>
-              {docs.aadhaar?.scanned ? (
-                <>
-                  <ReviewList rows={[
-                    ['Name on card', docs.aadhaar.holderName],
-                    ['Date of birth', docs.aadhaar.dateOfBirth],
-                    ['Read automatically', docs.aadhaar.documentVerified ? 'Yes' : 'No'],
-                  ]} />
-                  {docs.aadhaar.rejectionReason ? (
-                    <CustomText fontType='primary' style={styles.error}>
-                      {docs.aadhaar.rejectionReason}
+              {RAIL_STEPS_REVIEW.map((label, i) => (
+                <View key={label} style={styles.previewSection}>
+                  <ReviewSection which={SECTION_KEYS[i]} form={form} docs={docs} status={status} />
+                  <TouchableOpacity style={styles.previewEdit} onPress={() => goStep(i)}>
+                    <CustomText fontType='primary' weight='SemiBold' style={styles.linkText}>
+                      Edit {label.toLowerCase()}
                     </CustomText>
-                  ) : null}
-                  {/* The number is masked server-side and deliberately not shown —
-                      there is nothing useful a user can do with it. */}
-                  <View style={styles.docRow}>
-                    <ReviewImage src={docs.aadhaar.imageKey} label='Front' />
-                    <ReviewImage src={docs.aadhaar.backImageKey} label='Back' />
-                  </View>
-                </>
-              ) : (
-                <CustomText fontType='primary' style={styles.hint}>
-                  You haven&apos;t added your Aadhaar card yet.
-                </CustomText>
-              )}
-            </View>
-          )}
-
-          {isReview && step === STEP_LICENCE && (
-            <View>
-              <View style={styles.reviewHead}>
-                <CustomText fontType='primary' weight='Bold' style={styles.h2}>Driving licence</CustomText>
-                <DocStatus doc={docs.licence} />
-              </View>
-              {docs.licence?.submitted ? (
-                <>
-                  <ReviewList rows={[
-                    ['Licence number', docs.licence.licenceNumber],
-                    ['Name on licence', docs.licence.holderName],
-                    ['Expires', docs.licence.expiryDate],
-                  ]} />
-                  {docs.licence.rejectionReason ? (
-                    <CustomText fontType='primary' style={styles.error}>
-                      {docs.licence.rejectionReason}
-                    </CustomText>
-                  ) : null}
-                  <View style={styles.docRow}>
-                    <ReviewImage src={docs.licence.frontImageKey} label='Front' />
-                    <ReviewImage src={docs.licence.backImageKey} label='Back' />
-                  </View>
-                </>
-              ) : (
-                <CustomText fontType='primary' style={styles.hint}>
-                  You haven&apos;t added your driving licence yet.
-                </CustomText>
-              )}
-            </View>
-          )}
-
-          {isReview && step === STEP_SELFIE && (
-            <View>
-              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Selfie</CustomText>
-              {status?.profile?.profilePhoto ? (
-                <View style={styles.selfieWrap}>
-                  <Image
-                    source={{ uri: photoUrl(status.profile.profilePhoto) }}
-                    style={styles.selfieFrame}
-                    resizeMode='cover'
-                  />
+                  </TouchableOpacity>
                 </View>
-              ) : (
-                <CustomText fontType='primary' style={styles.hint}>
-                  You haven&apos;t added a selfie. It becomes your profile photo.
+              ))}
+
+              <View style={[styles.banner, styles.bannerOk]}>
+                <CustomText fontType='primary' weight='Bold' style={styles.bannerTitle}>
+                  That&apos;s everything
                 </CustomText>
-              )}
+                <CustomText fontType='primary' style={styles.bannerBody}>
+                  Submitting sends your profile to our team. Once it&apos;s approved you can
+                  book a ride — in the meantime, enjoy browsing our cars.
+                </CustomText>
+              </View>
+              <TouchableOpacity style={styles.primaryBtn} disabled={busy} onPress={finish}>
+                <CustomText fontType='primary' weight='Bold' style={styles.primaryBtnText}>
+                  {busy ? 'Submitting…' : 'Submit'}
+                </CustomText>
+              </TouchableOpacity>
             </View>
           )}
 
-          {isReview && step === STEP_KYC && (
-            <View>
-              <CustomText fontType='primary' weight='Bold' style={styles.h2}>Aadhaar KYC</CustomText>
-              <ReviewList rows={[
-                ['Number on file', docs.aadhaar?.numberConfirmed ? 'Yes' : 'No'],
-                ['Verified by OTP', docs.aadhaar?.otpVerified ? 'Yes' : 'No'],
-                docs.aadhaar?.manualConsent
-                  ? ['Manual check', 'Requested — our team will verify by hand']
-                  : null,
-              ].filter(Boolean)} />
-            </View>
+          {/* ── Review mode: read-only sections, selected from the rail ── */}
+          {isReview && (
+            <ReviewSection which={SECTION_KEYS[step]} form={form} docs={docs} status={status} />
           )}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1710,6 +1795,17 @@ const styles = StyleSheet.create({
   railLabelOn: { color: '#fff' },
 
   h2: { fontSize: 17, color: '#fff', marginBottom: 8 },
+
+  // Preview stacks five read-only sections. Each is boxed and separated so the
+  // Edit under one cannot read as belonging to the next.
+  previewSection: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#26262c',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 14,
+  },
+  previewEdit: { marginTop: 10, alignSelf: 'flex-start' },
   hint: { fontSize: 13, color: '#9a9aa2', marginBottom: 14, lineHeight: 19 },
   footnote: { fontSize: 11, color: '#6b6b73', marginTop: 2 },
   error: { fontSize: 13, color: '#f87171', marginBottom: 12 },
