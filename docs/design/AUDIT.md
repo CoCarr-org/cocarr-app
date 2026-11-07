@@ -35,6 +35,11 @@ Status: **Fixed** on branch `design/gold-theme-light-dark` · **Open**.
 | 20 | 173 `console.log` calls ship in release, some logging the Firebase user object | P1 | Open |
 | 21 | OTP boxes don't support SMS/iOS one-time-code autofill | P2 | Open |
 | 22 | Jest setup broken on RN 0.86 (`preset: 'react-native'` moved to `@react-native/jest-preset`) | P2 | Open |
+| 23 | Razorpay **test** keys hard-coded in 5 payment screens (two different keys) | P0 | Open |
+| 24 | `PaymentSuccess` is never navigated to — after paying, riders land on Trips with no confirmation | P1 | Open |
+| 25 | `DatePicker` `minDate` uses UTC (`toISOString`), allowing yesterday before 05:30 IST | P2 | Open |
+| 26 | Host Profile → Inbox opens a blank screen (list commented out) | P2 | Open |
+| 27 | `CLAUDE.md` says documents are "camera only, never the gallery"; code (correctly) allows the library | P2 | Open |
 
 ---
 
