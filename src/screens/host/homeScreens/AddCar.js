@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView, Image, Switch, ToastAndroid, TouchableHighlight, ActivityIndicator, ScrollView, Platform, Alert, Modal, } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { API_URL, BRAND_COLOR, BYPASS_RC_VERIFY } from '../../../utils/constants';
+import { API_URL, BYPASS_RC_VERIFY } from '../../../utils/constants';
 import CustomText from '../../../components/CustomText';
 import Select from '../../../components/Select';
 import axios from 'axios';
@@ -11,6 +11,8 @@ import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import MapView, { Circle, Marker } from 'react-native-maps';
 import { getCurrentLocation, photoUrl, UnauthAxios } from '../../../utils/utils';
 import LocationInvalidScreen from '../../homeScreens/LocationInvalidScreen';
+
+import { C } from '../../../theme';
 
 // The whole listing journey is now "vehicle onboarding": scan the RC card,
 // confirm the details, add photos, set location, preferences and pricing, then
@@ -137,49 +139,49 @@ const OptionPicker = ({ options, selectedId, onSelect, placeholder, searchable =
       <TouchableOpacity
         onPress={() => !disabled && options.length && setOpen(true)}
         activeOpacity={disabled ? 1 : 0.7}
-        style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor: disabled ? '#101010' : '#1c1c1e',borderRadius:5,paddingVertical:12,paddingHorizontal:12}}
+        style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',backgroundColor: disabled ? C.surfaceLow : C.surface,borderRadius:5,paddingVertical:12,paddingHorizontal:12}}
       >
-        <CustomText fontType='primary' weight='Regular' style={{color: selected ? (disabled ? '#c9c9c9' : '#efefef') : '#959595', fontSize:14,flex:1}} numberOfLines={1}>
+        <CustomText fontType='primary' weight='Regular' style={{color: selected ? (disabled ? C.textSecondary : C.text) : C.textTertiary, fontSize:14,flex:1}} numberOfLines={1}>
           {selected ? selected.name : placeholder}
         </CustomText>
-        {!disabled ? <Icon name='chevron-down' size={14} color='#959595' /> : <Icon name='lock-closed' size={12} color='#757575' />}
+        {!disabled ? <Icon name='chevron-down' size={14} color={C.textTertiary} /> : <Icon name='lock-closed' size={12} color={C.textTertiary} />}
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType='slide' onRequestClose={close}>
         <TouchableOpacity activeOpacity={1} onPress={close} style={{flex:1,backgroundColor:'#000000aa',justifyContent:'flex-end'}}>
-          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{backgroundColor:'#141416',borderTopLeftRadius:16,borderTopRightRadius:16,maxHeight:'70%',paddingBottom:24}}>
-            <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderBottomColor:'#232326'}}>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:13,textTransform:'uppercase',letterSpacing:.5}}>{placeholder}</CustomText>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{backgroundColor:C.surfaceLow,borderTopLeftRadius:16,borderTopRightRadius:16,maxHeight:'70%',paddingBottom:24}}>
+            <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderBottomColor:C.border}}>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:13,textTransform:'uppercase',letterSpacing:.5}}>{placeholder}</CustomText>
               <TouchableOpacity onPress={close} hitSlop={{top:10,bottom:10,left:10,right:10}}>
-                <Icon name='close' size={20} color='#959595' />
+                <Icon name='close' size={20} color={C.textTertiary} />
               </TouchableOpacity>
             </View>
 
             {searchable && options.length > 8 ? (
               <TextInput
                 placeholder='Search'
-                placeholderTextColor='#757575'
+                placeholderTextColor={C.textTertiary}
                 value={query}
                 onChangeText={setQuery}
                 autoCorrect={false}
-                style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:8,marginHorizontal:16,marginTop:12,paddingHorizontal:12,paddingVertical:9,fontSize:14}}
+                style={{backgroundColor:C.surface,color:C.text,borderRadius:8,marginHorizontal:16,marginTop:12,paddingHorizontal:12,paddingVertical:9,fontSize:14}}
               />
             ) : null}
 
             <ScrollView style={{marginTop:8}} keyboardShouldPersistTaps='handled'>
               {filtered.length === 0 ? (
-                <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:13,padding:16,textAlign:'center'}}>No matches</CustomText>
+                <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:13,padding:16,textAlign:'center'}}>No matches</CustomText>
               ) : (
                 filtered.map((option) => (
                   <TouchableOpacity
                     key={option.id}
                     onPress={() => { onSelect(option); close(); }}
-                    style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderBottomColor:'#1d1d1f'}}
+                    style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',paddingHorizontal:16,paddingVertical:14,borderBottomWidth:1,borderBottomColor:C.border}}
                   >
-                    <CustomText fontType='primary' weight={option.id === selectedId ? 'Bold' : 'Regular'} style={{color: option.id === selectedId ? BRAND_COLOR : '#e3e3e3',fontSize:14,flex:1}}>
+                    <CustomText fontType='primary' weight={option.id === selectedId ? 'Bold' : 'Regular'} style={{color: option.id === selectedId ? C.primaryText : C.text,fontSize:14,flex:1}}>
                       {option.name}
                     </CustomText>
-                    {option.id === selectedId ? <Icon name='checkmark' size={16} color={BRAND_COLOR} /> : null}
+                    {option.id === selectedId ? <Icon name='checkmark' size={16} color={C.primaryText} /> : null}
                   </TouchableOpacity>
                 ))
               )}
@@ -196,21 +198,21 @@ const OptionPicker = ({ options, selectedId, onSelect, placeholder, searchable =
 const DetailField = ({ label, value, locked, onChange, placeholder, keyboardType }) => (
   <View style={{marginTop:18}}>
     <View style={{flexDirection:'row',alignItems:'center',gap:5,marginBottom:4}}>
-      <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,textTransform:'uppercase',letterSpacing:.15}}>{label}</CustomText>
-      {locked ? <Icon name='lock-closed' size={10} color='#757575' /> : null}
+      <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,textTransform:'uppercase',letterSpacing:.15}}>{label}</CustomText>
+      {locked ? <Icon name='lock-closed' size={10} color={C.textTertiary} /> : null}
     </View>
     {locked ? (
-      <View style={{backgroundColor:'#101010',borderRadius:5,paddingVertical:11,paddingHorizontal:12}}>
-        <CustomText fontType='primary' weight='Medium' style={{color:'#c9c9c9',fontSize:14}} numberOfLines={1}>{value || '—'}</CustomText>
+      <View style={{backgroundColor:C.surfaceLow,borderRadius:5,paddingVertical:11,paddingHorizontal:12}}>
+        <CustomText fontType='primary' weight='Medium' style={{color:C.textSecondary,fontSize:14}} numberOfLines={1}>{value || '—'}</CustomText>
       </View>
     ) : (
       <TextInput
         placeholder={placeholder}
-        placeholderTextColor='#757575'
+        placeholderTextColor={C.textTertiary}
         keyboardType={keyboardType}
         value={value}
         onChangeText={onChange}
-        style={{backgroundColor:'#1c1c1e',borderRadius:5,paddingVertical:9,paddingHorizontal:12,color:'#fff',fontSize:14}}
+        style={{backgroundColor:C.surface,borderRadius:5,paddingVertical:9,paddingHorizontal:12,color:C.text,fontSize:14}}
       />
     )}
   </View>
@@ -218,9 +220,9 @@ const DetailField = ({ label, value, locked, onChange, placeholder, keyboardType
 
 // Thin progress bar under the header.
 const StepProgress = ({ step }) => (
-  <View style={{flexDirection:'row',gap:4,paddingHorizontal:16,paddingBottom:10,backgroundColor:'#000'}}>
+  <View style={{flexDirection:'row',gap:4,paddingHorizontal:16,paddingBottom:10,backgroundColor:C.background}}>
     {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-      <View key={i} style={{flex:1,height:3,borderRadius:2,backgroundColor: i < step ? BRAND_COLOR : '#2c2e2a'}} />
+      <View key={i} style={{flex:1,height:3,borderRadius:2,backgroundColor: i < step ? C.primary : C.surfaceHigh}} />
     ))}
   </View>
 );
@@ -352,17 +354,17 @@ const AddCar = ({ route }) => {
   return (
     // Own chrome (wizard header), so it wears the top inset itself now that the
     // root navigator no longer provides one.
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: '#000' }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: C.background }}>
       {!loading ? (
         <View style={{ flex: 1 }}>
-          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingHorizontal:16,paddingVertical:12,backgroundColor:'#000',borderBottomWidth:1,borderBottomColor:'#101010'}}>
+          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingHorizontal:16,paddingVertical:12,backgroundColor:C.background,borderBottomWidth:1,borderBottomColor:C.border}}>
             <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',width:'100%'}}>
-              <TouchableOpacity onPress={handleBack} style={{ padding:8,borderRadius:100,backgroundColor:'#2c2e2a',width:32,height:32,justifyContent:'center',alignItems:'center'}}>
-                <Icon name={step === 1 ? 'close' : 'arrow-back'} size={16} color='#a3a3a3' />
+              <TouchableOpacity onPress={handleBack} style={{ padding:8,borderRadius:100,backgroundColor:C.surfaceHigh,width:32,height:32,justifyContent:'center',alignItems:'center'}}>
+                <Icon name={step === 1 ? 'close' : 'arrow-back'} size={16} color={C.textSecondary} />
               </TouchableOpacity>
               <View style={{flexDirection:'column',justifyContent:'center',alignItems:'center'}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:'#a3a3a3', fontSize:12,textTransform:'uppercase',letterSpacing:.15}}>Vehicle Onboarding</CustomText>
-                <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:11,letterSpacing:.15}}>{STEP_LABELS[step]}</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:C.textSecondary, fontSize:12,textTransform:'uppercase',letterSpacing:.15}}>Vehicle Onboarding</CustomText>
+                <CustomText fontType='primary' weight='Regular' style={{color:C.textSecondary, fontSize:11,letterSpacing:.15}}>{STEP_LABELS[step]}</CustomText>
               </View>
               <View style={{width:32}} />
             </View>
@@ -372,8 +374,8 @@ const AddCar = ({ route }) => {
         </View>
       ) : (
         <View style={{flex:1,justifyContent:'center',alignItems:'center',gap:12}}>
-          <ActivityIndicator size='small' color={BRAND_COLOR} />
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,textTransform:'uppercase',letterSpacing:.15}}>Loading...</CustomText>
+          <ActivityIndicator size='small' color={C.primaryText} />
+          <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,textTransform:'uppercase',letterSpacing:.15}}>Loading...</CustomText>
         </View>
       )}
     </SafeAreaView>
@@ -461,75 +463,75 @@ const StepRc = ({ carDetails, applyRcPayload, handleChange, handleNext }) => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Upload your Vehicle RC</CustomText>
-        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:18,letterSpacing:-.3}}>Upload your Vehicle RC</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginTop:4}}>
           Take a photo of the RC card — we'll read the details for you, just like your KYC. If we can't read it, enter your car number below.
         </CustomText>
 
         {/* Upload / preview */}
-        <TouchableOpacity onPress={chooseSource} activeOpacity={0.8} style={{marginTop:18,borderRadius:12,borderWidth:1,borderColor: image ? BRAND_COLOR : '#33333a',borderStyle: image ? 'solid' : 'dashed',backgroundColor:'#101012',overflow:'hidden'}}>
+        <TouchableOpacity onPress={chooseSource} activeOpacity={0.8} style={{marginTop:18,borderRadius:12,borderWidth:1,borderColor: image ? C.primary : C.borderStrong,borderStyle: image ? 'solid' : 'dashed',backgroundColor:C.surfaceLow,overflow:'hidden'}}>
           {image ? (
             <Image source={{ uri: image.uri }} style={{ width: '100%', height: 200 }} resizeMode='cover' />
           ) : (
             <View style={{height:160,justifyContent:'center',alignItems:'center',gap:8}}>
-              <Icon name='cloud-upload-outline' size={30} color='#5a5a62' />
-              <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12}}>Tap to capture or upload the RC</CustomText>
+              <Icon name='cloud-upload-outline' size={30} color={C.textMuted} />
+              <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary,fontSize:12}}>Tap to capture or upload the RC</CustomText>
             </View>
           )}
         </TouchableOpacity>
 
         {image ? (
           <TouchableOpacity onPress={chooseSource} style={{marginTop:10,alignSelf:'center'}}>
-            <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12}}>Retake / choose another</CustomText>
+            <CustomText fontType='primary' weight='SemiBold' style={{color:C.primaryText,fontSize:12}}>Retake / choose another</CustomText>
           </TouchableOpacity>
         ) : null}
 
         {error ? (
-          <View style={{marginTop:16,backgroundColor:'#2a1416',borderRadius:8,borderWidth:1,borderColor:'#5c2a2e',padding:12}}>
-            <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12}}>{error}</CustomText>
+          <View style={{marginTop:16,backgroundColor:C.dangerSoft,borderRadius:8,borderWidth:1,borderColor:'#EF444455',padding:12}}>
+            <CustomText fontType='primary' weight='Medium' style={{color:C.danger,fontSize:12}}>{error}</CustomText>
           </View>
         ) : null}
 
         {/* OR separator between uploading the RC and verifying by number. */}
         <View style={{flexDirection:'row',alignItems:'center',gap:12,marginTop:22,marginBottom:6}}>
-          <View style={{flex:1,height:1,backgroundColor:'#26262a'}} />
-          <CustomText fontType='primary' weight='Bold' style={{color:'#5a5a62',fontSize:11,letterSpacing:1}}>OR</CustomText>
-          <View style={{flex:1,height:1,backgroundColor:'#26262a'}} />
+          <View style={{flex:1,height:1,backgroundColor:C.surface}} />
+          <CustomText fontType='primary' weight='Bold' style={{color:C.textMuted,fontSize:11,letterSpacing:1}}>OR</CustomText>
+          <View style={{flex:1,height:1,backgroundColor:C.surface}} />
         </View>
 
         {/* Verify by registration number (uses KYC vehicle-rc). */}
-        <View style={{marginTop:8,backgroundColor:'#141416',borderRadius:12,borderWidth:1,borderColor:'#26262a',padding:14}}>
-          <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:13}}>Verify by car number</CustomText>
-          <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:3,marginBottom:10}}>
+        <View style={{marginTop:8,backgroundColor:C.surfaceLow,borderRadius:12,borderWidth:1,borderColor:C.border,padding:14}}>
+          <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:13}}>Verify by car number</CustomText>
+          <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginTop:3,marginBottom:10}}>
             Enter your car's registration number and we'll fetch the details.
           </CustomText>
           <View style={{flexDirection:'row',gap:8}}>
             <TextInput
               placeholder='e.g. TS09AB1234'
-              placeholderTextColor='#757575'
+              placeholderTextColor={C.textTertiary}
               autoCapitalize='characters'
               autoCorrect={false}
               value={manualNumber}
               onChangeText={(t) => { setManualNumber(t.toUpperCase()); setManualError(''); }}
-              style={{flex:1,backgroundColor:'#1c1c1e',borderRadius:5,paddingVertical:10,paddingHorizontal:12,color:'#fff',fontSize:14}}
+              style={{flex:1,backgroundColor:C.surface,borderRadius:5,paddingVertical:10,paddingHorizontal:12,color:C.text,fontSize:14}}
             />
             <TouchableOpacity disabled={manualBusy || !manualNumber.trim()} onPress={verifyByNumber}
-              style={{backgroundColor: (manualBusy || !manualNumber.trim()) ? '#959595' : BRAND_COLOR,borderRadius:5,paddingHorizontal:16,justifyContent:'center',alignItems:'center',minWidth:92}}>
-              {manualBusy ? <ActivityIndicator size='small' color='#000' /> : (
-                <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:11,textTransform:'uppercase',letterSpacing:-.15}}>Verify</CustomText>
+              style={{backgroundColor: (manualBusy || !manualNumber.trim()) ? C.disabled : C.primary,borderRadius:5,paddingHorizontal:16,justifyContent:'center',alignItems:'center',minWidth:92}}>
+              {manualBusy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+                <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:11,textTransform:'uppercase',letterSpacing:-.15}}>Verify</CustomText>
               )}
             </TouchableOpacity>
           </View>
           {manualError ? (
-            <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12,marginTop:8}}>{manualError}</CustomText>
+            <CustomText fontType='primary' weight='Medium' style={{color:C.danger,fontSize:12,marginTop:8}}>{manualError}</CustomText>
           ) : null}
-          <CustomText fontType='primary' weight='Regular' style={{color:'#5a5a62',fontSize:11,marginTop:8}}>Only cars can be listed on COCARR.</CustomText>
+          <CustomText fontType='primary' weight='Regular' style={{color:C.textMuted,fontSize:11,marginTop:8}}>Only cars can be listed on COCARR.</CustomText>
         </View>
       </ScrollView>
 
-      <TouchableOpacity disabled={!image || busy} onPress={submit} style={{backgroundColor: (!image || busy) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15,marginVertical:16}}>
-        {busy ? <ActivityIndicator size='small' color='#000' /> : (
-          <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Scan & Continue</CustomText>
+      <TouchableOpacity disabled={!image || busy} onPress={submit} style={{backgroundColor: (!image || busy) ? C.disabled : C.primary,borderRadius:8,paddingVertical:15,marginVertical:16}}>
+        {busy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+          <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Scan & Continue</CustomText>
         )}
       </TouchableOpacity>
     </KeyboardAvoidingView>
@@ -581,16 +583,16 @@ const StepDetails = ({ carDetails, handleChange, handleNext }) => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps='handled'>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Confirm the details</CustomText>
-        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:18,letterSpacing:-.3}}>Confirm the details</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginTop:4}}>
           Locked fields came from your RC. Fill anything that's missing.
         </CustomText>
 
         {listError ? (
-          <View style={{marginTop:16,backgroundColor:'#2a1416',borderRadius:8,borderWidth:1,borderColor:'#5c2a2e',padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12}}>
-            <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12,flex:1}}>{listError}</CustomText>
-            <TouchableOpacity onPress={loadOptions} style={{backgroundColor:'#5c2a2e',borderRadius:5,paddingVertical:6,paddingHorizontal:12}}>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#ffd9d9',fontSize:11,textTransform:'uppercase'}}>Retry</CustomText>
+          <View style={{marginTop:16,backgroundColor:C.dangerSoft,borderRadius:8,borderWidth:1,borderColor:'#EF444455',padding:12,flexDirection:'row',alignItems:'center',justifyContent:'space-between',gap:12}}>
+            <CustomText fontType='primary' weight='Medium' style={{color:C.danger,fontSize:12,flex:1}}>{listError}</CustomText>
+            <TouchableOpacity onPress={loadOptions} style={{backgroundColor:'#EF444433',borderRadius:5,paddingVertical:6,paddingHorizontal:12}}>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.danger,fontSize:11,textTransform:'uppercase'}}>Retry</CustomText>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -624,31 +626,31 @@ const StepDetails = ({ carDetails, handleChange, handleNext }) => {
         </View>
 
         <View style={{marginTop:18}}>
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Vehicle Type</CustomText>
+          <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Vehicle Type</CustomText>
           <OptionPicker placeholder='Select Type' options={VEHICLE_TYPES} selectedId={carDetails.vehicleType} onSelect={(o) => handleChange('vehicleType', o.id)} searchable={false} disabled={!!locked.vehicleType} />
         </View>
 
         <View style={{marginTop:18}}>
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Fuel Type</CustomText>
+          <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Fuel Type</CustomText>
           <OptionPicker placeholder='Select Fuel' options={FUEL_TYPES} selectedId={carDetails.vehicleFuelType} onSelect={(o) => handleChange('vehicleFuelType', o.id)} searchable={false} disabled={!!locked.vehicleFuelType} />
         </View>
 
         <View style={{flexDirection:'row',gap:12,marginTop:18}}>
           <View style={{flex:1}}>
-            <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Transmission</CustomText>
+            <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Transmission</CustomText>
             <OptionPicker placeholder='Select' options={TRANSMISSIONS} selectedId={carDetails.vehicleTransmission} onSelect={(o) => handleChange('vehicleTransmission', o.id)} searchable={false} disabled={!!locked.vehicleTransmission} />
           </View>
           <View style={{flex:1}}>
-            <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Seats</CustomText>
+            <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Seats</CustomText>
             <OptionPicker placeholder='Select' options={SEAT_OPTIONS} selectedId={carDetails.vehicleSeats} onSelect={(o) => handleChange('vehicleSeats', o.id)} searchable={false} disabled={!!locked.vehicleSeats} />
           </View>
         </View>
 
         {carDetails.registrationDate || carDetails.rcStatus || carDetails.insuranceUpto ? (
-          <View style={{marginTop:22,backgroundColor:'#101010',borderRadius:10,padding:14}}>
+          <View style={{marginTop:22,backgroundColor:C.surfaceLow,borderRadius:10,padding:14}}>
             <View style={{flexDirection:'row',alignItems:'center',gap:6,marginBottom:8}}>
-              <Icon name='lock-closed' size={11} color='#757575' />
-              <CustomText fontType='primary' weight='Bold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.5}}>From the RC record</CustomText>
+              <Icon name='lock-closed' size={11} color={C.textTertiary} />
+              <CustomText fontType='primary' weight='Bold' style={{color:C.textTertiary,fontSize:10,textTransform:'uppercase',letterSpacing:.5}}>From the RC record</CustomText>
             </View>
             {[
               ['Registered on', carDetails.registrationDate],
@@ -656,8 +658,8 @@ const StepDetails = ({ carDetails, handleChange, handleNext }) => {
               ['Insurance upto', carDetails.insuranceUpto],
             ].filter(([, v]) => v).map(([label, value]) => (
               <View key={label} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:4}}>
-                <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{label}</CustomText>
-                <CustomText fontType='primary' weight='Medium' style={{color:'#c9c9c9',fontSize:12}}>{String(value)}</CustomText>
+                <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12}}>{label}</CustomText>
+                <CustomText fontType='primary' weight='Medium' style={{color:C.textSecondary,fontSize:12}}>{String(value)}</CustomText>
               </View>
             ))}
           </View>
@@ -675,8 +677,8 @@ const StepDetails = ({ carDetails, handleChange, handleNext }) => {
         ) : null}
       </ScrollView>
 
-      <TouchableOpacity disabled={!canContinue} onPress={handleNext} style={{backgroundColor: canContinue ? BRAND_COLOR : '#959595',borderRadius:8,paddingVertical:15,marginVertical:16}}>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Continue</CustomText>
+      <TouchableOpacity disabled={!canContinue} onPress={handleNext} style={{backgroundColor: canContinue ? C.primary : C.disabled,borderRadius:8,paddingVertical:15,marginVertical:16}}>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Continue</CustomText>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -749,8 +751,8 @@ const StepImages = ({ carDetails, handleChange, handleNext }) => {
   return (
     <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, justifyContent: 'space-between' }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }}>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Add photos</CustomText>
-        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:18,letterSpacing:-.3}}>Add photos</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginTop:4}}>
           Add a clear photo for each angle. The front photo is used as the cover.
         </CustomText>
 
@@ -760,26 +762,26 @@ const StepImages = ({ carDetails, handleChange, handleNext }) => {
             const uri = asset ? (asset.uri || photoUrl(asset.url)) : null;
             return (
               <View key={slot.type} style={{ width: '48%', marginBottom: 14 }}>
-                <TouchableOpacity onPress={() => pickFor(slot.type)} activeOpacity={0.8} style={{height:110,borderRadius:8,borderWidth:1,borderColor: uri ? BRAND_COLOR : '#33333a',borderStyle: uri ? 'solid' : 'dashed',backgroundColor:'#101012',justifyContent:'center',alignItems:'center',overflow:'hidden'}}>
+                <TouchableOpacity onPress={() => pickFor(slot.type)} activeOpacity={0.8} style={{height:110,borderRadius:8,borderWidth:1,borderColor: uri ? C.primary : C.borderStrong,borderStyle: uri ? 'solid' : 'dashed',backgroundColor:C.surfaceLow,justifyContent:'center',alignItems:'center',overflow:'hidden'}}>
                   {uri ? (
                     <>
                       <Image source={{ uri }} style={{ width: '100%', height: '100%' }} />
                       <TouchableOpacity onPress={() => removeSlot(slot.type)} style={{position:'absolute',top:4,right:4,backgroundColor:'#000000bb',borderRadius:100,padding:5}}>
-                        <Icon name='trash-outline' size={15} color='#fff' />
+                        <Icon name='trash-outline' size={15} color={C.text} />
                       </TouchableOpacity>
                     </>
                   ) : (
                     <>
-                      <Icon name='add-circle-outline' size={22} color='#5a5a62' />
+                      <Icon name='add-circle-outline' size={22} color={C.textMuted} />
                       {slot.type === 'front' ? (
-                        <View style={{marginTop:4,backgroundColor:'#26261e',borderRadius:3,paddingHorizontal:6,paddingVertical:2}}>
-                          <CustomText fontType='primary' weight='Bold' style={{color:BRAND_COLOR,fontSize:8,textTransform:'uppercase'}}>Cover</CustomText>
+                        <View style={{marginTop:4,backgroundColor:C.surface,borderRadius:3,paddingHorizontal:6,paddingVertical:2}}>
+                          <CustomText fontType='primary' weight='Bold' style={{color:C.primaryText,fontSize: 11,textTransform:'uppercase'}}>Cover</CustomText>
                         </View>
                       ) : null}
                     </>
                   )}
                 </TouchableOpacity>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:11,marginTop:5,textAlign:'center'}}>{slot.label}</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary,fontSize:11,marginTop:5,textAlign:'center'}}>{slot.label}</CustomText>
               </View>
             );
           };
@@ -787,12 +789,12 @@ const StepImages = ({ carDetails, handleChange, handleNext }) => {
           const interior = IMAGE_SLOTS.filter((s) => s.interior);
           return (
             <>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.5,marginTop:18,marginBottom:8}}>Exterior</CustomText>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.textTertiary,fontSize:10,textTransform:'uppercase',letterSpacing:.5,marginTop:18,marginBottom:8}}>Exterior</CustomText>
               <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'}}>
                 {exterior.map(renderSlot)}
               </View>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#757575',fontSize:10,textTransform:'uppercase',letterSpacing:.5,marginTop:10,marginBottom:2}}>Interior</CustomText>
-              <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginBottom:8}}>Show renters inside the car — the dashboard and the seats.</CustomText>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.textTertiary,fontSize:10,textTransform:'uppercase',letterSpacing:.5,marginTop:10,marginBottom:2}}>Interior</CustomText>
+              <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginBottom:8}}>Show renters inside the car — the dashboard and the seats.</CustomText>
               <View style={{flexDirection:'row',flexWrap:'wrap',justifyContent:'space-between'}}>
                 {interior.map(renderSlot)}
               </View>
@@ -801,9 +803,9 @@ const StepImages = ({ carDetails, handleChange, handleNext }) => {
         })()}
       </ScrollView>
 
-      <TouchableOpacity disabled={busy || filled.length === 0} onPress={submit} style={{backgroundColor: (busy || filled.length === 0) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15,marginVertical:16}}>
-        {busy ? <ActivityIndicator size='small' color='#000' /> : (
-          <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Upload & Continue</CustomText>
+      <TouchableOpacity disabled={busy || filled.length === 0} onPress={submit} style={{backgroundColor: (busy || filled.length === 0) ? C.disabled : C.primary,borderRadius:8,paddingVertical:15,marginVertical:16}}>
+        {busy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+          <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Upload & Continue</CustomText>
         )}
       </TouchableOpacity>
     </View>
@@ -954,7 +956,7 @@ const StepLocation = ({ carDetails, handleChange, handleNext }) => {
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size='small' color={BRAND_COLOR} />
+        <ActivityIndicator size='small' color={C.primaryText} />
       </View>
     );
   }
@@ -963,50 +965,50 @@ const StepLocation = ({ carDetails, handleChange, handleNext }) => {
 
   return (
     <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 14 }}>
-      <CustomText fontType='primary' weight='SemiBold' style={{ color: '#757575', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15, marginBottom: 4 }}>City</CustomText>
+      <CustomText fontType='primary' weight='SemiBold' style={{ color: C.textTertiary, fontSize: 11, textTransform: 'uppercase', letterSpacing: .15, marginBottom: 4 }}>City</CustomText>
       <OptionPicker placeholder={cities.length ? 'Select City' : 'Loading cities…'} options={cities} selectedId={selectedCity?.id} onSelect={changeCity} />
 
-      <CustomText fontType='primary' weight='SemiBold' style={{ color: '#757575', fontSize: 11, textTransform: 'uppercase', letterSpacing: .15, marginTop: 18, marginBottom: 4 }}>Pickup Location</CustomText>
+      <CustomText fontType='primary' weight='SemiBold' style={{ color: C.textTertiary, fontSize: 11, textTransform: 'uppercase', letterSpacing: .15, marginTop: 18, marginBottom: 4 }}>Pickup Location</CustomText>
       <View style={{ flexDirection: 'row', gap: 8 }}>
         <TextInput
           placeholder='Search area, landmark or address…'
-          placeholderTextColor='#757575'
+          placeholderTextColor={C.textTertiary}
           value={locationText}
           onChangeText={runSearch}
-          style={{ flex: 1, backgroundColor: '#1c1c1e', borderRadius: 5, paddingVertical: 10, paddingHorizontal: 12, color: '#fff', fontSize: 14 }}
+          style={{ flex: 1, backgroundColor: C.surface, borderRadius: 5, paddingVertical: 10, paddingHorizontal: 12, color: C.text, fontSize: 14 }}
         />
-        <TouchableOpacity disabled={detecting} onPress={detect} style={{ width: 46, borderRadius: 5, backgroundColor: '#26261e', borderWidth: 1, borderColor: '#4a4326', justifyContent: 'center', alignItems: 'center' }}>
-          {detecting ? <ActivityIndicator size='small' color={BRAND_COLOR} /> : <Icon name='locate' size={20} color={BRAND_COLOR} />}
+        <TouchableOpacity disabled={detecting} onPress={detect} style={{ width: 46, borderRadius: 5, backgroundColor: C.surface, borderWidth: 1, borderColor: '#EDBF3155', justifyContent: 'center', alignItems: 'center' }}>
+          {detecting ? <ActivityIndicator size='small' color={C.primaryText} /> : <Icon name='locate' size={20} color={C.primaryText} />}
         </TouchableOpacity>
       </View>
 
       {results.length > 0 ? (
-        <View style={{ backgroundColor: '#141416', borderRadius: 10, marginTop: 6, borderWidth: 1, borderColor: '#26262a', overflow: 'hidden' }}>
+        <View style={{ backgroundColor: C.surfaceLow, borderRadius: 10, marginTop: 6, borderWidth: 1, borderColor: C.border, overflow: 'hidden' }}>
           {results.map((place) => (
-            <TouchableOpacity key={place.place_id} onPress={() => choosePlace(place)} style={{ paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1f1f22' }}>
-              <CustomText fontType='primary' weight='Regular' style={{ color: '#e3e3e3', fontSize: 13 }} numberOfLines={1}>{place.description}</CustomText>
+            <TouchableOpacity key={place.place_id} onPress={() => choosePlace(place)} style={{ paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}>
+              <CustomText fontType='primary' weight='Regular' style={{ color: C.text, fontSize: 13 }} numberOfLines={1}>{place.description}</CustomText>
             </TouchableOpacity>
           ))}
         </View>
       ) : null}
 
       {checking ? (
-        <CustomText fontType='primary' weight='Regular' style={{ color: '#757575', fontSize: 12, marginTop: 8 }}>Locating…</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{ color: C.textTertiary, fontSize: 12, marginTop: 8 }}>Locating…</CustomText>
       ) : inRange === true ? (
-        <CustomText fontType='primary' weight='Medium' style={{ color: '#6ee6b0', fontSize: 12, marginTop: 8 }}>✓ This location is within the service range.</CustomText>
+        <CustomText fontType='primary' weight='Medium' style={{ color: C.success, fontSize: 12, marginTop: 8 }}>✓ This location is within the service range.</CustomText>
       ) : inRange === false ? (
-        <CustomText fontType='primary' weight='Medium' style={{ color: '#ff8f8f', fontSize: 12, marginTop: 8 }}>The selected location is not in range. Pick a location closer to the selected city.</CustomText>
+        <CustomText fontType='primary' weight='Medium' style={{ color: C.danger, fontSize: 12, marginTop: 8 }}>The selected location is not in range. Pick a location closer to the selected city.</CustomText>
       ) : null}
 
       <View style={{ flex: 1, marginTop: 12, borderRadius: 12, overflow: 'hidden' }}>
         <MapView style={{ flex: 1 }} region={region} showsCompass onPress={handleMapPress}>
-          {marker && <Marker coordinate={marker} draggable onDragEnd={handleMarkerDrag} pinColor={BRAND_COLOR} />}
-          <Circle center={marker || region} radius={LOCATION_RADIUS_M} fillColor='#E3BF3122' strokeColor={BRAND_COLOR} strokeWidth={1} />
+          {marker && <Marker coordinate={marker} draggable onDragEnd={handleMarkerDrag} pinColor={C.primary} />}
+          <Circle center={marker || region} radius={LOCATION_RADIUS_M} fillColor='#E3BF3122' strokeColor={C.primary} strokeWidth={1} />
         </MapView>
       </View>
 
-      <TouchableOpacity disabled={!canContinue} onPress={submit} style={{ backgroundColor: canContinue ? BRAND_COLOR : '#959595', borderRadius: 8, paddingVertical: 15, marginVertical: 14 }}>
-        <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: -.15, textAlign: 'center' }}>Continue</CustomText>
+      <TouchableOpacity disabled={!canContinue} onPress={submit} style={{ backgroundColor: canContinue ? C.primary : C.disabled, borderRadius: 8, paddingVertical: 15, marginVertical: 14 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: C.onPrimary, fontSize: 12, textTransform: 'uppercase', letterSpacing: -.15, textAlign: 'center' }}>Continue</CustomText>
       </TouchableOpacity>
     </View>
   );
@@ -1029,22 +1031,22 @@ const StepPreferences = ({ carDetails, handleChange, handleNext }) => {
     <View style={{ padding: 16, flex: 1, justifyContent: 'space-between' }}>
       <View>
         {preferences.map((preference) => (
-          <View key={preference.value} style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#1c1c1e'}}>
+          <View key={preference.value} style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingVertical:16,borderBottomWidth:1,borderBottomColor:C.border}}>
             <View style={{flex:1}}>
-              <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:14,marginBottom:2}}>{preference.name}</CustomText>
-              <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{preference.description}</CustomText>
+              <CustomText fontType='primary' weight='Medium' style={{color:C.text,fontSize:14,marginBottom:2}}>{preference.name}</CustomText>
+              <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12}}>{preference.description}</CustomText>
             </View>
             <Switch
               value={!!selected[preference.value]}
-              thumbColor={!!selected[preference.value] ? BRAND_COLOR : '#fff'}
+              thumbColor={!!selected[preference.value] ? C.primary : C.surface}
               trackColor={{ true: '#EDBF3155', false: '#454545' }}
               onValueChange={() => toggle(preference.value)}
             />
           </View>
         ))}
       </View>
-      <TouchableOpacity onPress={submit} style={{ backgroundColor: BRAND_COLOR, borderRadius: 8, paddingVertical: 15, marginTop: 20 }}>
-        <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: -0.15, textAlign: 'center' }}>Continue</CustomText>
+      <TouchableOpacity onPress={submit} style={{ backgroundColor: C.primary, borderRadius: 8, paddingVertical: 15, marginTop: 20 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: C.onPrimary, fontSize: 12, textTransform: 'uppercase', letterSpacing: -0.15, textAlign: 'center' }}>Continue</CustomText>
       </TouchableOpacity>
     </View>
   );
@@ -1057,11 +1059,11 @@ const StepPreferences = ({ carDetails, handleChange, handleNext }) => {
 // one — which drops focus and dismisses the keyboard after each character typed.
 const PricingField = ({ label, field, placeholder, value, onChange }) => (
   <>
-    <CustomText fontType='primary' weight='Bold' style={{ color: '#959595', fontSize: 11, letterSpacing: .15, marginBottom: 4, textTransform: 'uppercase' }}>{label}</CustomText>
+    <CustomText fontType='primary' weight='Bold' style={{ color: C.textTertiary, fontSize: 11, letterSpacing: .15, marginBottom: 4, textTransform: 'uppercase' }}>{label}</CustomText>
     <TextInput
-      style={{ backgroundColor: '#1c1c1e', color: '#e3e3e3', padding: 12, borderRadius: 8, marginBottom: 16 }}
+      style={{ backgroundColor: C.surface, color: C.text, padding: 12, borderRadius: 8, marginBottom: 16 }}
       placeholder={placeholder}
-      placeholderTextColor='#757575'
+      placeholderTextColor={C.textTertiary}
       keyboardType='numeric'
       value={value != null ? String(value) : ''}
       onChangeText={(v) => onChange(field, v.replace(/[^0-9]/g, ''))}
@@ -1084,8 +1086,8 @@ const StepPricing = ({ carDetails, handleChange, handleNext }) => {
         <PricingField label='Weekday Pricing (per hour)' field='weekdayPricing' placeholder='Enter weekday pricing' value={carDetails.weekdayPricing} onChange={handleChange} />
         <PricingField label='Weekend Pricing (per hour)' field='weekendPricing' placeholder='Enter weekend pricing' value={carDetails.weekendPricing} onChange={handleChange} />
       </ScrollView>
-      <TouchableOpacity disabled={!canContinue} onPress={handleNext} style={{ backgroundColor: canContinue ? BRAND_COLOR : '#959595', borderRadius: 8, paddingVertical: 15, marginTop: 20 }}>
-        <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 12, textTransform: 'uppercase', letterSpacing: -0.15, textAlign: 'center' }}>Continue</CustomText>
+      <TouchableOpacity disabled={!canContinue} onPress={handleNext} style={{ backgroundColor: canContinue ? C.primary : C.disabled, borderRadius: 8, paddingVertical: 15, marginTop: 20 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: C.onPrimary, fontSize: 12, textTransform: 'uppercase', letterSpacing: -0.15, textAlign: 'center' }}>Continue</CustomText>
       </TouchableOpacity>
     </KeyboardAvoidingView>
   );
@@ -1096,10 +1098,10 @@ const StepPricing = ({ carDetails, handleChange, handleNext }) => {
 // never discards the uploaded photo. Hoisted to module scope (a nested component
 // remounts every render and drops the TextInput's focus).
 const PanFallback = ({ message, busy, onRetry, onManual, manualOpen, children }) => (
-  <View style={{marginTop:14,backgroundColor:'#2a2416',borderRadius:10,borderWidth:1,borderColor:'#5c4a2a',padding:14}}>
-    <CustomText fontType='primary' weight='Bold' style={{color:'#e8c877',fontSize:13,marginBottom:4}}>We couldn't verify that automatically</CustomText>
-    <CustomText fontType='primary' weight='Regular' style={{color:'#cbb98a',fontSize:12}}>{message}</CustomText>
-    <CustomText fontType='primary' weight='Regular' style={{color:'#cbb98a',fontSize:12,marginTop:6}}>
+  <View style={{marginTop:14,backgroundColor:C.primarySoft,borderRadius:10,borderWidth:1,borderColor:'#EDBF3155',padding:14}}>
+    <CustomText fontType='primary' weight='Bold' style={{color:C.primaryText,fontSize:13,marginBottom:4}}>We couldn't verify that automatically</CustomText>
+    <CustomText fontType='primary' weight='Regular' style={{color:C.primaryText,fontSize:12}}>{message}</CustomText>
+    <CustomText fontType='primary' weight='Regular' style={{color:C.primaryText,fontSize:12,marginTop:6}}>
       {manualOpen
         ? 'Enter the number and our team will check your card by hand.'
         : 'Your photo is saved — we can read it again, or you can enter the PAN yourself.'}
@@ -1107,11 +1109,11 @@ const PanFallback = ({ message, busy, onRetry, onManual, manualOpen, children })
     {children}
     {!manualOpen ? (
       <View style={{marginTop:10,gap:8}}>
-        <TouchableOpacity disabled={busy} onPress={onRetry} style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:13}}>
-          <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>{busy ? 'Reading again…' : 'Retry verification'}</CustomText>
+        <TouchableOpacity disabled={busy} onPress={onRetry} style={{backgroundColor: busy ? C.disabled : C.primary,borderRadius:8,paddingVertical:13}}>
+          <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>{busy ? 'Reading again…' : 'Retry verification'}</CustomText>
         </TouchableOpacity>
         <TouchableOpacity disabled={busy} onPress={onManual} style={{paddingVertical:8}}>
-          <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12,textAlign:'center'}}>Enter my PAN instead</CustomText>
+          <CustomText fontType='primary' weight='SemiBold' style={{color:C.primaryText,fontSize:12,textAlign:'center'}}>Enter my PAN instead</CustomText>
         </TouchableOpacity>
       </View>
     ) : null}
@@ -1218,32 +1220,32 @@ const StepKyc = ({ handleNext }) => {
   };
 
   const label = (t) => (
-    <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4,marginTop:14}}>{t}</CustomText>
+    <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary,fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4,marginTop:14}}>{t}</CustomText>
   );
   const row = (l, v) => (
     <View key={l} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5}}>
-      <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{l}</CustomText>
-      <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12}}>{v || '—'}</CustomText>
+      <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12}}>{l}</CustomText>
+      <CustomText fontType='primary' weight='Medium' style={{color:C.text,fontSize:12}}>{v || '—'}</CustomText>
     </View>
   );
-  const input = {backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14};
+  const input = {backgroundColor:C.surface,color:C.text,borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14};
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, justifyContent: 'space-between' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Aadhaar KYC</CustomText>
-        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:18,letterSpacing:-.3}}>Aadhaar KYC</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginTop:4}}>
           We verify your identity with Aadhaar and the mobile number registered against it.
           It&apos;s done once for your account and covers both riding and hosting.
         </CustomText>
 
         {loading ? (
-          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={BRAND_COLOR} /></View>
+          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={C.primaryText} /></View>
         ) : (done && !redoing) ? (
           <>
-            <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14,borderWidth:1,borderColor:'#1f9d55'}}>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#6ee6b0',fontSize:12,marginBottom:6}}>
+            <View style={{marginTop:16,backgroundColor:C.surface,borderRadius:10,padding:14,borderWidth:1,borderColor:C.success}}>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.success,fontSize:12,marginBottom:6}}>
                 ✓ {justVerified ? 'Verified just now' : 'Your KYC is already done'}
               </CustomText>
               {/* The Aadhaar number is returned exactly once, by the scan, and
@@ -1253,7 +1255,7 @@ const StepKyc = ({ handleNext }) => {
               {row('Name on card', doc?.holderName)}
               {row('Verified by OTP', (doc?.otpVerified || justVerified) ? 'Yes' : 'No')}
             </View>
-            <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:11,marginTop:10,lineHeight:16}}>
+            <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:11,marginTop:10,lineHeight:16}}>
               There&apos;s nothing to do here. Re-verify only if you need to change which
               Aadhaar is on your account.
             </CustomText>
@@ -1261,7 +1263,7 @@ const StepKyc = ({ handleNext }) => {
         ) : (
           <>
             {redoing ? (
-              <CustomText fontType='primary' weight='Regular' style={{color:'#f0c869',fontSize:11,marginTop:12,lineHeight:16}}>
+              <CustomText fontType='primary' weight='Regular' style={{color:C.primaryText,fontSize:11,marginTop:12,lineHeight:16}}>
                 Verifying a different Aadhaar replaces the one on your account.
               </CustomText>
             ) : null}
@@ -1271,9 +1273,9 @@ const StepKyc = ({ handleNext }) => {
                 {label('Aadhaar number')}
                 <TextInput value={number} keyboardType='numeric' maxLength={14}
                   onChangeText={(t) => setNumber(t.replace(/[^\d\s]/g, ''))}
-                  placeholder='0000 0000 0000' placeholderTextColor='#757575' style={input} />
+                  placeholder='0000 0000 0000' placeholderTextColor={C.textTertiary} style={input} />
                 {!redoing ? (
-                  <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:11,marginTop:6}}>
+                  <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:11,marginTop:6}}>
                     Leave this blank to use the Aadhaar already on your account.
                   </CustomText>
                 ) : null}
@@ -1281,7 +1283,7 @@ const StepKyc = ({ handleNext }) => {
             ) : null}
 
             {confirmed && details ? (
-              <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14}}>
+              <View style={{marginTop:16,backgroundColor:C.surface,borderRadius:10,padding:14}}>
                 {row('Aadhaar', details.aadhaarNumber)}
                 {row('Name on card', details.holderName)}
                 {row('Date of birth', details.dateOfBirth)}
@@ -1289,7 +1291,7 @@ const StepKyc = ({ handleNext }) => {
             ) : null}
 
             {confirmed && !otpSent ? (
-              <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:11,marginTop:12,lineHeight:16}}>
+              <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:11,marginTop:12,lineHeight:16}}>
                 We&apos;ll send a one-time code to the mobile number registered against this Aadhaar.
               </CustomText>
             ) : null}
@@ -1299,13 +1301,13 @@ const StepKyc = ({ handleNext }) => {
                 {label('One-time code')}
                 <TextInput value={otp} keyboardType='numeric' maxLength={8}
                   onChangeText={(t) => setOtp(t.replace(/\D/g, ''))}
-                  placeholder='Enter the code' placeholderTextColor='#757575' style={input} />
+                  placeholder='Enter the code' placeholderTextColor={C.textTertiary} style={input} />
               </>
             ) : null}
           </>
         )}
 
-        {error ? <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12,marginTop:12}}>{error}</CustomText> : null}
+        {error ? <CustomText fontType='primary' weight='Medium' style={{color:C.danger,fontSize:12,marginTop:12}}>{error}</CustomText> : null}
       </ScrollView>
 
       {!loading ? (
@@ -1318,48 +1320,48 @@ const StepKyc = ({ handleNext }) => {
                 // unspent OTP reference would verify the wrong Aadhaar.
                 setNumber(''); setConfirmed(false); setDetails(null);
                 setRef(''); setOtp(''); setOtpSent(false); setJustVerified(false);
-              }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
-                <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Re-verify with a different Aadhaar</CustomText>
+              }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:C.borderStrong}}>
+                <CustomText fontType='primary' weight='Bold' style={{color:C.textSecondary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Re-verify with a different Aadhaar</CustomText>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
-                <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Continue to bank details</CustomText>
+              <TouchableOpacity onPress={handleNext} style={{backgroundColor:C.primary,borderRadius:8,paddingVertical:15}}>
+                <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Continue to bank details</CustomText>
               </TouchableOpacity>
             </>
           ) : otpSent ? (
             <>
               <TouchableOpacity disabled={busy} onPress={verifyOtp}
-                style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
-                {busy ? <ActivityIndicator size='small' color='#000' /> : (
-                  <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify OTP</CustomText>
+                style={{backgroundColor: busy ? C.disabled : C.primary,borderRadius:8,paddingVertical:15}}>
+                {busy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+                  <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify OTP</CustomText>
                 )}
               </TouchableOpacity>
               <TouchableOpacity disabled={busy} onPress={sendOtp} style={{paddingVertical:10}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12,textAlign:'center'}}>Send the code again</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:C.primaryText,fontSize:12,textAlign:'center'}}>Send the code again</CustomText>
               </TouchableOpacity>
             </>
           ) : confirmed ? (
             <>
               <TouchableOpacity disabled={busy} onPress={sendOtp}
-                style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
-                {busy ? <ActivityIndicator size='small' color='#000' /> : (
-                  <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Send Aadhaar OTP</CustomText>
+                style={{backgroundColor: busy ? C.disabled : C.primary,borderRadius:8,paddingVertical:15}}>
+                {busy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+                  <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Send Aadhaar OTP</CustomText>
                 )}
               </TouchableOpacity>
               <TouchableOpacity disabled={busy} onPress={() => { setConfirmed(false); setDetails(null); }} style={{paddingVertical:10}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:'#c9c9c9',fontSize:12,textAlign:'center'}}>Use a different number</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:C.textSecondary,fontSize:12,textAlign:'center'}}>Use a different number</CustomText>
               </TouchableOpacity>
             </>
           ) : (
             <>
               <TouchableOpacity disabled={busy} onPress={confirmNumber}
-                style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
-                {busy ? <ActivityIndicator size='small' color='#000' /> : (
-                  <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify and fetch details</CustomText>
+                style={{backgroundColor: busy ? C.disabled : C.primary,borderRadius:8,paddingVertical:15}}>
+                {busy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+                  <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify and fetch details</CustomText>
                 )}
               </TouchableOpacity>
               {redoing ? (
                 <TouchableOpacity disabled={busy} onPress={() => { setRedoing(false); setError(''); }} style={{paddingVertical:10}}>
-                  <CustomText fontType='primary' weight='SemiBold' style={{color:'#c9c9c9',fontSize:12,textAlign:'center'}}>Keep my current Aadhaar</CustomText>
+                  <CustomText fontType='primary' weight='SemiBold' style={{color:C.textSecondary,fontSize:12,textAlign:'center'}}>Keep my current Aadhaar</CustomText>
                 </TouchableOpacity>
               ) : null}
             </>
@@ -1405,7 +1407,7 @@ const StepBank = ({ handleNext }) => {
   };
 
   const label = (t) => (
-    <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575',fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4,marginTop:14}}>{t}</CustomText>
+    <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary,fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4,marginTop:14}}>{t}</CustomText>
   );
 
   // Mirrors the server's rule exactly — see the note beside the banner below.
@@ -1418,22 +1420,22 @@ const StepBank = ({ handleNext }) => {
     <KeyboardAvoidingView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, justifyContent: 'space-between' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Payout account</CustomText>
-        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:18,letterSpacing:-.3}}>Payout account</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginTop:4}}>
           We pay your earnings into this account. It has to be verified before your car can go live.
           You can have one payout account at a time — adding another replaces it.
         </CustomText>
 
         {loading ? (
-          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={BRAND_COLOR} /></View>
+          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={C.primaryText} /></View>
         ) : (account && !adding) ? (
           <>
           {/* Presented as SELECTED, not as information. There is exactly one
               payout account per host, so this account IS what the car will be
               paid into unless it is replaced — an unmarked summary card reads as
               something to note rather than as the answer. */}
-          <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14,borderWidth:1,borderColor:BRAND_COLOR}}>
-            <CustomText fontType='primary' weight='Bold' style={{color:BRAND_COLOR,fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:8}}>
+          <View style={{marginTop:16,backgroundColor:C.surface,borderRadius:10,padding:14,borderWidth:1,borderColor:C.primary}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:C.primaryText,fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:8}}>
               ✓ Selected — this car&apos;s earnings are paid here
             </CustomText>
             {[
@@ -1444,8 +1446,8 @@ const StepBank = ({ handleNext }) => {
               ['Status', account.isVerified ? 'Verified' : 'Not verified'],
             ].map(([l, v]) => (
               <View key={l} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5}}>
-                <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{l}</CustomText>
-                <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12}}>{v || '—'}</CustomText>
+                <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12}}>{l}</CustomText>
+                <CustomText fontType='primary' weight='Medium' style={{color:C.text,fontSize:12}}>{v || '—'}</CustomText>
               </View>
             ))}
           </View>
@@ -1457,11 +1459,11 @@ const StepBank = ({ handleNext }) => {
               accepts everything, verifies against the bank, and only THEN 400s
               with a rule nobody mentioned. */}
           {replaceLocked ? (
-            <View style={{marginTop:14,backgroundColor:'#241f10',borderRadius:10,padding:14,borderLeftWidth:3,borderLeftColor:'#f0c869'}}>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#f0c869',fontSize:12,marginBottom:4}}>
+            <View style={{marginTop:14,backgroundColor:C.primarySoft,borderRadius:10,padding:14,borderLeftWidth:3,borderLeftColor:C.primary}}>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.primaryText,fontSize:12,marginBottom:4}}>
                 You can&apos;t change this account yet
               </CustomText>
-              <CustomText fontType='primary' weight='Regular' style={{color:'#c9b98a',fontSize:11,lineHeight:16}}>
+              <CustomText fontType='primary' weight='Regular' style={{color:C.primaryText,fontSize:11,lineHeight:16}}>
                 A payout account can only be replaced 72 hours after it was added — it protects
                 your earnings from being redirected. You&apos;ll be able to change it from
                 {' '}{lockedUntil.toLocaleString()}. If these details are wrong, contact support.
@@ -1474,11 +1476,11 @@ const StepBank = ({ handleNext }) => {
             {/* Replacing is destructive and must say so BEFORE the form, not
                 after it: once this one verifies, every future payout follows. */}
             {adding && account ? (
-              <View style={{marginTop:16,backgroundColor:'#241f10',borderRadius:10,padding:14,borderLeftWidth:3,borderLeftColor:'#f0c869'}}>
-                <CustomText fontType='primary' weight='Bold' style={{color:'#f0c869',fontSize:12,marginBottom:4}}>
+              <View style={{marginTop:16,backgroundColor:C.primarySoft,borderRadius:10,padding:14,borderLeftWidth:3,borderLeftColor:C.primary}}>
+                <CustomText fontType='primary' weight='Bold' style={{color:C.primaryText,fontSize:12,marginBottom:4}}>
                   This replaces your current account
                 </CustomText>
-                <CustomText fontType='primary' weight='Regular' style={{color:'#c9b98a',fontSize:11,lineHeight:16}}>
+                <CustomText fontType='primary' weight='Regular' style={{color:C.primaryText,fontSize:11,lineHeight:16}}>
                   You can have one payout account at a time. Once this one verifies, ••••
                   {String(account.accountNumber || '').slice(-4)} stops being used and all
                   earnings go here instead.
@@ -1487,44 +1489,44 @@ const StepBank = ({ handleNext }) => {
             ) : null}
             {label('Account holder name')}
             <TextInput value={form.hostProvidedName} onChangeText={(t) => setForm((f) => ({ ...f, hostProvidedName: t }))}
-              placeholder='Exactly as on your bank record' placeholderTextColor='#757575'
-              style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+              placeholder='Exactly as on your bank record' placeholderTextColor={C.textTertiary}
+              style={{backgroundColor:C.surface,color:C.text,borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
             {label('Account number')}
             <TextInput value={form.accountNumber} keyboardType='numeric' onChangeText={(t) => setForm((f) => ({ ...f, accountNumber: t.replace(/\s/g, '') }))}
-              placeholder='Account number' placeholderTextColor='#757575'
-              style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+              placeholder='Account number' placeholderTextColor={C.textTertiary}
+              style={{backgroundColor:C.surface,color:C.text,borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
             {label('IFSC code')}
             <TextInput value={form.ifscCode} autoCapitalize='characters' maxLength={11} onChangeText={(t) => setForm((f) => ({ ...f, ifscCode: t.toUpperCase().replace(/\s/g, '') }))}
-              placeholder='e.g. HDFC0001234' placeholderTextColor='#757575'
-              style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+              placeholder='e.g. HDFC0001234' placeholderTextColor={C.textTertiary}
+              style={{backgroundColor:C.surface,color:C.text,borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
           </>
         )}
 
-        {error ? <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12,marginTop:12}}>{error}</CustomText> : null}
+        {error ? <CustomText fontType='primary' weight='Medium' style={{color:C.danger,fontSize:12,marginTop:12}}>{error}</CustomText> : null}
       </ScrollView>
 
       {!loading && (account && !adding) ? (
         <View style={{gap:10,marginVertical:14}}>
           {!replaceLocked ? (
-            <TouchableOpacity onPress={() => { setError(''); setAdding(true); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
-              <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different account</CustomText>
+            <TouchableOpacity onPress={() => { setError(''); setAdding(true); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:C.borderStrong}}>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.textSecondary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different account</CustomText>
             </TouchableOpacity>
           ) : null}
-          <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Continue to PAN</CustomText>
+          <TouchableOpacity onPress={handleNext} style={{backgroundColor:C.primary,borderRadius:8,paddingVertical:15}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Continue to PAN</CustomText>
           </TouchableOpacity>
         </View>
       ) : !loading ? (
         <View style={{gap:10,marginVertical:14}}>
           <TouchableOpacity disabled={saving || !form.accountNumber || !form.ifscCode || !form.hostProvidedName} onPress={save}
-            style={{backgroundColor: (saving || !form.accountNumber || !form.ifscCode || !form.hostProvidedName) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
-            {saving ? <ActivityIndicator size='small' color='#000' /> : (
-              <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify & save account</CustomText>
+            style={{backgroundColor: (saving || !form.accountNumber || !form.ifscCode || !form.hostProvidedName) ? C.disabled : C.primary,borderRadius:8,paddingVertical:15}}>
+            {saving ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+              <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify & save account</CustomText>
             )}
           </TouchableOpacity>
           {account ? (
             <TouchableOpacity onPress={() => { setAdding(false); setError(''); }} style={{paddingVertical:10}}>
-              <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12,textAlign:'center'}}>Cancel</CustomText>
+              <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary,fontSize:12,textAlign:'center'}}>Cancel</CustomText>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -1637,23 +1639,23 @@ const StepPan = ({ handleNext }) => {
     <KeyboardAvoidingView style={{ flex: 1, paddingHorizontal: 16, paddingTop: 20, justifyContent: 'space-between' }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 16 }} keyboardShouldPersistTaps='handled'>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>PAN card</CustomText>
-        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4}}>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:18,letterSpacing:-.3}}>PAN card</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginTop:4}}>
           Take a photo of your PAN card — we'll read the details for you, just like your KYC. Required for payouts and TDS, and saved once for every car.
         </CustomText>
 
         {loading ? (
-          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={BRAND_COLOR} /></View>
+          <View style={{paddingVertical:30,alignItems:'center'}}><ActivityIndicator size='small' color={C.primaryText} /></View>
         ) : (hasPan && !adding) ? (
-          <View style={{marginTop:16,backgroundColor:'#1c1c1e',borderRadius:10,padding:14}}>
+          <View style={{marginTop:16,backgroundColor:C.surface,borderRadius:10,padding:14}}>
             {[
               ['PAN', profile?.panNumber ? `••••••${String(profile.panNumber).slice(-4)}` : (submitted ? 'Submitted' : '—')],
               ['Name on card', profile?.panName || panName || '—'],
               ['Status', profile?.panVerified ? 'Verified' : 'Awaiting review'],
             ].map(([l, v]) => (
               <View key={l} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:5}}>
-                <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{l}</CustomText>
-                <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12}}>{v}</CustomText>
+                <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12}}>{l}</CustomText>
+                <CustomText fontType='primary' weight='Medium' style={{color:C.text,fontSize:12}}>{v}</CustomText>
               </View>
             ))}
           </View>
@@ -1661,48 +1663,48 @@ const StepPan = ({ handleNext }) => {
           <>
             {/* Front only — a PAN card carries the number and the printed name
                 on that face, and nothing we read or review is on the back. */}
-            <TouchableOpacity onPress={chooseSource} activeOpacity={0.8} style={{marginTop:18,borderRadius:12,borderWidth:1,borderColor: image ? BRAND_COLOR : '#33333a',borderStyle: image ? 'solid' : 'dashed',backgroundColor:'#101012',overflow:'hidden'}}>
+            <TouchableOpacity onPress={chooseSource} activeOpacity={0.8} style={{marginTop:18,borderRadius:12,borderWidth:1,borderColor: image ? C.primary : C.borderStrong,borderStyle: image ? 'solid' : 'dashed',backgroundColor:C.surfaceLow,overflow:'hidden'}}>
               {image ? (
                 <Image source={{ uri: image }} style={{ width: '100%', height: 190 }} resizeMode='cover' />
               ) : (
                 <View style={{height:150,justifyContent:'center',alignItems:'center',gap:8}}>
-                  <Icon name='cloud-upload-outline' size={30} color='#5a5a62' />
-                  <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12}}>Tap to capture or upload your PAN</CustomText>
+                  <Icon name='cloud-upload-outline' size={30} color={C.textMuted} />
+                  <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary,fontSize:12}}>Tap to capture or upload your PAN</CustomText>
                 </View>
               )}
             </TouchableOpacity>
             {image ? (
               <TouchableOpacity onPress={chooseSource} style={{marginTop:10,alignSelf:'center'}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:BRAND_COLOR,fontSize:12}}>Retake / choose another</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:C.primaryText,fontSize:12}}>Retake / choose another</CustomText>
               </TouchableOpacity>
             ) : null}
 
             {readout ? (
-              <View style={{marginTop:14,backgroundColor:'#12251a',borderRadius:10,borderWidth:1,borderColor:'#2a5c3e',padding:14}}>
-                <CustomText fontType='primary' weight='Bold' style={{color:'#8fe6b0',fontSize:12,marginBottom:6}}>What we read from your PAN</CustomText>
+              <View style={{marginTop:14,backgroundColor:C.successSoft,borderRadius:10,borderWidth:1,borderColor:'#3FCE8F59',padding:14}}>
+                <CustomText fontType='primary' weight='Bold' style={{color:C.success,fontSize:12,marginBottom:6}}>What we read from your PAN</CustomText>
                 {[['PAN', readout.panNumber], ['Name on card', readout.holderName]].filter(([, v]) => v).map(([l, v]) => (
                   <View key={l} style={{flexDirection:'row',justifyContent:'space-between',paddingVertical:3}}>
-                    <CustomText fontType='primary' weight='Regular' style={{color:'#8aa596',fontSize:12}}>{l}</CustomText>
-                    <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12}}>{v}</CustomText>
+                    <CustomText fontType='primary' weight='Regular' style={{color:C.success,fontSize:12}}>{l}</CustomText>
+                    <CustomText fontType='primary' weight='Medium' style={{color:C.text,fontSize:12}}>{v}</CustomText>
                   </View>
                 ))}
               </View>
             ) : null}
 
-            {error ? <CustomText fontType='primary' weight='Medium' style={{color:'#ff8f8f',fontSize:12,marginTop:12}}>{error}</CustomText> : null}
+            {error ? <CustomText fontType='primary' weight='Medium' style={{color:C.danger,fontSize:12,marginTop:12}}>{error}</CustomText> : null}
 
             {failed ? (
               <PanFallback message={message} busy={busy} manualOpen={manualOpen} onRetry={retry} onManual={() => setManualOpen(true)}>
                 {manualOpen ? (
                   <View style={{marginTop:10}}>
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#cbb98a',fontSize:11,textTransform:'uppercase',marginBottom:4}}>PAN number</CustomText>
-                    <TextInput value={panNumber} autoCapitalize='characters' maxLength={10} placeholder='ABCDE1234F' placeholderTextColor='#757575'
+                    <CustomText fontType='primary' weight='SemiBold' style={{color:C.primaryText,fontSize:11,textTransform:'uppercase',marginBottom:4}}>PAN number</CustomText>
+                    <TextInput value={panNumber} autoCapitalize='characters' maxLength={10} placeholder='ABCDE1234F' placeholderTextColor={C.textTertiary}
                       onChangeText={(t) => setPanNumber(t.toUpperCase().replace(/\s/g, ''))}
-                      style={{backgroundColor:'#1c1c1e',color:'#fff',borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
+                      style={{backgroundColor:C.surface,color:C.text,borderRadius:5,paddingVertical:10,paddingHorizontal:12,fontSize:14}} />
                     <TouchableOpacity disabled={busy || !panNumber.trim()} onPress={() => confirm()}
-                      style={{marginTop:12,backgroundColor: (busy || !panNumber.trim()) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:14}}>
-                      {busy ? <ActivityIndicator size='small' color='#000' /> : (
-                        <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify PAN</CustomText>
+                      style={{marginTop:12,backgroundColor: (busy || !panNumber.trim()) ? C.disabled : C.primary,borderRadius:8,paddingVertical:14}}>
+                      {busy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+                        <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Verify PAN</CustomText>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -1715,23 +1717,23 @@ const StepPan = ({ handleNext }) => {
 
       {!loading && (hasPan && !adding) ? (
         <View style={{gap:10,marginVertical:14}}>
-          <TouchableOpacity onPress={() => { setError(''); setAdding(true); setImage(null); setReadout(null); setFailed(false); setManualOpen(false); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:'#33333a'}}>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#c9c9c9',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different PAN</CustomText>
+          <TouchableOpacity onPress={() => { setError(''); setAdding(true); setImage(null); setReadout(null); setFailed(false); setManualOpen(false); }} style={{borderRadius:8,paddingVertical:14,borderWidth:1,borderColor:C.borderStrong}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:C.textSecondary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Use a different PAN</CustomText>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleNext} style={{backgroundColor:BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Review Listing</CustomText>
+          <TouchableOpacity onPress={handleNext} style={{backgroundColor:C.primary,borderRadius:8,paddingVertical:15}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Review Listing</CustomText>
           </TouchableOpacity>
         </View>
       ) : (!loading && !failed) ? (
         <View style={{gap:10,marginVertical:14}}>
-          <TouchableOpacity disabled={busy || !image} onPress={scan} style={{backgroundColor: (busy || !image) ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15}}>
-            {busy ? <ActivityIndicator size='small' color='#000' /> : (
-              <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Scan & continue</CustomText>
+          <TouchableOpacity disabled={busy || !image} onPress={scan} style={{backgroundColor: (busy || !image) ? C.disabled : C.primary,borderRadius:8,paddingVertical:15}}>
+            {busy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+              <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',textAlign:'center',letterSpacing:-.15}}>Scan & continue</CustomText>
             )}
           </TouchableOpacity>
           {hasPan ? (
             <TouchableOpacity onPress={() => { setAdding(false); setError(''); }} style={{paddingVertical:10}}>
-              <CustomText fontType='primary' weight='SemiBold' style={{color:'#8a8a92',fontSize:12,textAlign:'center'}}>Cancel</CustomText>
+              <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary,fontSize:12,textAlign:'center'}}>Cancel</CustomText>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -1746,14 +1748,14 @@ const StepPan = ({ handleNext }) => {
 // review images reload from scratch each time.
 const Row = ({ label, value }) => (
   <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'flex-start',paddingVertical:7,gap:16}}>
-    <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12}}>{label}</CustomText>
-    <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12,flexShrink:1,textAlign:'right'}}>{value || '—'}</CustomText>
+    <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12}}>{label}</CustomText>
+    <CustomText fontType='primary' weight='Medium' style={{color:C.text,fontSize:12,flexShrink:1,textAlign:'right'}}>{value || '—'}</CustomText>
   </View>
 );
 
 const Card = ({ title, children }) => (
-  <View style={{backgroundColor:'#1c1c1e',borderRadius:10,padding:14,marginBottom:12}}>
-    <CustomText fontType='primary' weight='Bold' style={{color:'#959595',fontSize:10,textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>{title}</CustomText>
+  <View style={{backgroundColor:C.surface,borderRadius:10,padding:14,marginBottom:12}}>
+    <CustomText fontType='primary' weight='Bold' style={{color:C.textTertiary,fontSize:10,textTransform:'uppercase',letterSpacing:.5,marginBottom:6}}>{title}</CustomText>
     {children}
   </View>
 );
@@ -1825,8 +1827,8 @@ const StepReview = ({ carDetails, navigation }) => {
   return (
     <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16, justifyContent: 'space-between' }}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3',fontSize:18,letterSpacing:-.3}}>Review your listing</CustomText>
-        <CustomText fontType='primary' weight='Regular' style={{color:'#757575',fontSize:12,marginTop:4,marginBottom:16}}>Go back to any step to change something.</CustomText>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.text,fontSize:18,letterSpacing:-.3}}>Review your listing</CustomText>
+        <CustomText fontType='primary' weight='Regular' style={{color:C.textTertiary,fontSize:12,marginTop:4,marginBottom:16}}>Go back to any step to change something.</CustomText>
 
         {carDetails.images?.length ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom:12}}>
@@ -1882,9 +1884,9 @@ const StepReview = ({ carDetails, navigation }) => {
         </Card>
       </ScrollView>
 
-      <TouchableOpacity disabled={busy} onPress={publish} style={{backgroundColor: busy ? '#959595' : BRAND_COLOR,borderRadius:8,paddingVertical:15,marginVertical:16}}>
-        {busy ? <ActivityIndicator size='small' color='#000' /> : (
-          <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Host My Car</CustomText>
+      <TouchableOpacity disabled={busy} onPress={publish} style={{backgroundColor: busy ? C.disabled : C.primary,borderRadius:8,paddingVertical:15,marginVertical:16}}>
+        {busy ? <ActivityIndicator size='small' color={C.onPrimary} /> : (
+          <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>Host My Car</CustomText>
         )}
       </TouchableOpacity>
     </View>

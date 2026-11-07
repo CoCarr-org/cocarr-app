@@ -1,22 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Alert, 
-  SafeAreaView, 
-  KeyboardAvoidingView, 
-  Image, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Image,
   Linking,
-  TouchableHighlight
+  TouchableHighlight,
+  Platform
 } from 'react-native';
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import { useDispatch } from 'react-redux';
 import { login } from '../../store/authSlice';
 import CustomText from '../../components/CustomText';
+
+import { C, themedStyleSheet } from '../../theme';
+import BrandLogo from '../../components/BrandLogo';
 
 export function MobileInputScreen({ navigation }) {
   const [mobileNumber, setMobileNumber] = useState('');
@@ -74,11 +77,7 @@ export function MobileInputScreen({ navigation }) {
       >
         <View style={styles.topContainer}>
           {/* Logo */}
-          <Image 
-            source={require('../../images/logo.png')} 
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <BrandLogo height={64} style={styles.logo} />
 
           {/* Title */}
           <Text style={styles.title}>Login with Mobile Number</Text>
@@ -101,7 +100,7 @@ export function MobileInputScreen({ navigation }) {
               onChangeText={handleChange}
               placeholder=""
               keyboardType="number-pad"
-              placeholderTextColor="#808080"
+              placeholderTextColor={C.textTertiary}
               maxLength={10} // Limit input to 10 digits
               />
           </View>
@@ -109,7 +108,7 @@ export function MobileInputScreen({ navigation }) {
         {referralAvailable && (
           <View style={{flexDirection:'row',alignItems:'center',justifyContent:'space-between',marginTop:12,paddingHorizontal:0}}>
             {
-              showReferralInput ? <TextInput maxLength={6} placeholderTextColor='#454545' style={styles.referralInput} value={referralCode} onChangeText={(text) => setReferralCode(text)} placeholder='REFERRAL CODE' /> : <CustomText style={{color:'#a3a3a3',fontSize:11,fontWeight:'700',letterSpacing:-.05,textDecorationLine:'underline'}} onPress={() => setShowReferralInput(true)}>HAVE A REFERRAL CODE?</CustomText>
+              showReferralInput ? <TextInput maxLength={6} placeholderTextColor={C.textDisabled} style={styles.referralInput} value={referralCode} onChangeText={(text) => setReferralCode(text)} placeholder='REFERRAL CODE' /> : <CustomText style={{color:C.textSecondary,fontSize:11,fontWeight:'700',letterSpacing:-.05,textDecorationLine:'underline'}} onPress={() => setShowReferralInput(true)}>HAVE A REFERRAL CODE?</CustomText>
             }
           </View>
         )}
@@ -130,7 +129,7 @@ export function MobileInputScreen({ navigation }) {
         
         {/* Send OTP Button */}
         <View style={styles.bottomContainer}>
-        <TouchableHighlight underlayColor='#b38f1f' style={{...styles.button,backgroundColor:mobileNumber.length !== 10 || isLoading ? '#454545' : '#EDBF31'}} disabled={mobileNumber.length !== 10 || isLoading} onPress={handleSubmit}>
+        <TouchableHighlight underlayColor={C.primary} style={{...styles.button,backgroundColor:mobileNumber.length !== 10 || isLoading ? C.surfaceHighest : C.primary}} disabled={mobileNumber.length !== 10 || isLoading} onPress={handleSubmit}>
           <Text style={styles.buttonText}>Send OTP</Text>
         </TouchableHighlight>
         </View>
@@ -139,85 +138,96 @@ export function MobileInputScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   safeArea: {
     flex: 1,
-    backgroundColor: '#000', // Maintain dark background
+    backgroundColor: C.background, // Maintain dark background
   },
+
   container: {
     flex: 1,
-    backgroundColor: '#000',                // Dark background for contrast
+    backgroundColor: C.background,                // Dark background for contrast
     padding: 24,
     paddingVertical: 12,
     justifyContent: 'space-between',         // Space between top container and button
   },
+
   logo: {
-    height: 40,
-    width: 80,
-    marginBottom: 48,
+    marginBottom: 40,
+    marginLeft: -6,
   },
+
   topContainer: {
     flex: 1,
     // justifyContent: 'center',
   },
+
   bottomContainer:{
     // paddingBottom:24
   },
+
   title: {
     fontSize: 14,                           // Larger font size for prominence
     fontWeight: '500',                      // Semi-bold text
-    color: '#efefef',                          // White color for readability
+    color: C.text,                          // White color for readability
     marginBottom: 2,                        // Space below the title
   },
+
   subtitle: {
     fontSize: 12,                           // Smaller than title
-    color: '#959595',                       // Light gray for subtitle
+    color: C.textTertiary,                       // Light gray for subtitle
     marginBottom: 24,                       // Space below the subtitle
   },
+
   inputContainer: {
     flexDirection: 'row',                   // Align prefix and input horizontally
     alignItems: 'center',                   // Center vertically
-    borderColor: '#252525',                 // Dark border color
+    borderColor: C.border,                 // Dark border color
     borderWidth: 1,                         // Border thickness
     borderRadius: 6,                        // Rounded corners
-    backgroundColor: '#151515',             // Dark background for input
+    backgroundColor: C.surfaceLow,             // Dark background for input
     paddingHorizontal: 14,                  // Horizontal padding inside container
   },
+
   inputFocused: {
     flexDirection: 'row',                   // Align prefix and input horizontally
     alignItems: 'center',                   // Center vertically
     borderColor: '#EDBF3135',                 // Dark border color
     borderWidth: 1,                         // Border thickness
     borderRadius: 8,                        // Rounded corners
-    backgroundColor: '#1a1a1a',             // Dark background for input
+    backgroundColor: C.surface,             // Dark background for input
     paddingHorizontal: 14,                  // Horizontal padding inside container
   },
+
   prefixContainer: {
     justifyContent: 'center',               // Center vertically
     alignItems: 'center',                   // Center horizontally
     paddingRight: 10,                       // Space between prefix and input
   },
+
   prefixText: {
-    color: '#efefef',                       // Gold color for prefix
+    color: C.text,                       // Gold color for prefix
     fontSize: 14,
     fontWeight: '500',
   },
+
   input: {
     flex: 1,                                // Take up the remaining space
     height: 50,                             // Comfortable height for input
-    color: '#efefef',                          // White text color
+    color: C.text,                          // White text color
     fontSize: 14,
     letterSpacing:.5,
     paddingVertical:12,
     paddingLeft:12,
     fontWeight: '500',
     borderLeftWidth:1,
-    borderLeftColor:'#252525',
+    borderLeftColor:C.border,
   },
+
   referralInput: {
     flex: 1,                                // Take up the remaining space
     height: 42,                             // Comfortable height for input
-    color: '#e3e3e3',                          // White text color
+    color: C.text,                          // White text color
     fontSize: 12,
     textTransform:'uppercase',
     letterSpacing:.5,
@@ -226,9 +236,10 @@ const styles = StyleSheet.create({
     paddingVertical:12,
     paddingLeft:12,
     fontWeight: '500',
-      backgroundColor:'#1c1c1c',
+      backgroundColor:C.surface,
       borderRadius:6,
   },
+
   button: {
     // backgroundColor: '#EDBF31',             // Gold background
     paddingVertical: 14,                    // Vertical padding for button
@@ -236,23 +247,26 @@ const styles = StyleSheet.create({
     letterSpacing:-.35,                   // Rounded corners
     alignItems: 'center',                   // Center the text
   },
+
   buttonText: {
-    color: '#000',                          // Black text for contrast
+    color: C.onPrimary,                          // Black text for contrast
     fontSize: 13,                           // Readable font size
     fontWeight: '600',  
     textTransform:'uppercase'                    // Semi-bold text
   },
+
   noticeText: {
     marginTop:12,
     paddingHorizontal:2,
     lineHeight:18,
     letterSpacing:-.25,
-    color: '#959595',                          // Black text for contrast
+    color: C.textTertiary,                          // Black text for contrast
     fontSize: 12,                           // Readable font size
     fontWeight: '400',                      // Semi-bold text
 },
-linkText:{
-    color: '#EDBF31',                          // Black text for contrast
-    
-  }
-});
+
+  linkText:{
+      color: C.primaryText,                          // Black text for contrast
+      
+    }
+}));

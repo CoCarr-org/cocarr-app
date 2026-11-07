@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CustomText from '../CustomText';
 import { updateUserRole } from '../../store/authSlice';
-import { BRAND_COLOR } from '../../utils/constants';
+import { C } from '../../theme';
 
 // Floating pill tab bar with a separate circular action on the right.
 //
@@ -49,13 +49,13 @@ export default function AppTabBar({ state, descriptors, navigation }) {
       // Real inset, not a guessed constant — 26 was wrong on every device that
       // isn't a notched iPhone, and on Android it left a dead strip.
       paddingBottom: Math.max(insets.bottom, 12),
-      backgroundColor: '#000',
+      backgroundColor: C.background,
     }}>
       {/* The pill */}
       <View style={{
         flex: 1, flexDirection: 'row', alignItems: 'center',
-        backgroundColor: '#141416', borderRadius: 34,
-        borderWidth: 1, borderColor: '#232327',
+        backgroundColor: C.surface, borderRadius: 34,
+        borderWidth: 1, borderColor: C.border,
         padding: 5,
       }}>
         {state.routes.map((route, index) => {
@@ -78,22 +78,24 @@ export default function AppTabBar({ state, descriptors, navigation }) {
               accessibilityLabel={title}
               style={{
                 flex: 1, alignItems: 'center', justifyContent: 'center',
-                paddingVertical: 9, borderRadius: 30,
+                paddingVertical: 8, minHeight: 50, borderRadius: 30,
                 // The active tab gets a filled lozenge, as in the reference.
-                backgroundColor: isFocused ? '#232327' : 'transparent',
+                backgroundColor: isFocused ? C.primarySoft : 'transparent',
               }}
             >
               {options.tabBarIcon
-                ? options.tabBarIcon({ focused: isFocused, color: isFocused ? BRAND_COLOR : '#808080', size: 20 })
+                ? options.tabBarIcon({ focused: isFocused, color: isFocused ? C.primaryText : C.textTertiary, size: 20 })
                 : null}
               <CustomText
                 fontType='primary'
                 weight='Bold'
                 numberOfLines={1}
                 style={{
-                  color: isFocused ? BRAND_COLOR : '#808080',
-                  fontSize: 9, marginTop: 4,
-                  textTransform: 'uppercase', letterSpacing: .3,
+                  color: isFocused ? C.primaryText : C.textTertiary,
+                  // 9pt uppercase was below every platform minimum; 11pt is
+                  // the iOS tab-bar label size.
+                  fontSize: 11, marginTop: 3,
+                  letterSpacing: .1,
                 }}
               >
                 {title}
@@ -114,11 +116,11 @@ export default function AppTabBar({ state, descriptors, navigation }) {
           // overhanging it.
           width: 52, height: 52, borderRadius: 26,
           backgroundColor: '#EDBF3114',
-          borderWidth: 1.5, borderColor: BRAND_COLOR,
+          borderWidth: 1.5, borderColor: C.primary,
           alignItems: 'center', justifyContent: 'center',
         }}
       >
-        <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 12, letterSpacing: -.1 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: C.primaryText, fontSize: 12, letterSpacing: -.1 }}>
           {label}
         </CustomText>
       </TouchableOpacity>

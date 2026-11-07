@@ -8,13 +8,15 @@ import WalletPage from '../screens/profileScreens/WalletPage';
 import PanVerificationScreen from '../screens/profileScreens/PanVerificationScreen';
 import OnboardingWizardScreen from '../screens/profileScreens/OnboardingWizardScreen';
 
+import { C } from '../theme';
+
 const Stack = createNativeStackNavigator();
 
 export function ProfileStackNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:'#000'}}>
+    <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:C.background}}>
       <Stack.Screen name="ProfileIndex" component={ProfileScreen} />
-      
+
       <Stack.Screen name="Referral" component={ReferralPage}/>
       <Stack.Screen name="Offers" component={OffersScreen} />
       <Stack.Screen name="Wallet" component={WalletPage}/>

@@ -1,12 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useDispatch } from 'react-redux';
 import { updateProfile } from '../store/authSlice';
 import CustomText from './CustomText';
-import { API_URL, BRAND_COLOR } from '../utils/constants';
+import { API_URL } from '../utils/constants';
+
+import { C, themedStyleSheet } from '../theme';
 
 // Profile-status prompt shown at the top of both profile screens.
 //
@@ -16,22 +18,23 @@ import { API_URL, BRAND_COLOR } from '../utils/constants';
 // or Aadhaar step was skipped. Tapping through reopens the wizard with
 // everything already entered prefilled.
 //
-// An `active` profile has no entry in COPY, so nothing renders for the users
+// An `active` profile has no entry in copyFor(), so nothing renders for the users
 // who have nothing to do.
 
-const COPY = {
+// A function so colours resolve against the active scheme at render time.
+const copyFor = (status) => ({
   incomplete: {
     icon: 'alert-circle-outline',
-    colour: BRAND_COLOR,
-    background: '#241f0c',
+    colour: C.primary,
+    background: C.primarySoft,
     title: 'Complete your profile',
     body: 'Add your driving licence and Aadhaar to start booking rides.',
     route: 'OnboardingWizard',
   },
   pending: {
     icon: 'time-outline',
-    colour: '#7aa2f7',
-    background: '#111a2b',
+    colour: C.info,
+    background: C.surfaceHigh,
     title: 'Verification in progress',
     body: 'Your profile is with our team. Browse cars in the meantime.',
     route: 'OnboardingWizard',
@@ -39,21 +42,21 @@ const COPY = {
   },
   rejected: {
     icon: 'close-circle-outline',
-    colour: '#f87171',
-    background: '#2b1212',
+    colour: C.danger,
+    background: C.dangerSoft,
     title: 'Your verification needs attention',
     body: 'Something needs correcting before you can book.',
     route: 'OnboardingWizard',
   },
   suspended: {
     icon: 'ban-outline',
-    colour: '#fb923c',
-    background: '#2a1d0c',
+    colour: C.warning,
+    background: C.warningSoft,
     title: 'Your account is suspended',
     body: 'Please contact support for details.',
     route: null,
   },
-};
+})[status];
 
 const ProfileStatusPrompt = () => {
   const navigation = useNavigation();
@@ -85,7 +88,7 @@ const ProfileStatusPrompt = () => {
     return () => { cancelled = true; };
   }, []));
 
-  const copy = status && COPY[status.verificationStatus];
+  const copy = status && copyFor(status.verificationStatus);
   if (!copy) return null;
 
   const Wrapper = copy.route ? TouchableOpacity : View;
@@ -111,7 +114,7 @@ const ProfileStatusPrompt = () => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -122,8 +125,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 16,
   },
-  title: { fontSize: 14, color: '#fff', marginBottom: 2 },
-  body: { fontSize: 12, color: '#c9c9d1', lineHeight: 17 },
-});
+
+  title: { fontSize: 14, color: C.text, marginBottom: 2 },
+  body: { fontSize: 12, color: C.textSecondary, lineHeight: 17 }
+}));
 
 export default ProfileStatusPrompt;

@@ -1,7 +1,9 @@
-import { StyleSheet, View, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from 'react-native-vector-icons/Ionicons';
 import CustomText from "./CustomText";
+
+import { C, themedStyleSheet } from '../theme';
 
 // Sub-page header used across the booking / schedule / profile screens.
 //
@@ -16,11 +18,11 @@ import CustomText from "./CustomText";
 const Header = ({ navigation, title, showBackButton = true, customSecondaryText = false, rightComponent = null }) => {
   const insets = useSafeAreaInsets();
   return (
-    <View style={{ backgroundColor: '#000', paddingTop: insets.top }}>
+    <View style={{ backgroundColor: C.background, paddingTop: insets.top }}>
       <View style={styles.headerContainer}>
         {showBackButton && (
           <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack?.()}>
-            <Icon name="chevron-back" size={24} color="#e3e3e3" />
+            <Icon name="chevron-back" size={24} color={C.text} />
           </TouchableOpacity>
         )}
         <View style={{ flex: 1, minWidth: 0 }}>
@@ -35,30 +37,33 @@ const Header = ({ navigation, title, showBackButton = true, customSecondaryText 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
+
   backButton: {
     padding: 6,
     marginLeft: -6,
     marginRight: 4,
   },
+
   titleText: {
-    color: '#f0f0f2',
+    color: C.text,
     fontSize: 16,
     letterSpacing: -0.2,
   },
+
   secondaryText: {
-    color: '#8a8a8a',
+    color: C.textTertiary,
     fontSize: 11,
     textTransform: 'uppercase',
     letterSpacing: 0.15,
     marginTop: 1,
-  },
-})
+  }
+}))
 
 export default Header;

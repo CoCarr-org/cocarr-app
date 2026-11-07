@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Modal, TextInput, FlatList } from 'react-native';
+import { View, TouchableOpacity, Modal, TextInput, FlatList } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useDispatch, useSelector } from 'react-redux';
 import { setShowCityPicker, setShowCityLocation } from '../../store/bookingSlice';
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import CustomText from '../../components/CustomText';
+
+import { C, themedStyleSheet } from '../../theme';
 
 // Centered modal city picker, mirroring the web city-selection modal:
 // a header with a dismiss (X) button, a search box, and an alphabetical
@@ -73,7 +75,7 @@ export function CityPickerScreen() {
           <View style={styles.header}>
             <CustomText fontType="primary" weight="Bold" style={styles.title}>Select city</CustomText>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={styles.closeButton}>
-              <Icon name="close" size={18} color="#e3e3e3" />
+              <Icon name="close" size={18} color={C.text} />
             </TouchableOpacity>
           </View>
 
@@ -82,7 +84,7 @@ export function CityPickerScreen() {
               value={search}
               onChangeText={setSearch}
               placeholder="Search city"
-              placeholderTextColor="#8a8a8a"
+              placeholderTextColor={C.textTertiary}
               style={styles.searchInput}
             />
           </View>
@@ -99,9 +101,9 @@ export function CityPickerScreen() {
               const selected = bookingInfo.selectedCity?.id === item.id;
               return (
                 <TouchableOpacity style={[styles.cityItem, selected && styles.cityItemSelected]} onPress={() => handleConfirm(item)}>
-                  <Icon name="location-outline" size={18} color={selected ? BRAND_COLOR : '#8a8a8a'} />
-                  <CustomText fontType="primary" weight={selected ? 'Medium' : 'Regular'} style={{ flex: 1, color: selected ? '#fff' : '#e3e3e3', fontSize: 15, textTransform: 'capitalize' }}>{item.name}</CustomText>
-                  {selected && <Icon name="checkmark-circle" size={20} color={BRAND_COLOR} />}
+                  <Icon name="location-outline" size={18} color={selected ? C.primaryText : C.textTertiary} />
+                  <CustomText fontType="primary" weight={selected ? 'Medium' : 'Regular'} style={{ flex: 1, color: selected ? C.text : C.text, fontSize: 15, textTransform: 'capitalize' }}>{item.name}</CustomText>
+                  {selected && <Icon name="checkmark-circle" size={20} color={C.primaryText} />}
                 </TouchableOpacity>
               );
             }}
@@ -112,7 +114,7 @@ export function CityPickerScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.72)',
@@ -120,17 +122,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
+
   card: {
     width: '100%',
     maxWidth: 440,
     maxHeight: '72%',
-    backgroundColor: '#1c1c1e',
+    backgroundColor: C.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2c2c2e',
+    borderColor: C.borderStrong,
     overflow: 'hidden',
     paddingBottom: 12,
   },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -138,35 +142,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
+    borderBottomColor: C.borderStrong,
   },
+
   title: {
-    color: '#fff',
+    color: C.text,
     fontSize: 14,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
+
   closeButton: {
     height: 32,
     width: 32,
     borderRadius: 16,
-    backgroundColor: '#2c2c2e',
+    backgroundColor: C.surfaceHigh,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   searchBox: {
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 6,
   },
+
   searchInput: {
-    backgroundColor: '#2c2c2e',
+    backgroundColor: C.surfaceHigh,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 8,
-    color: '#fff',
+    color: C.text,
   },
+
   cityItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -174,15 +183,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#252528',
+    borderBottomColor: C.border,
   },
+
   cityItemSelected: {
-    backgroundColor: '#232326',
+    backgroundColor: C.surface,
   },
+
   empty: {
-    color: '#8a8a8a',
+    color: C.textTertiary,
     fontSize: 14,
     paddingHorizontal: 20,
     paddingVertical: 18,
-  },
-});
+  }
+}));

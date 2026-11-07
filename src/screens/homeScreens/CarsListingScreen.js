@@ -1,7 +1,17 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
-import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, TouchableOpacity, Dimensions, ScrollView, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  ActivityIndicator,
+  TouchableOpacity,
+  Dimensions,
+  ScrollView,
+  RefreshControl,
+} from 'react-native';
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import Ionicons from 'react-native-vector-icons/Ionicons'
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -16,6 +26,8 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome6';
 import CustomText from '../../components/CustomText';
 import Slider from '@react-native-community/slider';
 import Octicons from 'react-native-vector-icons/Octicons';
+
+import { C, themedStyleSheet } from '../../theme';
 
 export function CarsListingScreen() {
   const [vehicles, setVehicles] = useState([]);
@@ -161,65 +173,67 @@ export function CarsListingScreen() {
     console.log('item',item)
     
     
-    return <TouchableOpacity disabled={!item.isAvailable} onPress={()=>navigation.navigate('CarInfo',{vehicleId:item.vehicleId})} activeOpacity={0.8} style={{...styles.vehicleItem,opacity:item.isAvailable ? 1 : 0.5}}>
-      <View style={{flex:1,position:'relative'}}>
+    return (
+      <TouchableOpacity disabled={!item.isAvailable} onPress={()=>navigation.navigate('CarInfo',{vehicleId:item.vehicleId})} activeOpacity={0.8} style={{...styles.vehicleItem,opacity:item.isAvailable ? 1 : 0.5}}>
+        <View style={{flex:1,position:'relative'}}>
 
-      {item.images.length > 0 ? (
-        <Carousel style={{width:'100%',height:200}} 
-        loop
-        width={width}
-        height={200}
-        autoPlay={false}
-        data={item.images}
-        scrollAnimationDuration={1000}
-        pagingEnabled={true}
-        snapEnabled={true}
-        // dragEnabled={true}
-        // autoPlayInterval={1000}
-        key={item.vehicleId}
-        
-        onSnapToItem={(index) => console.log('current index:', index)}
-        renderItem={({ item:it ,index}) => {
-          // console.log('it',it)
-          return (
-            <View
-            style={{
-              flex: 1,
-              borderWidth: 1,
-              justifyContent: 'center',
+        {item.images.length > 0 ? (
+          <Carousel style={{width:'100%',height:200}} 
+          loop
+          width={width}
+          height={200}
+          autoPlay={false}
+          data={item.images}
+          scrollAnimationDuration={1000}
+          pagingEnabled={true}
+          snapEnabled={true}
+          // dragEnabled={true}
+          // autoPlayInterval={1000}
+          key={item.vehicleId}
+          
+          onSnapToItem={(index) => console.log('current index:', index)}
+          renderItem={({ item:it ,index}) => {
+            // console.log('it',it)
+            return (
+              <View
+              style={{
+                flex: 1,
+                borderWidth: 1,
+                justifyContent: 'center',
+              }}
+              >
+                  <Image source={{ uri: it.url }} key={index} style={{width:width,height:200}}/>
+              </View> 
+              )
             }}
-            >
-                <Image source={{ uri: it.url }} key={index} style={{width:width,height:200}}/>
-            </View> 
-            )
-          }}
-          />
-        ) : null}
+            />
+          ) : null}
 
-<View style={{flex:1,flexDirection:'column',position:'absolute',bottom:0,left:0,width:'100%'}}>
-        <LinearGradient start={{x:0,y:1}} end={{x:0,y:0}} colors={['#000000','#00000000']} style={{flex:1,paddingHorizontal:12,paddingVertical:12,paddingTop:40}}>
-          <View style={{flexDirection:'row',justifyContent:'flex-start',alignItems:'center'}}>
-              <CustomText fontType='primary' weight='SemiBold' style={{color:'#a3a3a3',fontSize:11,letterSpacing:-0.05,textTransform:'uppercase'}}>{(item.rating)}</CustomText>
-              <Icon name="star" size={14} color="#EDBF31" />
+  <View style={{flex:1,flexDirection:'column',position:'absolute',bottom:0,left:0,width:'100%'}}>
+          <LinearGradient start={{x:0,y:1}} end={{x:0,y:0}} colors={[C.background,'#00000000']} style={{flex:1,paddingHorizontal:12,paddingVertical:12,paddingTop:40}}>
+            <View style={{flexDirection:'row',justifyContent:'flex-start',alignItems:'center'}}>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:C.textSecondary,fontSize:11,letterSpacing:-0.05,textTransform:'uppercase'}}>{(item.rating)}</CustomText>
+                <Icon name="star" size={14} color={C.primaryText} />
+            </View>
+            <CustomText fontType='primary' weight='SemiBold' style={{color:C.text,fontSize:14,fontWeight:'500'}}>{item.vehicleName}</CustomText>
+          <CustomText fontType='primary' weight='SemiBold' style={{color:C.textSecondary,fontSize:11,letterSpacing:-0.05,textTransform:'uppercase'}}>{item.vehicleFuelType} · {item.vehicleSeats} Seater · {item.vehicleYear}</CustomText>
+          </LinearGradient>
+        </View>
+
           </View>
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#fff',fontSize:14,fontWeight:'500'}}>{item.vehicleName}</CustomText>
-        <CustomText fontType='primary' weight='SemiBold' style={{color:'#c3c3c3',fontSize:11,letterSpacing:-0.05,textTransform:'uppercase'}}>{item.vehicleFuelType} · {item.vehicleSeats} Seater · {item.vehicleYear}</CustomText>
-        </LinearGradient>
-      </View>
 
+        <View style={styles.vehicleInfo}>
+          <View style={{flexDirection:'row',justifyContent:'space-between'}}>
+            <Icon name="location-outline" size={14} color={C.textSecondary} />
+            <CustomText fontType='primary' weight='SemiBold' style={{color:C.textSecondary,fontSize:11,letterSpacing:-0.05,textTransform:'uppercase'}}>{parseFloat(item.distance).toFixed(2)} km</CustomText>
+          </View>
+        <View style={styles.vehiclePrice}>
+          <CustomText fontType='primary' weight='SemiBold' style={{color:C.text,fontSize:14,letterSpacing:-0.05,textAlign:'right'}}>{item.isAvailable ? `Rs.${item.vehiclePlan[0].perHourFee}/hr` : 'Sold Out'}</CustomText>
+          {item.isAvailable ?  <CustomText fontType='primary' weight='SemiBold' style={{color:C.textSecondary,fontSize:11,letterSpacing:-0.05,textAlign:'right'}}>Total:Rs.{parseInt(item.totalFee)}</CustomText> : null}
         </View>
-
-      <View style={styles.vehicleInfo}>
-        <View style={{flexDirection:'row',justifyContent:'space-between'}}>
-          <Icon name="location-outline" size={14} color="#a3a3a3" />
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#a3a3a3',fontSize:11,letterSpacing:-0.05,textTransform:'uppercase'}}>{parseFloat(item.distance).toFixed(2)} km</CustomText>
         </View>
-      <View style={styles.vehiclePrice}>
-        <CustomText fontType='primary' weight='SemiBold' style={{color:'#fff',fontSize:14,letterSpacing:-0.05,textAlign:'right'}}>{item.isAvailable ? `Rs.${item.vehiclePlan[0].perHourFee}/hr` : 'Sold Out'}</CustomText>
-        {item.isAvailable ?  <CustomText fontType='primary' weight='SemiBold' style={{color:'#a3a3a3',fontSize:11,letterSpacing:-0.05,textAlign:'right'}}>Total:Rs.{parseInt(item.totalFee)}</CustomText> : null}
-      </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    );
 }
 
 
@@ -237,13 +251,13 @@ export function CarsListingScreen() {
       <TopPillBlock sort={sort} isFilterApplied={isFilterApplied} filters={filters} setShowSort={setShowSort} setShowFilter={setShowFilter} setFilters={setFilters}/>
       <FlatList
         data={vehicles}
-        refreshControl={<RefreshControl progressBackgroundColor='#000' tintColor={BRAND_COLOR} colors={[BRAND_COLOR]} onRefresh={()=>fetchVehicles('refresh')} refreshing={refreshing}/>}
+        refreshControl={<RefreshControl progressBackgroundColor={C.background} tintColor={C.primaryText} colors={[C.primary]} onRefresh={()=>fetchVehicles('refresh')} refreshing={refreshing}/>}
         renderItem={renderVehicleItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={vehicles.length === 0 ? styles.listContainerEmpty : styles.listContainer}
         ListEmptyComponent={!loading ? (
           <View style={styles.centered}>
-            <CustomText fontType='primary' weight='Medium' style={{ color: '#a3a3a3', fontSize: 13, textAlign: 'center' }}>
+            <CustomText fontType='primary' weight='Medium' style={{ color: C.textSecondary, fontSize: 13, textAlign: 'center' }}>
               No cars available in {selectedCity?.name || 'this area'} for these dates yet.
             </CustomText>
           </View>
@@ -260,9 +274,9 @@ export function CarsListingScreen() {
 const LoaderScreen = () => {
   return (
     <View style={{...styles.centered,position:'absolute',top:0,left:0,right:0,bottom:0,backgroundColor:'#00000099',zIndex:1}}>
-      <ActivityIndicator size="large" color="#EDBF31" />
+      <ActivityIndicator size="large" color={C.primaryText} />
     </View>
-  )
+  );
 }
 
 
@@ -279,21 +293,21 @@ const SortModal = ({actionRef,setShowSort,sort,setSort}) => {
   const [parentFilters, setParentFilters] = useState([{name:'Distance - Near to Far',value:'distance'},{name:'Price - Low to High',value:'price'},{name:'Price - High to Low',value:'-price'},{name:'Rating - High to Low',value:'-rating'},{name:'Rating - Low to High',value:'rating'}])
   return (
     <View>
-      <ActionSheet ref={actionRef} onClose={() => setShowSort(false)} containerStyle={{backgroundColor:'#151515'}} safeAreaInsets={{bottom:24}} overlayColor='#000' defaultOverlayOpacity={0.85}>
+      <ActionSheet ref={actionRef} onClose={() => setShowSort(false)} containerStyle={{backgroundColor:C.surfaceLow}} safeAreaInsets={{bottom:24}} overlayColor='#000' defaultOverlayOpacity={0.85}>
         <View style={{paddingVertical:24,paddingHorizontal:16}}>
           <Text style={styles.sortTitle}>Sort By</Text>
         </View>
         <View style={{flexDirection:'column',justifyContent:'space-between'}}>
             {parentFilters.map((filter,index)=> (
-              <TouchableOpacity key={index} onPress={() => onSort(filter.value)} style={{paddingHorizontal:16,paddingVertical:12,borderRadius:4,borderBottomWidth:0,borderBottomColor:'#252525',flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
-                <Text style={{color:'#e3e3e3',fontSize:12,fontWeight:'400'}}>{filter.name}</Text>
-                <FontAwesomeOld name={sort === filter.value ? 'circle' : 'circle'} size={20} color={sort === filter.value ? BRAND_COLOR : '#454545'} />
+              <TouchableOpacity key={index} onPress={() => onSort(filter.value)} style={{paddingHorizontal:16,paddingVertical:12,borderRadius:4,borderBottomWidth:0,borderBottomColor:C.border,flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+                <Text style={{color:C.text,fontSize:12,fontWeight:'400'}}>{filter.name}</Text>
+                <FontAwesomeOld name={sort === filter.value ? 'circle' : 'circle'} size={20} color={sort === filter.value ? C.primaryText : C.textDisabled} />
               </TouchableOpacity>
             ))}
         </View>
       </ActionSheet>
     </View>
-  )
+  );
 }
 
 const FilterModal = ({clearAll,onFilterSubmit,setShowFilter,setFilters,filters,showFilter,maxAvailablePrice,maxAvailableDistance}) => {
@@ -350,39 +364,41 @@ const FilterModal = ({clearAll,onFilterSubmit,setShowFilter,setFilters,filters,s
       onChange(filterType, value);
     };
 
-    return <View style={{flexDirection:'column',justifyContent:'space-between',paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#252525'}}>
-      <CustomText fontType='primary' weight='Bold' style={{color:'#a3a3a3',fontSize:10,letterSpacing:-0.05,textTransform:'uppercase',marginBottom:8}}>{filter.name}</CustomText>
+    return (
+      <View style={{flexDirection:'column',justifyContent:'space-between',paddingVertical:16,borderBottomWidth:1,borderBottomColor:C.border}}>
+        <CustomText fontType='primary' weight='Bold' style={{color:C.textSecondary,fontSize:10,letterSpacing:-0.05,textTransform:'uppercase',marginBottom:8}}>{filter.name}</CustomText>
 
-      <ScrollView showsHorizontalScrollIndicator={false} horizontal={true}>
-        {filter.values.map((value,index)=> (
-           <TouchableOpacity style={{...styles.modalFilterItem,backgroundColor:isSelected(filter.value,value.value) ? BRAND_COLOR : '#2a2a2c'} } onPress={()=>handlePress(filter.value,value.value)}>
-           <CustomText fontType='primary' weight='Medium' style={{...styles.filterItemText,fontSize:11,color:isSelected(filter.value,value.value) ? '#000' : '#fff'} }>{value.label}</CustomText>
-         </TouchableOpacity>
-        ))}
-      </ScrollView>
-  </View>
+        <ScrollView showsHorizontalScrollIndicator={false} horizontal={true}>
+          {filter.values.map((value,index)=> (
+             <TouchableOpacity style={{...styles.modalFilterItem,backgroundColor:isSelected(filter.value,value.value) ? C.primary : C.surfaceHigh} } onPress={()=>handlePress(filter.value,value.value)}>
+             <CustomText fontType='primary' weight='Medium' style={{...styles.filterItemText,fontSize:11,color:isSelected(filter.value,value.value) ? C.onPrimary : C.text} }>{value.label}</CustomText>
+           </TouchableOpacity>
+          ))}
+        </ScrollView>
+    </View>
+    );
   }
 
 
   return (
     <View>
-      <ActionSheet ref={actionRef} onClose={() => setShowFilter(false)} containerStyle={{backgroundColor:'#1C1C1E',height:'85%'}} overlayColor='#000' defaultOverlayOpacity={0.85} safeAreaInsets={{bottom:150}}>
+      <ActionSheet ref={actionRef} onClose={() => setShowFilter(false)} containerStyle={{backgroundColor:C.surface,height:'85%'}} overlayColor='#000' defaultOverlayOpacity={0.85} safeAreaInsets={{bottom:150}}>
         
-        <View style={{paddingVertical:16,paddingHorizontal:16,flexDirection:'row',justifyContent:'space-between',alignItems:'center',borderBottomWidth:1,borderBottomColor:'#252525'}}>
+        <View style={{paddingVertical:16,paddingHorizontal:16,flexDirection:'row',justifyContent:'space-between',alignItems:'center',borderBottomWidth:1,borderBottomColor:C.border}}>
           <Text style={styles.sortTitle}>Filters</Text>
           <TouchableOpacity style={{padding:8}} onPress={clearAll}>
-            <Text style={{color:'#fff',fontSize:12,fontWeight:'400'}}>Clear All</Text>
+            <Text style={{color:C.text,fontSize:12,fontWeight:'400'}}>Clear All</Text>
           </TouchableOpacity>
         </View>
 
         <View style={{flexDirection:'column',position:'relative'}}>
           <ActionSheetScrollView showsVerticalScrollIndicator={false} bounces={true}>
-              <View style={{flexDirection:'column',justifyContent:'space-between',paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#252525',paddingHorizontal:16,flex:1}}>
+              <View style={{flexDirection:'column',justifyContent:'space-between',paddingVertical:16,borderBottomWidth:1,borderBottomColor:C.border,paddingHorizontal:16,flex:1}}>
 
-                <View style={{flexDirection:'column',justifyContent:'space-between',paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#252525'}}>
+                <View style={{flexDirection:'column',justifyContent:'space-between',paddingVertical:16,borderBottomWidth:1,borderBottomColor:C.border}}>
                   <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
-                    <CustomText fontType='primary' weight='Bold' style={{color:'#a3a3a3',fontSize:10,letterSpacing:-0.05,textTransform:'uppercase',marginBottom:8}}>Max Distance</CustomText>
-                    <Text style={{color:'#a3a3a3',fontSize:12,fontWeight:'400'}}>{localSelectedFilters.distance ? `${parseInt(localSelectedFilters.distance)} km` : 'N/A'}</Text>
+                    <CustomText fontType='primary' weight='Bold' style={{color:C.textSecondary,fontSize:10,letterSpacing:-0.05,textTransform:'uppercase',marginBottom:8}}>Max Distance</CustomText>
+                    <Text style={{color:C.textSecondary,fontSize:12,fontWeight:'400'}}>{localSelectedFilters.distance ? `${parseInt(localSelectedFilters.distance)} km` : 'N/A'}</Text>
                   </View>
                     <Slider
                       style={{width: '100%', height: 32}}
@@ -390,20 +406,20 @@ const FilterModal = ({clearAll,onFilterSubmit,setShowFilter,setFilters,filters,s
                       maximumValue={maxAvailableDistance ? parseInt(Math.floor(maxAvailableDistance)) : 100}
                       step={5}
                       value={localSelectedFilters.distance ? localSelectedFilters.distance : 0}
-                      thumbTintColor={BRAND_COLOR}
-                      trackTintColor="#a3a3a3"
-                      maximumTrackTintColor="#c69d1f"
-                      minimumTrackTintColor={'#c69d1f'}
+                      thumbTintColor={C.primaryText}
+                      trackTintColor={C.textSecondary}
+                      maximumTrackTintColor={C.primaryText}
+                      minimumTrackTintColor={C.primaryText}
                       onValueChange={(value) => setLocalSelectedFilters(prevFilters => ({...prevFilters, distance: value}))}
                     />
                 </View>
 
 
 
-                <View style={{flexDirection:'column',justifyContent:'space-between',paddingVertical:16,borderBottomWidth:1,borderBottomColor:'#252525'}}>
+                <View style={{flexDirection:'column',justifyContent:'space-between',paddingVertical:16,borderBottomWidth:1,borderBottomColor:C.border}}>
                   <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
-                    <CustomText fontType='primary' weight='Bold' style={{color:'#a3a3a3',fontSize:10,letterSpacing:-0.05,textTransform:'uppercase',marginBottom:8}}>Max price</CustomText>
-                    <Text style={{color:'#a3a3a3',fontSize:12,fontWeight:'400'}}>{localSelectedFilters.maxPrice ? `${parseInt(localSelectedFilters.maxPrice)}/Hr` : 'N/A'}</Text>
+                    <CustomText fontType='primary' weight='Bold' style={{color:C.textSecondary,fontSize:10,letterSpacing:-0.05,textTransform:'uppercase',marginBottom:8}}>Max price</CustomText>
+                    <Text style={{color:C.textSecondary,fontSize:12,fontWeight:'400'}}>{localSelectedFilters.maxPrice ? `${parseInt(localSelectedFilters.maxPrice)}/Hr` : 'N/A'}</Text>
                   </View>
                     <Slider
                       style={{width: '100%', height: 32}}
@@ -411,10 +427,10 @@ const FilterModal = ({clearAll,onFilterSubmit,setShowFilter,setFilters,filters,s
                       maximumValue={maxAvailablePrice ? parseInt(Math.floor(maxAvailablePrice)) : 50000}
                       step={5}
                       value={localSelectedFilters.maxPrice ? localSelectedFilters.maxPrice : 0}
-                      thumbTintColor={BRAND_COLOR}
-                      trackTintColor="#a3a3a3"
-                      maximumTrackTintColor="#c69d1f"
-                      minimumTrackTintColor={'#c69d1f'}
+                      thumbTintColor={C.primaryText}
+                      trackTintColor={C.textSecondary}
+                      maximumTrackTintColor={C.primaryText}
+                      minimumTrackTintColor={C.primaryText}
                       onValueChange={(value) => setLocalSelectedFilters(prevFilters => ({...prevFilters, maxPrice: value}))}
                     />
                 </View>
@@ -434,15 +450,15 @@ const FilterModal = ({clearAll,onFilterSubmit,setShowFilter,setFilters,filters,s
             </TouchableOpacity>
             </View> */}
         <View style={{padding:16,paddingHorizontal:16}}>
-          <TouchableOpacity onPress={()=>onFilterSubmit(localSelectedFilters)} style={{padding:16,backgroundColor:BRAND_COLOR,borderRadius:7,flexDirection:'row',justifyContent:'center',alignItems:'center'}}>
-            <CustomText fontType='primary' weight='Bold' style={{color:'#000',fontSize:12,textTransform:'uppercase'}}>Apply Filters</CustomText>
+          <TouchableOpacity onPress={()=>onFilterSubmit(localSelectedFilters)} style={{padding:16,backgroundColor:C.primary,borderRadius:7,flexDirection:'row',justifyContent:'center',alignItems:'center'}}>
+            <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary,fontSize:12,textTransform:'uppercase'}}>Apply Filters</CustomText>
           </TouchableOpacity>
         </View>
         </View>
 
       </ActionSheet>
     </View>
-  )
+  );
 }
 
 
@@ -452,27 +468,27 @@ const TopPillBlock = ({filters,setShowSort,setShowFilter,setFilters,isFilterAppl
 
   const SortButton = () => (
     <TouchableOpacity style={{...styles.filterItem}} onPress={() => setShowSort(true)}>
-      <Octicons name="dot-fill" size={16} color={`${sort ? '#EDBF31' : '#454545'}`} style={{marginRight:8,marginBottom:-2}} />
+      <Octicons name="dot-fill" size={16} color={`${sort ? C.primary : C.borderStrong}`} style={{marginRight:8,marginBottom:-2}} />
       <CustomText fontType='primary' weight='Medium' style={styles.filterItemText}>Sort By</CustomText>
-      <Feather name="chevron-down" size={12} color="#a3a3a3" style={{marginLeft:4}} />
+      <Feather name="chevron-down" size={12} color={C.textSecondary} style={{marginLeft:4}} />
     </TouchableOpacity>
   )
   const FilterButton = () => (
     <TouchableOpacity style={{...styles.filterItem}} onPress={() => setShowFilter(true)}>
-      <Octicons name="dot-fill" size={16} color={`${isFilterApplied ? '#EDBF31' : '#454545'}`} style={{marginRight:8,marginBottom:-2}} />
+      <Octicons name="dot-fill" size={16} color={`${isFilterApplied ? C.primary : C.borderStrong}`} style={{marginRight:8,marginBottom:-2}} />
       <CustomText fontType='primary' weight='Medium' style={styles.filterItemText}>Filter</CustomText>
-      <Feather name="filter" size={12} color="#a3a3a3" style={{marginLeft:4}} />
+      <Feather name="filter" size={12} color={C.textSecondary} style={{marginLeft:4}} />
     </TouchableOpacity>
   )
   const LuxuryFilterButton = ({onPress}) => (
-    <TouchableOpacity style={[styles.filterItem,filters.vehicleType && filters.vehicleType.includes('luxury') ? {backgroundColor:'#EDBF31'} : {backgroundColor:'#1c1c1e'}]} onPress={onPress}>
-      <FontAwesome name="crown" size={11} color={filters.vehicleType && filters.vehicleType.includes('luxury') ? '#000' : '#a3a3a3'} style={{marginRight:6}} />
-      <CustomText fontType='primary' weight='Medium' style={{...styles.filterItemText,color:filters.vehicleType && filters.vehicleType.includes('luxury') ? '#000' : '#a3a3a3'}}>Luxury</CustomText>
+    <TouchableOpacity style={[styles.filterItem,filters.vehicleType && filters.vehicleType.includes('luxury') ? {backgroundColor:C.primary} : {backgroundColor:C.surface}]} onPress={onPress}>
+      <FontAwesome name="crown" size={11} color={filters.vehicleType && filters.vehicleType.includes('luxury') ? C.onPrimary : C.textSecondary} style={{marginRight:6}} />
+      <CustomText fontType='primary' weight='Medium' style={{...styles.filterItemText,color:filters.vehicleType && filters.vehicleType.includes('luxury') ? C.onPrimary : C.textSecondary}}>Luxury</CustomText>
     </TouchableOpacity>
   )
   const DynamicFilterButton = ({name,onPress,value,category}) => (
-    <TouchableOpacity style={[styles.filterItem,filters[category] && filters[category].includes(value) ? {backgroundColor:'#EDBF31'} : {backgroundColor:'#1c1c1e'}]} onPress={onPress}>
-      <CustomText fontType='primary' weight='Medium' style={{...styles.filterItemText,color:filters[category] && filters[category].includes(value) ? '#000' : '#a3a3a3'}}>{name}</CustomText>
+    <TouchableOpacity style={[styles.filterItem,filters[category] && filters[category].includes(value) ? {backgroundColor:C.primary} : {backgroundColor:C.surface}]} onPress={onPress}>
+      <CustomText fontType='primary' weight='Medium' style={{...styles.filterItemText,color:filters[category] && filters[category].includes(value) ? C.onPrimary : C.textSecondary}}>{name}</CustomText>
     </TouchableOpacity>
   )
 
@@ -508,22 +524,24 @@ const TopPillBlock = ({filters,setShowSort,setShowFilter,setFilters,isFilterAppl
   )
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   sortTitle: {
-    color: '#959595',
+    color: C.textTertiary,
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
   },
+
   modalFilterItem: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     // borderRadius: 4,
     // marginRight: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ff0000',
+    borderBottomColor: C.danger,
     // backgroundColor: '#02020e',
   },
+
   filterItem: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -534,8 +552,9 @@ const styles = StyleSheet.create({
     marginRight: 8,
     borderWidth: 1,
     // borderColor: '#252525',
-    backgroundColor: '#1c1c1e',
+    backgroundColor: C.surface,
   },
+
   modalFilterItem: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -546,18 +565,21 @@ const styles = StyleSheet.create({
     marginRight: 8,
     // borderWidth: 1,
     // borderColor: '#252525',
-    backgroundColor: '#2a2a2c',
+    backgroundColor: C.surfaceHigh,
   },
+
   filterItemText: {
-    color: '#a3a3a3',
+    color: C.textSecondary,
     letterSpacing: -0.05,
     fontSize: 12,
   },
+
   container: {
     flex: 1,
     position:'relative',
-    backgroundColor: '#000',
+    backgroundColor: C.background,
   },
+
   headerBlock: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -566,48 +588,57 @@ const styles = StyleSheet.create({
     paddingVertical:8,
     paddingTop:16,
   },
+
   headerBlockLeft: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
+
   headerPrimaryText: {
     fontSize: 11,
-    color: '#a3a3a3',
+    color: C.textSecondary,
   },
+
   listContainer: {
     padding: 16,
   },
+
   listContainerEmpty: {
     flexGrow: 1,
     padding: 16,
   },
+
   header: {
     padding: 16,
-    backgroundColor: '#000',
+    backgroundColor: C.background,
     borderBottomWidth: 1,
-    borderBottomColor: '#282828',
+    borderBottomColor: C.border,
   },
+
   vehicleItem: {
     flexDirection: 'column',
     marginBottom: 16,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: C.surface,
     borderRadius: 12,
     paddingVertical:0,
     paddingHorizontal:0,
     position:'relative',
     overflow: 'hidden',
   },
+
   blockSecText: {
     fontSize: 12,
-    color: '#e3e3e3',
+    color: C.text,
   },
+
   vehicleImage: {
     // borderRadius:12,
     width: 240,
     height: 180,
   },
+
   vehicleInfo: {
     flex: 1,
     flexDirection:'row',
@@ -618,48 +649,56 @@ const styles = StyleSheet.create({
     paddingHorizontal:16,
     // justifyContent: 'center',
   },
+
   vehicleInfoText: {
     fontSize: 12,
-    color: '#e3e3e3',
+    color: C.text,
   },
+
   vehicleName: {
     fontSize: 14,
-    color: '#efefef',
+    color: C.text,
     marginBottom: 2,
   },
+
   vehiclePrice: {
     // paddingHorizontal:16,
   },
+
   vehiclePriceText: {
     fontSize: 18,
     marginTop: 4,
     fontWeight: '500',
-    fontFamily:'Inter-Bold',
-    color: '#efefef',
+    color: C.text,
   },
+
   vehicleYear: {
     fontSize: 16,
-    color: '#EDBF31',
+    color: C.primaryText,
   },
+
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: C.background,
   },
+
   errorText: {
-    color: '#FF3B30',
+    color: C.danger,
     fontSize: 18,
   },
+
   sortItem: {
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#252525',
+    borderBottomColor: C.border,
   },
+
   sortItemText: {
-    color: '#fff',
+    color: C.text,
     fontSize: 14,
     fontWeight: '500',
     textTransform: 'capitalize',
-  },
-});
+  }
+}));

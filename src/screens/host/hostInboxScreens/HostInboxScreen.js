@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { notify } from '../../../utils/utils';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Platform, Image, TouchableHighlight, ToastAndroid } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  Platform,
+  Image,
+  TouchableHighlight,
+  ToastAndroid,
+} from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout, updateUserRole } from '../../../store/authSlice';
 import auth from '@react-native-firebase/auth';
@@ -9,8 +19,10 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome'
 import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons'
 import { useNavigation } from '@react-navigation/native';
 import CustomText from '../../../components/CustomText';
-import { API_URL, BRAND_COLOR } from '../../../utils/constants';
+import { API_URL } from '../../../utils/constants';
 import axios from 'axios';
+
+import { C, themedStyleSheet } from '../../../theme';
 
 export function HostInboxScreen() {
   const dispatch = useDispatch();
@@ -48,7 +60,7 @@ export function HostInboxScreen() {
   const options = [
     {
       onPress: 'HostEarnings',
-      icon: <Ionicons name="chatbubble-outline" size={16} color="#fff" />,
+      icon: <Ionicons name="chatbubble-outline" size={16} color={C.text} />,
       title: '#M5L42QAE',
       description: 'Your customer is waiting for you',
     }
@@ -110,35 +122,40 @@ export function HostInboxScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: C.background,
     justifyContent: 'space-between',
   },
+
   title: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#EDBF31',
+    color: C.primaryText,
     marginBottom: 20,
   },
+
   userInfo: {
     marginBottom: 20,
   },
+
   infoText: {
     fontSize: 16,
-    color: '#fff',
+    color: C.text,
     marginBottom: 10,
   },
+
   logoutButton: {
-    backgroundColor: '#EDBF31',
+    backgroundColor: C.primary,
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: 'center',
   },
+
   logoutButtonText: {
-    color: '#000',
+    color: C.onPrimary,
     fontSize: 16,
     fontWeight: '600',
-  },
-});
+  }
+}));

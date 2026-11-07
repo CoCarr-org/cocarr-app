@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
+
+import { C, themedStyleSheet } from '../../theme';
 
 const { width } = Dimensions.get('window');
 
@@ -32,7 +34,7 @@ export const CustomTabBar = ({ state, descriptors, navigation }: TabBarProps) =>
   return (
     <View style={styles.container}>
       <View style={styles.curvedBackground}>
-        <LinearGradient colors={['#000', '#000','#000', '#fff','#000','#000', '#000']} start={{x:0,y:0}} end={{x:1,y:0}} style={{height:24,width:'100%',borderRadius:100}}>
+        <LinearGradient colors={[C.background, C.background,C.background, C.inverseSurface,C.background,C.background, C.background]} start={{x:0,y:0}} end={{x:1,y:0}} style={{height:24,width:'100%',borderRadius:100}}>
 
         </LinearGradient>
         </View>
@@ -77,11 +79,11 @@ export const CustomTabBar = ({ state, descriptors, navigation }: TabBarProps) =>
                 <Icon
                   name={options.tabBarIcon({ 
                     focused: isFocused,
-                    color: isFocused ? '#EDBF31' : '#808080',
+                    color: isFocused ? C.primaryText : C.textTertiary,
                     size: 24
                   }).props.name}
                   size={24}
-                  color={isFocused ? '#EDBF31' : '#808080'}
+                  color={isFocused ? C.primaryText : C.textTertiary}
                 />
               </Animated.View>
             </TouchableOpacity>
@@ -92,15 +94,16 @@ export const CustomTabBar = ({ state, descriptors, navigation }: TabBarProps) =>
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   container: {
     height: 60,
-    backgroundColor: '#050505',
+    backgroundColor: C.background,
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
   },
+
   curvedBackground: {
     position: 'absolute',
     overflow:'hidden',
@@ -116,21 +119,24 @@ const styles = StyleSheet.create({
     // borderWidth: 1,
     // borderColor: '#454545',
   },
+
   content: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     height: '100%',
   },
+
   tabButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   iconContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     width: 50,
     height: 50,
   }
-}); 
+})); 

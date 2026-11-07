@@ -1,7 +1,17 @@
 import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Alert, RefreshControl, ScrollView, TouchableHighlight } from 'react-native';
-import { API_URL, BOOKING_INITIATED, BOOKING_BOOKED, BRAND_COLOR } from '../../../utils/constants';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  TouchableHighlight,
+} from 'react-native';
+import { API_URL, BOOKING_INITIATED, BOOKING_BOOKED } from '../../../utils/constants';
 import { useSelector } from 'react-redux';
 import { formatDate, photoUrl } from '../../../utils/utils';
 import HeaderBlock from '../../../components/CenterHeader';
@@ -11,6 +21,8 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { BOOKING_ONGOING, BOOKING_FINISHED, BOOKING_CANCELLED } from '../../../utils/constants';
 import ActionSheet from 'react-native-actions-sheet';
 import FiveStar from '../../../components/host/FiveStar';
+import { C, themedStyleSheet } from '../../../theme';
+import { bookingStatusStyle } from '../../../theme/status';
 export function HostBookingsScreen() {
 
   const [rides, setRides] = useState([]);
@@ -78,13 +90,13 @@ export function HostBookingsScreen() {
     <View style={styles.container}>
       {/* Title is the shared header now (TopBar / stack header). */}
       <TouchableOpacity onPress={() => carsPickerRef.current?.show()} style={{flexDirection:'row',  alignContent:"center",paddingHorizontal:16,paddingVertical:12}}>
-        <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',alignContent:"center",backgroundColor:'#000',borderRadius:10,padding:12,width:'100%'}}>
+        <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',alignContent:"center",backgroundColor:C.background,borderRadius:10,padding:12,width:'100%'}}>
             <View>
-                <CustomText fontType='primary' weight='Bold' style={{color:'#757575', fontSize:9,marginBottom:2,textTransform:'uppercase'}}>Selected Car</CustomText>
-                <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3', fontSize:11,textTransform:'uppercase'}}>{filter.vehicleId ? cars.find(car => car.id === filter.vehicleId).vehicleName : 'All Cars'}</CustomText>
+                <CustomText fontType='primary' weight='Bold' style={{color:C.textTertiary, fontSize: 11,marginBottom:2,textTransform:'uppercase'}}>Selected Car</CustomText>
+                <CustomText fontType='primary' weight='Bold' style={{color:C.text, fontSize:11,textTransform:'uppercase'}}>{filter.vehicleId ? cars.find(car => car.id === filter.vehicleId).vehicleName : 'All Cars'}</CustomText>
             </View>
             <View style={{flexDirection:'row', alignItems:'center', justifyContent:'center'}}>
-                <Ionicons name="chevron-down" size={16} color="#757575" />
+                <Ionicons name="chevron-down" size={16} color={C.textTertiary} />
             </View>
         </View>
       </TouchableOpacity>
@@ -93,9 +105,9 @@ export function HostBookingsScreen() {
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', alignContent:"center",paddingHorizontal:16}}>
       {
           [{label:'All',value:''},{label:'Ongoing',value:BOOKING_ONGOING},{label:'Upcoming',value:BOOKING_BOOKED},{label:'Completed',value:BOOKING_FINISHED},{label:'User Cancelled',value:BOOKING_CANCELLED},{label:'Host Cancelled',value:BOOKING_CANCELLED}].map((item,index) => (
-              <TouchableOpacity key={index} activeOpacity={0.8} onPress={() => setFilter(prev => ({...prev,status:item.value}))} style={{paddingVertical:8,paddingHorizontal:18,backgroundColor:filter.status === item.value ? '#EDBF313A' : '#1c1c1e',marginRight:6,borderRadius:24}}>
+              <TouchableOpacity key={index} activeOpacity={0.8} onPress={() => setFilter(prev => ({...prev,status:item.value}))} style={{paddingVertical:8,paddingHorizontal:18,backgroundColor:filter.status === item.value ? '#EDBF313A' : C.surface,marginRight:6,borderRadius:24}}>
                 <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center'}}>
-                    <Text style={{color:filter.status === item.value ? BRAND_COLOR : '#757575',fontSize:10,fontWeight:'600',textTransform:'uppercase',letterSpacing:.15}}>{item.label}</Text>
+                    <Text style={{color:filter.status === item.value ? C.primaryText : C.textTertiary,fontSize:10,fontWeight:'600',textTransform:'uppercase',letterSpacing:.15}}>{item.label}</Text>
                 </View>
               </TouchableOpacity>
         ))
@@ -104,23 +116,23 @@ export function HostBookingsScreen() {
     </View>
       <View style={{flex:1,paddingTop:24}}>
         <FlatList style={{paddingHorizontal:16}}
-        refreshControl={<RefreshControl colors={['#EDBF31']} progressBackgroundColor={'#000'} refreshing={refreshing} onRefresh={async()=>await getMyRides()}/>}
+        refreshControl={<RefreshControl colors={[C.primary]} progressBackgroundColor={C.background} refreshing={refreshing} onRefresh={async()=>await getMyRides()}/>}
         data={rides}
         renderItem={({item})=>renderItem(item,navigation)}
         />
       </View>
-      <ActionSheet ref={carsPickerRef} containerStyle={{backgroundColor:'#1c1c1e',height:'50%'}} height={'50%'} safeAreaInsets={{bottom:0}}>
+      <ActionSheet ref={carsPickerRef} containerStyle={{backgroundColor:C.surface,height:'50%'}} height={'50%'} safeAreaInsets={{bottom:0}}>
     <ScrollView style={{paddingVertical:24}}>
     {
     cars.length > 0 && cars.map((car, index) => (
-      <TouchableHighlight underlayColor='#090909' style={{borderRadius:8,paddingHorizontal:12,paddingVertical:4}} key={index} onPress={() => handleCarFilterSelect(car)}>
+      <TouchableHighlight underlayColor={C.background} style={{borderRadius:8,paddingHorizontal:12,paddingVertical:4}} key={index} onPress={() => handleCarFilterSelect(car)}>
         <View style={{flexDirection:'row', justifyContent:'flex-start', alignItems:'center',alignContent:"center",width:'100%',marginVertical:8}}>
             <View>
-                <Image source={{uri:photoUrl(car.images[0].url)}} style={{width:48, height:48, borderRadius:4,backgroundColor:'#2c2c2e',position:'relative'}}/>
+                <Image source={{uri:photoUrl(car.images[0].url)}} style={{width:48, height:48, borderRadius:4,backgroundColor:C.surfaceHigh,position:'relative'}}/>
             </View>
             <View style={{flexDirection:'column', justifyContent:'center', alignItems:'center',paddingLeft:12}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:'#959595', fontSize:11,letterSpacing:-.15}}>{car.vehicleNumber}</CustomText>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:'#fff', fontSize:11,letterSpacing:-.15}}>{car.vehicleName}</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,letterSpacing:-.15}}>{car.vehicleNumber}</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{color:C.text, fontSize:11,letterSpacing:-.15}}>{car.vehicleName}</CustomText>
             </View>
         </View>
       </TouchableHighlight>
@@ -135,42 +147,34 @@ export function HostBookingsScreen() {
 
 
 
-// Booking status pill palette — same tokens as HostBookingInfo / Rides.
-const STATUS_STYLE = {
-  [BOOKING_INITIATED]: { label: 'Pending',   fg: '#c9a24b', bg: '#EDBF3115', bd: '#EDBF3133' },
-  [BOOKING_BOOKED]:    { label: 'Upcoming',  fg: BRAND_COLOR, bg: '#EDBF3122', bd: '#EDBF3166' },
-  [BOOKING_ONGOING]:   { label: 'Ongoing',   fg: '#6ee6b0', bg: '#3fce8f22', bd: '#3fce8f59' },
-  [BOOKING_FINISHED]:  { label: 'Completed', fg: '#a3a3a3', bg: '#26262a', bd: '#3a3a40' },
-  [BOOKING_CANCELLED]: { label: 'Cancelled', fg: '#ff8f8f', bg: '#ef444422', bd: '#ef444455' },
-};
 
 const renderItem = (booking,navigation) => {
-  const st = STATUS_STYLE[booking.status] || STATUS_STYLE[BOOKING_FINISHED];
+  const st = bookingStatusStyle(booking.status);
   return (
     <View>
-      <TouchableOpacity key={booking.id} style={{marginLeft:0, backgroundColor:'#1c1c1e',borderRadius:10,overflow:'hidden',marginBottom:12}} onPress={()=>navigation.navigate('HostBookingInfo', {bookingId:booking.id})}>
-                  <View style={{flexDirection:'row', alignItems:'center', justifyContent:'flex-start',paddingVertical:10,paddingHorizontal:12,borderBottomWidth:0,borderBottomColor:'#252525', backgroundColor:'#151519'}}>
+      <TouchableOpacity key={booking.id} style={{marginLeft:0, backgroundColor:C.surface,borderRadius:10,overflow:'hidden',marginBottom:12}} onPress={()=>navigation.navigate('HostBookingInfo', {bookingId:booking.id})}>
+                  <View style={{flexDirection:'row', alignItems:'center', justifyContent:'flex-start',paddingVertical:10,paddingHorizontal:12,borderBottomWidth:0,borderBottomColor:C.border, backgroundColor:C.surfaceLow}}>
 
-                  {booking.vehicle.images && booking.vehicle.images.length > 0 && <Image source={{uri:booking.vehicle.images[0].url}} style={{width:72, height:48, borderRadius:4,backgroundColor:'#2c2c2e',position:'relative'}}/>}
+                  {booking.vehicle.images && booking.vehicle.images.length > 0 && <Image source={{uri:booking.vehicle.images[0].url}} style={{width:72, height:48, borderRadius:4,backgroundColor:C.surfaceHigh,position:'relative'}}/>}
                   <View style={{flexDirection:'column', justifyContent:'space-between', alignItems:'flex-start',paddingLeft:12}}>
-                    <CustomText fontType='primary' weight='Regular' style={{color:'#a3a3a3', fontSize:10}}>{booking.vehicle?.vehicleNumber}</CustomText>
-                    <CustomText  fontType='primary' weight='Regular' style={{color:'#e3e3e3', fontSize:11,textTransform:'uppercase'}}>#{booking.bookingId}</CustomText>
+                    <CustomText fontType='primary' weight='Regular' style={{color:C.textSecondary, fontSize:10}}>{booking.vehicle?.vehicleNumber}</CustomText>
+                    <CustomText  fontType='primary' weight='Regular' style={{color:C.text, fontSize:11,textTransform:'uppercase'}}>#{booking.bookingId}</CustomText>
                   </View>
                   <View style={{marginLeft:'auto', backgroundColor:st.bg, borderWidth:1, borderColor:st.bd, borderRadius:100, paddingVertical:4, paddingHorizontal:10}}>
-                    <CustomText fontType='primary' weight='Bold' style={{color:st.fg, fontSize:9, textTransform:'uppercase', letterSpacing:.3}}>{st.label}</CustomText>
+                    <CustomText fontType='primary' weight='Bold' style={{color:st.fg, fontSize: 11, textTransform:'uppercase', letterSpacing:.3}}>{st.label}</CustomText>
                   </View>
                   </View>
                   <View style={{flexDirection:'column', justifyContent:'space-between', alignItems:'flex-start',paddingVertical:10,paddingHorizontal:12}}>
-                    <CustomText fontType='primary' weight='Regular' style={{color:'#e3e3e3', fontSize:11,marginBottom:4}}>From: {formatDate(booking.startTime)}</CustomText>
-                    <CustomText fontType='primary' weight='Regular' style={{color:'#e3e3e3', fontSize:11}}>To: {formatDate(booking.endTime)}</CustomText>
+                    <CustomText fontType='primary' weight='Regular' style={{color:C.text, fontSize:11,marginBottom:4}}>From: {formatDate(booking.startTime)}</CustomText>
+                    <CustomText fontType='primary' weight='Regular' style={{color:C.text, fontSize:11}}>To: {formatDate(booking.endTime)}</CustomText>
                   </View>
-                  <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between',paddingVertical:4,paddingHorizontal:12,borderTopWidth:1,borderTopColor:'#252525'}}>
+                  <View style={{flexDirection:'row', alignItems:'center', justifyContent:'space-between',paddingVertical:4,paddingHorizontal:12,borderTopWidth:1,borderTopColor:C.border}}>
                     <View style={{flexDirection:'row', alignItems:'center', gap:6, flexShrink:1, flexWrap:'wrap'}}>
-                      <CustomText fontType='primary' weight='Regular' style={{color:BRAND_COLOR, fontSize:10,backgroundColor:'#EDBF313A',paddingHorizontal:12,paddingVertical:4,borderRadius:4}}>{booking.deliveryType === 'self' ? 'Rider Pickup' : 'Doorstep Delivery'}</CustomText>
+                      <CustomText fontType='primary' weight='Regular' style={{color:C.primaryText, fontSize:10,backgroundColor:'#EDBF313A',paddingHorizontal:12,paddingVertical:4,borderRadius:4}}>{booking.deliveryType === 'self' ? 'Rider Pickup' : 'Doorstep Delivery'}</CustomText>
                       {booking.damages && booking.damages.length > 0 && (
                         <View style={{flexDirection:'row', alignItems:'center', gap:4, backgroundColor:'#ff3b3020', borderWidth:1, borderColor:'#ff3b3040', paddingHorizontal:10, paddingVertical:4, borderRadius:4}}>
-                          <Ionicons name='alert-circle' size={12} color='#ff6b60'/>
-                          <CustomText fontType='primary' weight='SemiBold' style={{color:'#ff6b60', fontSize:9, textTransform:'uppercase', letterSpacing:.2}}>Damage Reported</CustomText>
+                          <Ionicons name='alert-circle' size={12} color={C.danger}/>
+                          <CustomText fontType='primary' weight='SemiBold' style={{color:C.danger, fontSize: 11, textTransform:'uppercase', letterSpacing:.2}}>Damage Reported</CustomText>
                         </View>
                       )}
                     </View>
@@ -179,56 +183,64 @@ const renderItem = (booking,navigation) => {
                     
                 </TouchableOpacity>
     </View>
-  )
+  );
 }
 
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   container: {
     flex: 1,
-    backgroundColor: '#0b0b0b'
+    backgroundColor: C.background
   },
+
   listContainer: {
     padding: 16,
     paddingHorizontal:0,
   },
+
   vehicleItem: {
     flexDirection: 'column',
     marginBottom: 16,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: C.surface,
     borderRadius: 8,
     paddingVertical:8,
     paddingHorizontal:8,
     overflow: 'hidden',
   },
+
   vehicleImage: {
     borderRadius:12,
     width: '100%',
     height: 180,
   },
+
   vehicleInfo: {
     flex: 1,
     padding: 12,
     justifyContent: 'center',
   },
+
   vehicleName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: C.text,
     marginBottom: 4,
   },
+
   vehicleYear: {
     fontSize: 16,
-    color: '#EDBF31',
+    color: C.primaryText,
   },
+
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: C.background,
   },
+
   errorText: {
-    color: '#FF3B30',
+    color: C.danger,
     fontSize: 18,
-  },
-});
+  }
+}));

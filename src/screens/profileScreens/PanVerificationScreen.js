@@ -1,13 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, ActivityIndicator, ToastAndroid, Platform, Alert } from 'react-native';
+import {
+  View,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  ActivityIndicator,
+  ToastAndroid,
+  Platform,
+  Alert,
+} from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../../components/CenterHeader';
 import CustomText from '../../components/CustomText';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import { UnauthAxios, photoUrl } from '../../utils/utils';
+
+import { C, themedStyleSheet } from '../../theme';
 
 // PAN capture. Required before host payouts can be released (tax reporting).
 // Submitting never verifies — approval is an admin decision, same as KYC and
@@ -100,7 +112,7 @@ const PanVerificationScreen = () => {
     return (
       <View style={styles.container}>
         <Header navigation={navigation} title='PAN Verification' />
-        <View style={styles.centered}><ActivityIndicator color={BRAND_COLOR} /></View>
+        <View style={styles.centered}><ActivityIndicator color={C.primaryText} /></View>
       </View>
     );
   }
@@ -116,12 +128,12 @@ const PanVerificationScreen = () => {
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         {p.panVerified ? (
           <View style={styles.statusCard}>
-            <Icon name='checkmark-circle' size={22} color='#6ee6b0' />
+            <Icon name='checkmark-circle' size={22} color={C.success} />
             <CustomText fontType='primary' weight='Bold' style={styles.statusOk}>Your PAN is verified.</CustomText>
           </View>
         ) : alreadySubmitted ? (
           <View style={styles.statusCard}>
-            <Icon name='time-outline' size={22} color={BRAND_COLOR} />
+            <Icon name='time-outline' size={22} color={C.primaryText} />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <CustomText fontType='primary' weight='Bold' style={styles.statusPending}>
                 PAN submitted — pending review
@@ -139,7 +151,7 @@ const PanVerificationScreen = () => {
               value={panNumber}
               onChangeText={(t) => setPanNumber(t.toUpperCase())}
               placeholder='ABCDE1234F'
-              placeholderTextColor='#5a5a5f'
+              placeholderTextColor={C.textMuted}
               autoCapitalize='characters'
               maxLength={10}
             />
@@ -153,7 +165,7 @@ const PanVerificationScreen = () => {
                 <Image source={{ uri: image?.uri || photoUrl(p.panImage) }} style={styles.preview} resizeMode='cover' />
               ) : (
                 <>
-                  <Icon name='cloud-upload-outline' size={26} color='#757575' />
+                  <Icon name='cloud-upload-outline' size={26} color={C.textTertiary} />
                   <CustomText fontType='primary' style={styles.uploadText}>Tap to add a photo</CustomText>
                 </>
               )}
@@ -171,9 +183,9 @@ const PanVerificationScreen = () => {
             <TouchableOpacity
               disabled={saving}
               onPress={submit}
-              style={[styles.button, saving && { backgroundColor: '#4C4C4E' }]}>
+              style={[styles.button, saving && { backgroundColor: C.surfaceHighest }]}>
               {saving
-                ? <ActivityIndicator color='#000' />
+                ? <ActivityIndicator color={C.onPrimary} />
                 : <CustomText fontType='primary' weight='Bold' style={styles.buttonText}>Submit for review</CustomText>}
             </TouchableOpacity>
           </>
@@ -183,34 +195,42 @@ const PanVerificationScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+const styles = themedStyleSheet(C => ({
+  container: { flex: 1, backgroundColor: C.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  label: { color: '#757575', fontSize: 11, letterSpacing: 0.15, textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
+  label: { color: C.textTertiary, fontSize: 11, letterSpacing: 0.15, textTransform: 'uppercase', marginBottom: 6, marginTop: 12 },
+
   input: {
-    backgroundColor: '#1c1c1e', borderRadius: 6, borderWidth: 1, borderColor: '#2c2c2e',
-    color: '#f0f0f2', fontSize: 14, paddingHorizontal: 12, paddingVertical: 10,
+    backgroundColor: C.surface, borderRadius: 6, borderWidth: 1, borderColor: C.borderStrong,
+    color: C.text, fontSize: 14, paddingHorizontal: 12, paddingVertical: 10,
   },
-  hint: { color: '#757575', fontSize: 11, marginTop: 6, lineHeight: 16 },
+
+  hint: { color: C.textTertiary, fontSize: 11, marginTop: 6, lineHeight: 16 },
+
   uploadBox: {
-    height: 160, borderRadius: 8, borderWidth: 1, borderColor: '#2c2c2e', borderStyle: 'dashed',
-    backgroundColor: '#141416', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+    height: 160, borderRadius: 8, borderWidth: 1, borderColor: C.borderStrong, borderStyle: 'dashed',
+    backgroundColor: C.surfaceLow, alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
+
   preview: { width: '100%', height: '100%' },
-  uploadText: { color: '#757575', fontSize: 12, marginTop: 6 },
-  changePhoto: { color: BRAND_COLOR, fontSize: 12, marginTop: 8 },
-  error: { color: '#f87171', fontSize: 12, marginTop: 12 },
+  uploadText: { color: C.textTertiary, fontSize: 12, marginTop: 6 },
+  changePhoto: { color: C.primaryText, fontSize: 12, marginTop: 8 },
+  error: { color: C.danger, fontSize: 12, marginTop: 12 },
+
   button: {
-    backgroundColor: BRAND_COLOR, borderRadius: 6, paddingVertical: 13,
+    backgroundColor: C.primary, borderRadius: 6, paddingVertical: 13,
     alignItems: 'center', justifyContent: 'center', marginTop: 22,
   },
-  buttonText: { color: '#000', fontSize: 14 },
+
+  buttonText: { color: C.onPrimary, fontSize: 14 },
+
   statusCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#141416',
-    borderRadius: 8, borderWidth: 1, borderColor: '#2c2c2e', padding: 14,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceLow,
+    borderRadius: 8, borderWidth: 1, borderColor: C.borderStrong, padding: 14,
   },
-  statusOk: { color: '#6ee6b0', fontSize: 14, marginLeft: 10 },
-  statusPending: { color: BRAND_COLOR, fontSize: 14 },
-});
+
+  statusOk: { color: C.success, fontSize: 14, marginLeft: 10 },
+  statusPending: { color: C.primaryText, fontSize: 14 }
+}));
 
 export default PanVerificationScreen;

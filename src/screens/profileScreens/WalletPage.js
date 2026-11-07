@@ -1,7 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, StatusBar, TouchableHighlight, ActivityIndicator, ToastAndroid, ScrollView, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  Image,
+  StatusBar,
+  TouchableHighlight,
+  ActivityIndicator,
+  ToastAndroid,
+  ScrollView,
+  RefreshControl,
+} from 'react-native';
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import { formatDate, notify } from '../../utils/utils';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -9,6 +21,8 @@ import CustomText from '../../components/CustomText';
 import { ClipPath, Defs, G, Path, Rect, Svg } from 'react-native-svg';
 import { SceneMap, TabBar, TabBarItem, TabView } from 'react-native-tab-view';
 import RazorpayCheckout from 'react-native-razorpay';
+
+import { C, themedStyleSheet } from '../../theme';
 
 export default function WalletPage() {
   const [profile, setProfile] = useState([]);
@@ -62,15 +76,19 @@ const getTransactions = async () => {
   }
 
   if(loading){
-    return <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:'#000'}}>
-      <ActivityIndicator size="large" color={BRAND_COLOR} />
-    </View>
+    return (
+      <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:C.background}}>
+        <ActivityIndicator size="large" color={C.primaryText} />
+      </View>
+    );
   }
 
   if(error){
-    return <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:'#000'}}>
-      <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:14,textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',letterSpacing:0.05}}>Something went wrong. Please try again later.</CustomText>
-    </View>
+    return (
+      <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:C.background}}>
+        <CustomText fontType='primary' weight='Medium' style={{color:C.text,fontSize:14,textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',letterSpacing:0.05}}>Something went wrong. Please try again later.</CustomText>
+      </View>
+    );
   }
 
   const benefits = [
@@ -87,14 +105,14 @@ const getTransactions = async () => {
   return (
     <View style={styles.container}>
       {/* Header (back + "Wallet") is the shared stack header now. */}
-      <View style={{ backgroundColor:'#1c1c1e',paddingVertical:24,paddingHorizontal:16,}}>
+      <View style={{ backgroundColor:C.surface,paddingVertical:24,paddingHorizontal:16,}}>
 
-        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',marginBottom:16,width:48,height:48,borderRadius:56,backgroundColor:'#000',padding:4,justifyContent:'center',alignItems:'center',marginHorizontal:'auto'}}>
-            <Icon name="wallet-outline" size={24} color={BRAND_COLOR} />
+        <View style={{flexDirection:'row',alignItems:'center',justifyContent:'center',marginBottom:16,width:48,height:48,borderRadius:56,backgroundColor:C.background,padding:4,justifyContent:'center',alignItems:'center',marginHorizontal:'auto'}}>
+            <Icon name="wallet-outline" size={24} color={C.primaryText} />
         </View>
-        <CustomText fontType='primary' weight='SemiBold' style={{color:'#e3e3e3',fontSize:16,textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',letterSpacing:0.05}}>Wallet Points</CustomText>
+        <CustomText fontType='primary' weight='SemiBold' style={{color:C.text,fontSize:16,textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',letterSpacing:0.05}}>Wallet Points</CustomText>
 
-        <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3',fontSize:12,textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',letterSpacing:-0.05}}>Earn points by referring your friends</CustomText>
+        <CustomText fontType='primary' weight='Medium' style={{color:C.textSecondary,fontSize:12,textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',letterSpacing:-0.05}}>Earn points by referring your friends</CustomText>
 
 {/* 
         <TouchableHighlight onPress={onPress} underlayColor='#2c2c2e' style={{backgroundColor:BRAND_COLOR,paddingVertical:12,paddingHorizontal:24,borderRadius:24,marginTop:12,marginHorizontal:'auto'}}>
@@ -102,24 +120,24 @@ const getTransactions = async () => {
         </TouchableHighlight> */}
       </View>
 
-        <FlatList
-        
-        refreshControl={<RefreshControl titleColor={'#e3e3e3'} progressBackgroundColor={BRAND_COLOR} refreshing={refreshing} onRefresh={getTransactions} />}
-        ListHeaderComponent={() => <View style={{backgroundColor:'#0f0f0f',paddingVertical:12,paddingHorizontal:16,}}>
-        <CustomText fontType='primary' weight='Bold' style={{color:'#757575',fontSize:11,letterSpacing:0.05,textTransform:'uppercase'}}>Transactions</CustomText>
-        </View>}
-        data={transactions}
-        renderItem={({item}) => <View style={{borderBottomWidth:1,borderBottomColor:'#1c1c1e',paddingVertical:20,paddingHorizontal:16,flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
-            <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',flex:1}}>
-                <View style={{backgroundColor:item.isCredit ? '#29C08B35' : '#EF444435',borderRadius:32,padding:4,height:32,width:32,justifyContent:'center',alignItems:'center',marginRight:12}}>
-                    <Icon name={item.isCredit ? 'arrow-up' : 'arrow-down'} size={20} color={item.isCredit ? '#29C08B' : '#EF4444'}  />
-                </View>
-                <CustomText fontType='primary' weight='Medium' style={{color:'#e3e3e3',fontSize:12,fontWeight:'500',letterSpacing:-0.05,flex:1,lineHeight:18,paddingRight:12}}>{item.description}</CustomText>
-            </View>
-                
-          <CustomText fontType='primary' weight='Medium' style={{color:item.isCredit ? '#29C08B' : '#EF4444',fontSize:14,fontWeight:'500',textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',letterSpacing:-0.05}}> {item.isCredit ? '+' : '-'} {item.points}</CustomText>
-        </View>}
-      />
+      <FlatList
+      
+      refreshControl={<RefreshControl titleColor={C.text} progressBackgroundColor={C.primary} refreshing={refreshing} onRefresh={getTransactions} />}
+      ListHeaderComponent={() => <View style={{backgroundColor:C.surfaceLow,paddingVertical:12,paddingHorizontal:16,}}>
+      <CustomText fontType='primary' weight='Bold' style={{color:C.textTertiary,fontSize:11,letterSpacing:0.05,textTransform:'uppercase'}}>Transactions</CustomText>
+      </View>}
+      data={transactions}
+      renderItem={({item}) => <View style={{borderBottomWidth:1,borderBottomColor:C.border,paddingVertical:20,paddingHorizontal:16,flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+          <View style={{flexDirection:'row',alignItems:'center',justifyContent:'flex-start',flex:1}}>
+              <View style={{backgroundColor:item.isCredit ? '#29C08B35' : '#EF444435',borderRadius:32,padding:4,height:32,width:32,justifyContent:'center',alignItems:'center',marginRight:12}}>
+                  <Icon name={item.isCredit ? 'arrow-up' : 'arrow-down'} size={20} color={item.isCredit ? C.success : C.danger}  />
+              </View>
+              <CustomText fontType='primary' weight='Medium' style={{color:C.text,fontSize:12,fontWeight:'500',letterSpacing:-0.05,flex:1,lineHeight:18,paddingRight:12}}>{item.description}</CustomText>
+          </View>
+              
+        <CustomText fontType='primary' weight='Medium' style={{color:item.isCredit ? C.success : C.danger,fontSize:14,fontWeight:'500',textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',letterSpacing:-0.05}}> {item.isCredit ? '+' : '-'} {item.points}</CustomText>
+      </View>}
+    />
     </View>
   );
 }
@@ -127,71 +145,83 @@ const getTransactions = async () => {
 
 
 
-const styles = StyleSheet.create({
-    headerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: '#1c1c1e'
-    },
-    headerLeft: {
-        flex:1,
-        alignItems:'flex-start'
-    },
-    headerRight: {
-        flex:1,
-        alignItems:'flex-end',
-        justifyContent:'center'
-    },
-    headerCenter: {
-        flex:1,
-        alignItems:'center',
-        justifyContent:'center'
-    },  
-    headerTitle: {
-        flex:1,
-        alignItems:'center'
-    },
+const styles = themedStyleSheet(C => ({
+  headerContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      backgroundColor: C.surface
+  },
+
+  headerLeft: {
+      flex:1,
+      alignItems:'flex-start'
+  },
+
+  headerRight: {
+      flex:1,
+      alignItems:'flex-end',
+      justifyContent:'center'
+  },
+
+  headerCenter: {
+      flex:1,
+      alignItems:'center',
+      justifyContent:'center'
+  },
+
+  headerTitle: {
+      flex:1,
+      alignItems:'center'
+  },
+
   container: {
     flex: 1,
-    backgroundColor: '#000'
+    backgroundColor: C.background
   },
+
   listContainer: {
     padding: 16,
   },
+
   vehicleItem: {
     flexDirection: 'column',
     marginBottom: 16,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: C.surface,
     borderRadius: 8,
     paddingVertical: 8,
     paddingHorizontal: 8,
     overflow: 'hidden',
   },
+
   vehicleImage: {
     borderRadius: 12,
     width: '100%',
     height: 180,
   },
+
   vehicleInfo: {
     flex: 1,
     padding: 12,
     justifyContent: 'center',
   },
+
   vehicleName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: C.text,
     marginBottom: 4,
   },
+
   vehicleYear: {
     fontSize: 16,
-    color: '#EDBF31',
+    color: C.primaryText,
   },
+
   centered: {
     flex: 1,
     justifyContent: 'center',
-  },
-});
+  }
+}));

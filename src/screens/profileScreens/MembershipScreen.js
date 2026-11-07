@@ -3,7 +3,7 @@ import { View, ScrollView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import CustomText from '../../components/CustomText';
-import { BRAND_COLOR } from '../../utils/constants';
+import { C } from '../../theme';
 
 // Membership tab: a benefits-first landing page. "Join as a member" hands off to
 // the existing PremiumMembership screen, which runs the actual purchase flow, so
@@ -24,53 +24,53 @@ export default function MembershipScreen() {
   const navigation = useNavigation();
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={{ flex: 1, backgroundColor: C.background }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
         {/* Hero */}
-        <View style={{ margin: 16, borderRadius: 16, overflow: 'hidden', backgroundColor: '#161510', borderWidth: 1, borderColor: '#EDBF3140', padding: 20 }}>
+        <View style={{ margin: 16, borderRadius: 16, overflow: 'hidden', backgroundColor: C.surfaceLow, borderWidth: 1, borderColor: '#EDBF3140', padding: 20 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: BRAND_COLOR, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="star" size={18} color="#000" />
+            <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' }}>
+              <Icon name="star" size={18} color={C.onPrimary} />
             </View>
-            <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Cocarr Premium</CustomText>
+            <CustomText fontType='primary' weight='Bold' style={{ color: C.primaryText, fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Cocarr Premium</CustomText>
           </View>
-          <CustomText fontType='primary' weight='Bold' style={{ color: '#f2f2f4', fontSize: 22, letterSpacing: -0.4, marginBottom: 6 }}>
+          <CustomText fontType='primary' weight='Bold' style={{ color: C.text, fontSize: 22, letterSpacing: -0.4, marginBottom: 6 }}>
             Drive more, pay less.
           </CustomText>
-          <CustomText fontType='primary' weight='Regular' style={{ color: '#a3a3a3', fontSize: 13, lineHeight: 19 }}>
+          <CustomText fontType='primary' weight='Regular' style={{ color: C.textSecondary, fontSize: 13, lineHeight: 19 }}>
             Membership unlocks free days, no deposits, unlimited kilometres and member-only pricing on every booking.
           </CustomText>
         </View>
 
         {/* Benefits */}
-        <CustomText fontType='primary' weight='Bold' style={{ color: '#757575', fontSize: 11, letterSpacing: .15, textTransform: 'uppercase', marginHorizontal: 16, marginBottom: 10 }}>
+        <CustomText fontType='primary' weight='Bold' style={{ color: C.textTertiary, fontSize: 11, letterSpacing: .15, textTransform: 'uppercase', marginHorizontal: 16, marginBottom: 10 }}>
           What you get
         </CustomText>
 
-        <View style={{ marginHorizontal: 16, backgroundColor: '#141416', borderRadius: 14, borderWidth: 1, borderColor: '#232327', overflow: 'hidden' }}>
+        <View style={{ marginHorizontal: 16, backgroundColor: C.surfaceLow, borderRadius: 14, borderWidth: 1, borderColor: C.border, overflow: 'hidden' }}>
           {BENEFITS.map((b, i) => (
-            <View key={b.title} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: '#1f1f23' }}>
+            <View key={b.title} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14, borderTopWidth: i === 0 ? 0 : 1, borderTopColor: C.border }}>
               <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#EDBF3115', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name={b.icon} size={18} color={BRAND_COLOR} />
+                <Icon name={b.icon} size={18} color={C.primaryText} />
               </View>
               <View style={{ flex: 1 }}>
-                <CustomText fontType='primary' weight='SemiBold' style={{ color: '#e8e8ea', fontSize: 14 }}>{b.title}</CustomText>
-                <CustomText fontType='primary' weight='Regular' style={{ color: '#8a8a8a', fontSize: 12, marginTop: 1 }}>{b.desc}</CustomText>
+                <CustomText fontType='primary' weight='SemiBold' style={{ color: C.text, fontSize: 14 }}>{b.title}</CustomText>
+                <CustomText fontType='primary' weight='Regular' style={{ color: C.textTertiary, fontSize: 12, marginTop: 1 }}>{b.desc}</CustomText>
               </View>
-              <Icon name="checkmark-circle" size={20} color={BRAND_COLOR} />
+              <Icon name="checkmark-circle" size={20} color={C.primaryText} />
             </View>
           ))}
         </View>
       </ScrollView>
 
       {/* Sticky join CTA */}
-      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28, backgroundColor: '#000', borderTopWidth: 1, borderTopColor: '#1c1c1e' }}>
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 28, backgroundColor: C.background, borderTopWidth: 1, borderTopColor: C.border }}>
         <TouchableOpacity
           onPress={() => navigation.navigate('PremiumMembership')}
           activeOpacity={0.85}
-          style={{ backgroundColor: BRAND_COLOR, borderRadius: 12, paddingVertical: 16, alignItems: 'center' }}
+          style={{ backgroundColor: C.primary, borderRadius: 12, paddingVertical: 16, alignItems: 'center' }}
         >
-          <CustomText fontType='primary' weight='Bold' style={{ color: '#000', fontSize: 14, letterSpacing: .2 }}>Join as a member</CustomText>
+          <CustomText fontType='primary' weight='Bold' style={{ color: C.onPrimary, fontSize: 14, letterSpacing: .2 }}>Join as a member</CustomText>
         </TouchableOpacity>
       </View>
     </View>

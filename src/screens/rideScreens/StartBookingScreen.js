@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform, FlatList, Image, TextInput, Alert, ActivityIndicator, ToastAndroid, PermissionsAndroid } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Platform,
+  FlatList,
+  Image,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  ToastAndroid,
+  PermissionsAndroid,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useDispatch, useSelector } from 'react-redux';
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import ActionSheet, { ScrollView } from 'react-native-actions-sheet';
 import CustomText from '../../components/CustomText';
 import { useNavigation } from '@react-navigation/native';
@@ -13,6 +26,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { formatDate, formatDateOnly, formatTime, UnauthAxios, notify } from '../../utils/utils';
 import { DateTimePickerModal } from '../../components/host/DateTimePickerModal';
 import OtpInput from '../../components/OtpInput';
+
+import { C, themedStyleSheet } from '../../theme';
 
 export function StartBookingScreen({route}) {
   const navigation = useNavigation();
@@ -174,97 +189,102 @@ export function StartBookingScreen({route}) {
   ];
 
   return (
-    <View style={{flex:1,backgroundColor:'#000',height:'100%'}}>
-        <CenterHeader title={'Start Ride'} customSecondaryText={booking.bookingId} navigation={navigation}/>
+    <View style={{flex:1,backgroundColor:C.background,height:'100%'}}>
+      <CenterHeader title={'Start Ride'} customSecondaryText={booking.bookingId} navigation={navigation}/>
 
-            <View style={{flex:1,justifyContent:'space-between',paddingVertical:24,paddingHorizontal:16}}>
-                <GestureHandlerRootView style={{flex:1}}>
-        <ScrollView style={{flex:1,}}>
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,marginBottom:4,textTransform:'uppercase'}}>Start Date & Time</CustomText>
-          <TouchableOpacity onPress={()=>setShowDateTimePicker(true)} style={{backgroundColor:'#1c1c1e',padding:14,borderRadius:5,textAlign:'left',marginBottom:18}}>
-            <CustomText fontType='primary' weight='SemiBold' style={{color:'#a3a3a3', fontSize:12,marginBottom:4,textTransform:'uppercase'}}>{formatDate(new Date(data.startDateTime))}</CustomText>
-          </TouchableOpacity>
-    
-         
-          <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,marginBottom:4,textAlign:'left',textTransform:'uppercase'}}>Start Odometer Reading</CustomText>
-            <TextInput
-            style={{backgroundColor:'#1c1c1e',padding:10,borderRadius:5,textAlign:'left',marginBottom:18}}
-            value={data.startKms}
-            placeholderTextColor='#757575'
-            onChangeText={(value)=>setData({...data,startKms:value})}
-            />
-             <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,marginBottom:4,textTransform:'uppercase',textAlign:'center'}}>Start Ride OTP</CustomText>
-            <View style={{flexDirection: 'row', justifyContent: 'center', marginBottom: 18}}>
-              <OtpInput
-                length={6}
-                value={data.startOtp}
-                onChange={(value) => setData({...data, startOtp: value})}
-              />
-            </View>
-        <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Car Images</CustomText>
-          <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',width:'100%',marginTop:12,gap:12,flexWrap:'wrap'}}>
-            {imageTypes.map((type) => (
-              <View key={type.key} style={{width:'48%',marginBottom:12}}>
-                <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:10,marginBottom:8,textTransform:'uppercase'}}>{type.label}</CustomText>
-                {!data.images[type.key] ? (
-                  <TouchableOpacity onPress={() => selectImage(type.key)} style={{backgroundColor:'#1c1c1e',borderRadius:5,paddingVertical:12,paddingHorizontal:12,color:'#fff',fontSize:14,height:100,justifyContent:'center',alignItems:'center'}}>
-                    <Icon name='add-circle-outline' size={24} color='#959595'/>
-                    <CustomText fontType='primary' weight='SemiBold' style={{color:'#757575', fontSize:10,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center',marginTop:4}}>Select Image</CustomText>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={{backgroundColor:'#1c1c1e',borderRadius:5,height:100,justifyContent:'center',alignItems:'center',overflow:'hidden'}}>
-                    <TouchableOpacity onPress={() => handleRemoveImage(type.key)} style={{position:'absolute',top:4,right:4,backgroundColor:'#1c1c1e',borderRadius:100,padding:6,zIndex:100}}>
-                      <Icon name='trash-outline' size={18} color='#fff'/>
-                    </TouchableOpacity>
-                    <Image source={{uri:data.images[type.key].uri}} style={{width:'100%',height:'100%',borderRadius:5}}/>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-          </View>
-      </ScrollView>
-      </GestureHandlerRootView>
+      <View style={{flex:1,justifyContent:'space-between',paddingVertical:24,paddingHorizontal:16}}>
+          <GestureHandlerRootView style={{flex:1}}>
+  <ScrollView style={{flex:1,}}>
+    <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,marginBottom:4,textTransform:'uppercase'}}>Start Date & Time</CustomText>
+    <TouchableOpacity onPress={()=>setShowDateTimePicker(true)} style={{backgroundColor:C.surface,padding:14,borderRadius:5,textAlign:'left',marginBottom:18}}>
+      <CustomText fontType='primary' weight='SemiBold' style={{color:C.textSecondary, fontSize:12,marginBottom:4,textTransform:'uppercase'}}>{formatDate(new Date(data.startDateTime))}</CustomText>
+    </TouchableOpacity>
 
-        <TouchableOpacity disabled={isLoading || !data.startDateTime || !data.startKms || !data.startOtp || !data.images.front || !data.images.back || !data.images.driverSide || !data.images.passengerSide || !data.images.userWithCar || !data.images.fuelOdometer} onPress={onSubmit} style={{backgroundColor:(isLoading || !data.startDateTime || !data.startKms || !data.startOtp || !data.images.front || !data.images.back || !data.images.driverSide || !data.images.passengerSide || !data.images.userWithCar || !data.images.fuelOdometer) ? '#4C4C4E' : BRAND_COLOR,borderRadius:5,paddingVertical:12,paddingHorizontal:12,color:'#fff',fontSize:14,width:'100%',marginTop:12,justifyContent:'center',alignItems:'center'}}>
-          <CustomText fontType='primary' weight='Bold' style={{color:'#000', fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>{isLoading ? 'Starting…' : 'Start Ride'}</CustomText>
-        </TouchableOpacity>
-
+   
+    <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,marginBottom:4,textAlign:'left',textTransform:'uppercase'}}>Start Odometer Reading</CustomText>
+      <TextInput
+      style={{backgroundColor:C.surface,padding:10,borderRadius:5,textAlign:'left',marginBottom:18}}
+      value={data.startKms}
+      placeholderTextColor={C.textTertiary}
+      onChangeText={(value)=>setData({...data,startKms:value})}
+      />
+       <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,marginBottom:4,textTransform:'uppercase',textAlign:'center'}}>Start Ride OTP</CustomText>
+      <View style={{flexDirection: 'row', justifyContent: 'center', marginBottom: 18}}>
+        <OtpInput
+          length={6}
+          value={data.startOtp}
+          onChange={(value) => setData({...data, startOtp: value})}
+        />
       </View>
+  <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,textTransform:'uppercase',letterSpacing:.15,marginBottom:4}}>Car Images</CustomText>
+    <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',width:'100%',marginTop:12,gap:12,flexWrap:'wrap'}}>
+      {imageTypes.map((type) => (
+        <View key={type.key} style={{width:'48%',marginBottom:12}}>
+          <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:10,marginBottom:8,textTransform:'uppercase'}}>{type.label}</CustomText>
+          {!data.images[type.key] ? (
+            <TouchableOpacity onPress={() => selectImage(type.key)} style={{backgroundColor:C.surface,borderRadius:5,paddingVertical:12,paddingHorizontal:12,color:C.text,fontSize:14,height:100,justifyContent:'center',alignItems:'center'}}>
+              <Icon name='add-circle-outline' size={24} color={C.textTertiary}/>
+              <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:10,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center',marginTop:4}}>Select Image</CustomText>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={{backgroundColor:C.surface,borderRadius:5,height:100,justifyContent:'center',alignItems:'center',overflow:'hidden'}}>
+              <TouchableOpacity onPress={() => handleRemoveImage(type.key)} style={{position:'absolute',top:4,right:4,backgroundColor:C.surface,borderRadius:100,padding:6,zIndex:100}}>
+                <Icon name='trash-outline' size={18} color={C.text}/>
+              </TouchableOpacity>
+              <Image source={{uri:data.images[type.key].uri}} style={{width:'100%',height:'100%',borderRadius:5}}/>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+    </View>
+</ScrollView>
+</GestureHandlerRootView>
 
-        {
-            showDateTimePicker ? <DateTimePickerModal data={data} setData={(value)=>setData(prev=>({...prev,startDateTime:value}))} setShow={setShowDateTimePicker} show={showDateTimePicker}/> : null
-        }
+  <TouchableOpacity disabled={isLoading || !data.startDateTime || !data.startKms || !data.startOtp || !data.images.front || !data.images.back || !data.images.driverSide || !data.images.passengerSide || !data.images.userWithCar || !data.images.fuelOdometer} onPress={onSubmit} style={{backgroundColor:(isLoading || !data.startDateTime || !data.startKms || !data.startOtp || !data.images.front || !data.images.back || !data.images.driverSide || !data.images.passengerSide || !data.images.userWithCar || !data.images.fuelOdometer) ? C.surfaceHighest : C.primary,borderRadius:5,paddingVertical:12,paddingHorizontal:12,color:C.text,fontSize:14,width:'100%',marginTop:12,justifyContent:'center',alignItems:'center'}}>
+    <CustomText fontType='primary' weight='Bold' style={{color:C.onPrimary, fontSize:12,textTransform:'uppercase',letterSpacing:-.15,textAlign:'center'}}>{isLoading ? 'Starting…' : 'Start Ride'}</CustomText>
+  </TouchableOpacity>
+
+</View>
+
+      {
+          showDateTimePicker ? <DateTimePickerModal data={data} setData={(value)=>setData(prev=>({...prev,startDateTime:value}))} setShow={setShowDateTimePicker} show={showDateTimePicker}/> : null
+      }
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   modalContainer: {
     paddingTop:24,
     paddingHorizontal:24,
   },
+
   contentContainer: {
     flex: 1,
     paddingHorizontal:24,
     paddingVertical:24
   },
+
   modalContent: {
     height: '100%',
     flex: 1,
     paddingHorizontal:24,
     paddingVertical:24
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
+
   headerText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: C.text,
   },
+
   cityItem: {
     flexDirection:'row',
     alignItems:'center',
@@ -274,21 +294,24 @@ const styles = StyleSheet.create({
     textAlign:'left',
     textTransform:'capitalize',
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
+    borderBottomColor: C.borderStrong,
   },
+
   confirmButton: {
-    backgroundColor: '#EDBF31',
+    backgroundColor: C.primary,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
-    color:'#fff'
+    color:C.text
   },
+
   confirmButtonDisabled: {
-    backgroundColor: '#4C4C4E',
-    color:'#a3a3a3'
+    backgroundColor: C.surfaceHighest,
+    color:C.textSecondary
   },
+
   confirmButtonText: {
     fontSize: 14,
     fontWeight: '500',
-  },
-});
+  }
+}));

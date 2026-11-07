@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import { View, Text, Button } from 'react-native';
 
+import { C } from '../theme';
+
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
@@ -20,12 +22,12 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 24, gap: 8 }}>
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600', textAlign: 'center' }}>Something went wrong.</Text>
-          <Text style={{ color: '#a3a3a3', fontSize: 13, textAlign: 'center', marginBottom: 12 }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.background, padding: 24, gap: 8 }}>
+          <Text style={{ color: C.text, fontSize: 16, fontWeight: '600', textAlign: 'center' }}>Something went wrong.</Text>
+          <Text style={{ color: C.textSecondary, fontSize: 13, textAlign: 'center', marginBottom: 12 }}>
             Please try again. If this keeps happening, restart the app.
           </Text>
-          <Button title="Retry" color="#EDBF31" onPress={() => this.setState({ hasError: false })} />
+          <Button title="Retry" color={C.primaryText} onPress={() => this.setState({ hasError: false })} />
         </View>
       );
     }

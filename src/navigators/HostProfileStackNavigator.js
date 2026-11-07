@@ -9,11 +9,13 @@ import OnboardingWizardScreen from '../screens/profileScreens/OnboardingWizardSc
 import { HostInboxScreen } from '../screens/host/hostInboxScreens/HostInboxScreen.js';
 import { HostProfile } from '../screens/host/hostProfileScreens/HostProfile';
 
+import { C } from '../theme';
+
 const Stack = createNativeStackNavigator();
 
 export function HostProfileStackNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:'#000'}}>
+    <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:C.background}}>
       <Stack.Screen name="HostProfile" component={HostProfile} />
       <Stack.Screen name="HostInbox" component={HostInboxScreen} />
       <Stack.Screen name="Referral" component={ReferralPage}/>

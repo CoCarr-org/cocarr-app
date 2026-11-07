@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform, FlatList, TouchableHighlight, ToastAndroid, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Platform,
+  FlatList,
+  TouchableHighlight,
+  ToastAndroid,
+  ScrollView,
+} from 'react-native';
 // import DateTimePicker from '@react-native-community/datetimepicker';
 import Icon from 'react-native-vector-icons/Ionicons';
 import FeatherIcon from 'react-native-vector-icons/Feather';
@@ -12,11 +22,13 @@ import Slider from '@react-native-community/slider';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CustomText from '../../components/CustomText';
 import LocationSearchScreen from './LocationSearchScreen';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import axios from 'axios';
 import LocationInvalidScreen from './LocationInvalidScreen';
 import LocationChangeNotificationScreen from './LocationChangeNotificationScreen';
 import { getCurrentLocation, notify } from '../../utils/utils';
+
+import { C, themedStyleSheet } from '../../theme';
 
 export function DatePickerScreen({ visible, onClose, onSelect }) {
   const insets = useSafeAreaInsets();
@@ -52,15 +64,15 @@ export function DatePickerScreen({ visible, onClose, onSelect }) {
       headerTitle: 'Select Date & Time',
       headerTitleAlign: 'center',
       headerTitleStyle: {
-        color: '#efefef',
+        color: C.text,
         fontSize: 13,
         fontWeight: '500',
       },
-      headerLeft: () => <TouchableOpacity onPress={() => navigation.goBack()}><Icon name="chevron-back" size={20} color="#a3a3a3" /></TouchableOpacity>,
+      headerLeft: () => <TouchableOpacity onPress={() => navigation.goBack()}><Icon name="chevron-back" size={20} color={C.textSecondary} /></TouchableOpacity>,
       headerStyle: {
-        backgroundColor: '#000',
+        backgroundColor: C.background,
       },
-      headerTintColor: '#fff',
+      headerTintColor: C.text,
     })
 
     const now = new Date();
@@ -86,8 +98,8 @@ export function DatePickerScreen({ visible, onClose, onSelect }) {
       // For same day selection
       marked[startStr] = {
         selected: true,
-        color: '#EDBF31',
-        textColor: '#000',
+        color: C.primaryText,
+        textColor: C.onPrimary,
         startingDay: true,
         endingDay: true
       };
@@ -95,14 +107,14 @@ export function DatePickerScreen({ visible, onClose, onSelect }) {
       // For date range selection
       marked[startStr] = {
         startingDay: true,
-        color: '#EDBF31',
-        textColor: '#000'
+        color: C.primaryText,
+        textColor: C.onPrimary
       };
       
       marked[endStr] = {
         endingDay: true,
-        color: '#EDBF31',
-        textColor: '#000'
+        color: C.primaryText,
+        textColor: C.onPrimary
       };
       
       // Mark dates in between
@@ -112,8 +124,8 @@ export function DatePickerScreen({ visible, onClose, onSelect }) {
       while (currentDate < end) {
         const dateStr = currentDate.toISOString().split('T')[0];
         marked[dateStr] = {
-          color: '#EDBF31',
-          textColor: '#000'
+          color: C.primaryText,
+          textColor: C.onPrimary
         };
         currentDate.setDate(currentDate.getDate() + 1);
       }
@@ -323,244 +335,258 @@ export function DatePickerScreen({ visible, onClose, onSelect }) {
   }
 
   return (
-      <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
-        <ScrollView style={styles.modalContent}>
+    <View style={[styles.modalContainer, { paddingTop: insets.top }]}>
+      <ScrollView style={styles.modalContent}>
 
-        <TouchableHighlight underlayColor='#2C2C2E' onPress={() => setShowLocationSearch(true)}>
-            <View style={{flexDirection: 'row', backgroundColor: '#1c1c1e', padding: 12, borderRadius: 8, paddingHorizontal: 12, justifyContent: 'space-between', marginBottom: 12, width: '100%',alignItems: 'center'}}>
-              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', flex: 1, marginRight: 8}}>
-                <FeatherIcon name="map-pin" size={22} color="#a3a3a3" />
-                <CustomText numberOfLines={2} ellipsizeMode='tail' weight='Medium' style={{color: '#a3a3a3', fontSize: 12, marginLeft: 12, flexShrink: 1}}>
-                  {detectingLocation ? 'Detecting Location...' : bookingState.selectedLocation ? bookingState.selectedLocation.name : bookingState.selectedCity ? bookingState.selectedCity.name : 'Selected Location'}
-                </CustomText>
-              </View>
-              <View>
-                <TouchableHighlight disabled={detectingLocation} underlayColor='#2f2f2f' onPress={()=>detectUserLocation()} style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2d2d2d', borderRadius: 8, padding: 2, shadowOpacity: 0.5, shadowRadius: 1, shadowColor: '#454545', height: 48, width: 48}}>
-                  <Icon name="locate-outline" size={20} color={BRAND_COLOR} />
-                </TouchableHighlight>
-              </View>
+      <TouchableHighlight underlayColor={C.surfaceHigh} onPress={() => setShowLocationSearch(true)}>
+          <View style={{flexDirection: 'row', backgroundColor: C.surface, padding: 12, borderRadius: 8, paddingHorizontal: 12, justifyContent: 'space-between', marginBottom: 12, width: '100%',alignItems: 'center'}}>
+            <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', flex: 1, marginRight: 8}}>
+              <FeatherIcon name="map-pin" size={22} color={C.textSecondary} />
+              <CustomText numberOfLines={2} ellipsizeMode='tail' weight='Medium' style={{color: C.textSecondary, fontSize: 12, marginLeft: 12, flexShrink: 1}}>
+                {detectingLocation ? 'Detecting Location...' : bookingState.selectedLocation ? bookingState.selectedLocation.name : bookingState.selectedCity ? bookingState.selectedCity.name : 'Selected Location'}
+              </CustomText>
             </View>
-        </TouchableHighlight>
-        
-          <Calendar
-            style={styles.calendar}
-            theme={{
-              calendarBackground: '#1c1c1e',
-              
-              textSectionTitleColor: '#fff',
-              dayTextColor: '#fff',
-              textSectionTitleColor:' #fff',
-              todayTextColor: '#EDBF31',
-              selectedDayTextColor: '#000',
-              monthTextColor: '#fff',
-              textDayFontFamily: 'Inter-Medium',
-              textMonthFontFamily: 'Inter-Medium',
-              textDayHeaderFontFamily: 'Inter-SemiBold',
-              textDayHeaderColor: '#a3a3a3',
-              textDayHeaderFontSize: 12,
-              textDayHeaderTextTransform: 'uppercase',
-              textDayFontSize: 13,
-              textMonthFontSize: 12,
-              monthFontTextTransform: 'uppercase',
-              textDisabledColor: '#444',
-              arrowColor: '#EDBF31'
-            }}
-            minDate={new Date().toISOString().split('T')[0]}
-            markingType={'period'}
-            markedDates={markedDates}
-            onDayPress={onDayPress}
-          />
-
-        <View style={{flex: 1,flexDirection: 'column'}}>
-          <View style={styles.timePickerContainer}>
-            <CustomText fontType='primary' weight='ExtraBold' style={styles.timePickerLabel}>Start Time</CustomText>
-            <View style={{overflow: 'hidden',backgroundColor: '#1c1c1e',borderRadius: 8,padding: 8,paddingHorizontal: 0}}>
-
-            <FlatList
-              horizontal
-              data={startTimeSlots}
-              keyExtractor={(item) => item.value.toString()}
-              // style={{}}
-              // snapToOffsets={[...Array(startTimeSlots.length).fill(100)]}
-              renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => onSelectStartTime(item.value)} style={{backgroundColor: item.value === startTime ? '#EDBF311e' : '#1c1c1e',borderRadius: 24,marginHorizontal: 5}}>
-                  <CustomText weight='Medium' style={[
-                    styles.timeSlot,
-                    item.value === startTime && styles.selectedTimeSlot
-                  ]}>
-                    {item.label}
-                  </CustomText>
-                </TouchableOpacity>
-              )}
-              // snapToAlignment="center"
-              decelerationRate="fast"
-              // snapToInterval={50}
-              showsHorizontalScrollIndicator={false}
-              />
-              </View>
+            <View>
+              <TouchableHighlight disabled={detectingLocation} underlayColor={C.surfaceHigh} onPress={()=>detectUserLocation()} style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: C.surfaceHigh, borderRadius: 8, padding: 2, shadowOpacity: 0.5, shadowRadius: 1, shadowColor: C.borderStrong, height: 48, width: 48}}>
+                <Icon name="locate-outline" size={20} color={C.primaryText} />
+              </TouchableHighlight>
+            </View>
           </View>
-
-          <View style={styles.timePickerContainer}>
-            <CustomText fontType='Primary' weight='ExtraBold' style={styles.timePickerLabel}>End Time</CustomText>
-            <View style={{overflow: 'hidden',backgroundColor: '#1c1c1e',borderRadius: 8,padding: 8,paddingHorizontal: 0}}>
-
-            <FlatList
-              horizontal
-              data={endTimeSlots}
-              style={{height: 36}}
-              keyExtractor={(item) => item.value.toString()}
-              // style={{height: 100}}
-              // snapToOffsets={[...Array(startTimeSlots.length).fill(100)]}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={{backgroundColor: item.value === endTime ? '#EDBF311e' : '#1c1c1e',borderRadius: 24,marginHorizontal: 5}} onPress={() => setEndTime(item.value)}>
-                  <Text style={[
-                    styles.timeSlot,
-                    item.value === endTime && styles.selectedTimeSlot
-                  ]}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              // snapToAlignment=""
-              decelerationRate="fast"
-              // snapToInterval={100}
-              showsHorizontalScrollIndicator={false}
-              />
-              </View>
-          </View>
-
-          </View>
+      </TouchableHighlight>
+      
+        <Calendar
+          style={styles.calendar}
+          theme={{
+            calendarBackground: C.surface,
             
-     
-          </ScrollView>
+            textSectionTitleColor: C.text,
+            dayTextColor: C.text,
+            textSectionTitleColor:C.text,
+            todayTextColor: C.primaryText,
+            selectedDayTextColor: C.onPrimary,
+            monthTextColor: C.text,
+            textDayHeaderColor: C.textSecondary,
+            textDayHeaderFontSize: 12,
+            textDayHeaderTextTransform: 'uppercase',
+            textDayFontSize: 13,
+            textMonthFontSize: 12,
+            monthFontTextTransform: 'uppercase',
+            textDisabledColor: C.textDisabled,
+            arrowColor: C.primaryText
+          }}
+          minDate={new Date().toISOString().split('T')[0]}
+          markingType={'period'}
+          markedDates={markedDates}
+          onDayPress={onDayPress}
+        />
 
-          <TouchableOpacity 
-            style={[
-              styles.confirmButton,
-              (!startDate || !endDate || !startTime || !endTime) && styles.confirmButtonDisabled
-            ]} 
-            onPress={handleConfirm}
-            disabled={!startDate || !endDate || !startTime || !endTime}
-          >
-            <CustomText weight='Bold' style={styles.confirmButtonText}>Save Dates</CustomText>
-          </TouchableOpacity>
-        {showLocationSearch && <LocationSearchScreen onPress={onLocationPress} show={showLocationSearch} setShow={setShowLocationSearch}/>}
-        {showCityChange && <LocationChangeNotificationScreen show={showCityChange} setShow={setShowCityChange} onPress={(data,city)=>{
-          console.log('on click data',city)
-          dispatch(setShowCityLocation({
-            selectedCity: city,
-            selectedLocation: {name:data.name,place_id:data.place_id,latitude:data.latitude,longitude:data.longitude}
-          }))
-          setShowCityChange(false)
-        }}/>}
-        {showLocationValid && <LocationInvalidScreen show={showLocationValid} setShow={setShowLocationValid} onPress={()=>{
-          setShowLocationValid(false)
-        }}/>}
-      </View>
+      <View style={{flex: 1,flexDirection: 'column'}}>
+        <View style={styles.timePickerContainer}>
+          <CustomText fontType='primary' weight='ExtraBold' style={styles.timePickerLabel}>Start Time</CustomText>
+          <View style={{overflow: 'hidden',backgroundColor: C.surface,borderRadius: 8,padding: 8,paddingHorizontal: 0}}>
+
+          <FlatList
+            horizontal
+            data={startTimeSlots}
+            keyExtractor={(item) => item.value.toString()}
+            // style={{}}
+            // snapToOffsets={[...Array(startTimeSlots.length).fill(100)]}
+            renderItem={({ item }) => (
+              <TouchableOpacity onPress={() => onSelectStartTime(item.value)} style={{backgroundColor: item.value === startTime ? '#EDBF311e' : C.surface,borderRadius: 24,marginHorizontal: 5}}>
+                <CustomText weight='Medium' style={[
+                  styles.timeSlot,
+                  item.value === startTime && styles.selectedTimeSlot
+                ]}>
+                  {item.label}
+                </CustomText>
+              </TouchableOpacity>
+            )}
+            // snapToAlignment="center"
+            decelerationRate="fast"
+            // snapToInterval={50}
+            showsHorizontalScrollIndicator={false}
+            />
+            </View>
+        </View>
+
+        <View style={styles.timePickerContainer}>
+          <CustomText fontType='Primary' weight='ExtraBold' style={styles.timePickerLabel}>End Time</CustomText>
+          <View style={{overflow: 'hidden',backgroundColor: C.surface,borderRadius: 8,padding: 8,paddingHorizontal: 0}}>
+
+          <FlatList
+            horizontal
+            data={endTimeSlots}
+            style={{height: 36}}
+            keyExtractor={(item) => item.value.toString()}
+            // style={{height: 100}}
+            // snapToOffsets={[...Array(startTimeSlots.length).fill(100)]}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={{backgroundColor: item.value === endTime ? '#EDBF311e' : C.surface,borderRadius: 24,marginHorizontal: 5}} onPress={() => setEndTime(item.value)}>
+                <Text style={[
+                  styles.timeSlot,
+                  item.value === endTime && styles.selectedTimeSlot
+                ]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            )}
+            // snapToAlignment=""
+            decelerationRate="fast"
+            // snapToInterval={100}
+            showsHorizontalScrollIndicator={false}
+            />
+            </View>
+        </View>
+
+        </View>
+          
+   
+        </ScrollView>
+
+      <TouchableOpacity 
+        style={[
+          styles.confirmButton,
+          (!startDate || !endDate || !startTime || !endTime) && styles.confirmButtonDisabled
+        ]} 
+        onPress={handleConfirm}
+        disabled={!startDate || !endDate || !startTime || !endTime}
+      >
+        <CustomText weight='Bold' style={styles.confirmButtonText}>Save Dates</CustomText>
+      </TouchableOpacity>
+      {showLocationSearch && <LocationSearchScreen onPress={onLocationPress} show={showLocationSearch} setShow={setShowLocationSearch}/>}
+      {showCityChange && <LocationChangeNotificationScreen show={showCityChange} setShow={setShowCityChange} onPress={(data,city)=>{
+        console.log('on click data',city)
+        dispatch(setShowCityLocation({
+          selectedCity: city,
+          selectedLocation: {name:data.name,place_id:data.place_id,latitude:data.latitude,longitude:data.longitude}
+        }))
+        setShowCityChange(false)
+      }}/>}
+      {showLocationValid && <LocationInvalidScreen show={showLocationValid} setShow={setShowLocationValid} onPress={()=>{
+        setShowLocationValid(false)
+      }}/>}
+    </View>
   );
 }
 
 
 
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   modalContainer: {
     flex: 1,
     // backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+
   modalContent: {
-    backgroundColor: '#000',
+    backgroundColor: C.background,
     // height: '100%',
     flex: 1,
     paddingHorizontal:20,
     paddingVertical:12
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     // marginBottom: 20,
   },
+
   headerText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: C.text,
   },
+
   closeButton: {
     padding: 5,
   },
+
   calendar: {
     marginBottom: 12,
     borderRadius: 10,
     borderWidth: 1,
     // height: 330,
-    borderColor: '#000',
+    borderColor: C.background,
   },
+
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
+
   timeSection: {
     // flex: 1,
     marginHorizontal: 5,
   },
+
   label: {
     fontSize: 14,
-    color: '#a3a3a3',
+    color: C.textSecondary,
     marginBottom: 10,
   },
+
   pickerButton: {
-    backgroundColor: '#2C2C2E',
+    backgroundColor: C.surfaceHigh,
     padding: 15,
     borderRadius: 10,
   },
+
   pickerButtonText: {
-    color: '#fff',
+    color: C.text,
     fontSize: 16,
     textAlign: 'center',
   },
+
   confirmButton: {
     position:'absolute',
     bottom:0,
     left:0,
     right:0,
-    backgroundColor: '#EDBF31',
+    backgroundColor: C.primary,
     padding: 15,
     marginHorizontal:16,
     borderRadius: 8,
     alignItems: 'center',
   },
+
   confirmButtonDisabled: {
-    backgroundColor: '#4C4C4E',
+    backgroundColor: C.surfaceHighest,
   },
+
   confirmButtonText: {
-    color: '#000',
+    color: C.onPrimary,
     textTransform: 'uppercase',
     fontSize: 12,
   },
+
   timePickerContainer: {
     marginBottom: 20,
     width: '100%',
   },
+
   timePickerLabel: {
-    color: '#757575',
+    color: C.textTertiary,
     fontSize: 11,
     textTransform: 'uppercase',
     marginBottom: 10,
   },
+
   timeSlot: {
     // borderWidth: 1,
     // borderColor: '#2C2C2E',
-    color: '#a3a3a3',
+    color: C.textSecondary,
     // backgroundColor: '#2C2C2E',
     padding: 10,
     borderRadius: 5,
     fontSize: 12,
     marginHorizontal: 5,
   },
+
   selectedTimeSlot: {
-    color: BRAND_COLOR,
-  },
-});
+    color: C.primaryText,
+  }
+}));

@@ -1,12 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform, FlatList, Image, TextInput, Alert, ActivityIndicator, ToastAndroid, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Platform,
+  FlatList,
+  Image,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+  ToastAndroid,
+  ScrollView,
+} from 'react-native';
 
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import ActionSheet from 'react-native-actions-sheet';
 import CustomText from '../../components/CustomText';
 import { formatDate } from '../../utils/utils';
 import { Calendar } from 'react-native-calendars';
+
+import { C, themedStyleSheet } from '../../theme';
 
 export default function RescheduleSummary({id,setShow,show}) {
   const actionRef = useRef(null);
@@ -41,11 +56,11 @@ export default function RescheduleSummary({id,setShow,show}) {
   }
 
   return (
-    <ActionSheet ref={actionRef} onClose={onClose} containerStyle={{backgroundColor:'#2c2c2e'}} isModal={true}>
-      {isLoading ? <ActivityIndicator size="large" color={BRAND_COLOR} /> : 
+    <ActionSheet ref={actionRef} onClose={onClose} containerStyle={{backgroundColor:C.surfaceHigh}} isModal={true}>
+      {isLoading ? <ActivityIndicator size="large" color={C.primaryText} /> : 
       <ScrollView> 
 
-        <View style={{flexDirection:'row',gap:12,paddingHorizontal:16,backgroundColor:'#101012',borderRadius:10,paddingVertical:12,marginVertical:8,marginHorizontal:16}}>
+        <View style={{flexDirection:'row',gap:12,paddingHorizontal:16,backgroundColor:C.surfaceLow,borderRadius:10,paddingVertical:12,marginVertical:8,marginHorizontal:16}}>
             <View >
                 <Text style={{...styles.vehicleName,fontSize:12}}>{booking.vehicle?.brand?.name} {booking.vehicle?.vehicleName}</Text>
                 <Text style={{...styles.vehicleYear,fontSize:12}}>{booking.vehicle?.vehicleNumber}</Text>
@@ -63,9 +78,6 @@ export default function RescheduleSummary({id,setShow,show}) {
               todayTextColor: '#EDBF31',
               selectedDayTextColor: '#000',
               monthTextColor: '#fff',
-              textDayFontFamily: 'Inter-Medium',
-              textMonthFontFamily: 'Inter-Medium',
-              textDayHeaderFontFamily: 'Inter-SemiBold',
               textDayHeaderColor: '#a3a3a3',
               textDayHeaderFontSize: 12,
               textDayHeaderTextTransform: 'uppercase',
@@ -117,47 +129,55 @@ export default function RescheduleSummary({id,setShow,show}) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   modalContainer: {
     paddingTop:24,
     paddingHorizontal:24,
   },
+
   contentContainer: {
     flex: 1,
     paddingHorizontal:24,
     paddingVertical:24
   },
+
   modalContent: {
     height: '100%',
     flex: 1,
     paddingHorizontal:24,
     paddingVertical:24
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
   },
+
   headerText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: C.text,
   },
+
   calendar: {
     marginBottom: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#000',
+    borderColor: C.background,
   },
+
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
+
   timeSection: {
     marginHorizontal: 5,
   },
+
   cityItem: {
     flexDirection:'row',
     alignItems:'center',
@@ -167,28 +187,32 @@ const styles = StyleSheet.create({
     textAlign:'left',
     textTransform:'capitalize',
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
+    borderBottomColor: C.borderStrong,
   },
+
   confirmButton: {
-    backgroundColor: '#D43535',
+    backgroundColor: C.danger,
     padding: 12,
     borderRadius: 6,
     flex:1,
-    color:'#fff'
+    color:C.text
   },
+
   backButton: {
-    backgroundColor: '#1f1f1f',
+    backgroundColor: C.surface,
     padding: 12,
     borderRadius: 6,
     flex:1,
-    color:'#fff'
+    color:C.text
   },
+
   confirmButtonDisabled: {
-    backgroundColor: '#4C4C4E',
-    color:'#a3a3a3'
+    backgroundColor: C.surfaceHighest,
+    color:C.textSecondary
   },
+
   confirmButtonText: {
     fontSize: 14,
     fontWeight: '500',
-  },
-});
+  }
+}));

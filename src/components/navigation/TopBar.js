@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Image, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Image, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -7,8 +7,11 @@ import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';
 import VerificationBadge from '../VerificationBadge';
 import CustomText from '../CustomText';
+import BrandLogo from '../BrandLogo';
 import { photoUrl } from '../../utils/utils';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
+
+import { C } from '../../theme';
 
 // Persistent header: brand + page title on the left; on the tab shells the
 // right side carries the customer's wallet points and the profile avatar. On a
@@ -41,8 +44,7 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute,
   const avatar = photoUrl(profilePhoto);
 
   return (
-    <View style={{ backgroundColor: '#000', paddingTop: insets.top }}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+    <View style={{ backgroundColor: C.background, paddingTop: insets.top }}>
       <View style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         paddingHorizontal: 16, paddingVertical: 10,
@@ -53,16 +55,13 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute,
               onPress={() => navigation.goBack()}
               accessibilityRole="button"
               accessibilityLabel="Go back"
-              style={{ padding: 6, marginLeft: -6, marginRight: 4 }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              style={{ width: 44, height: 44, marginLeft: -12, alignItems: 'center', justifyContent: 'center' }}
             >
-              <Icon name="chevron-back" size={24} color="#e3e3e3" />
+              <Icon name="chevron-back" size={24} color={C.text} />
             </TouchableOpacity>
           ) : (
-            <Image
-              source={require('../../images/logo.png')}
-              style={{ width: 54, height: 28, marginRight: 10 }}
-              resizeMode="contain"
-            />
+            <BrandLogo height={34} style={{ marginLeft: -4 }} />
           )}
           {/* Title only on pushed sub-pages. On the tab shells the logo alone
               identifies the app — the page title there was redundant. */}
@@ -71,7 +70,7 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute,
               fontType='primary'
               weight='Bold'
               numberOfLines={1}
-              style={{ color: '#f0f0f2', fontSize: 16, letterSpacing: -.2, flexShrink: 1 }}
+              style={{ color: C.text, fontSize: 17, letterSpacing: -.2, flexShrink: 1 }}
             >
               {title}
             </CustomText>
@@ -84,9 +83,10 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute,
             onPress={() => navigation.navigate(rightRoute, rightParams)}
             activeOpacity={0.8}
             accessibilityRole="button"
-            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#1c1c1e', borderWidth: 1, borderColor: '#2c2c2e', alignItems: 'center', justifyContent: 'center' }}
+            accessibilityLabel="Edit"
+            style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: C.surface, borderWidth: 1, borderColor: C.borderStrong, alignItems: 'center', justifyContent: 'center' }}
           >
-            <Icon name={rightIcon} size={18} color="#c3c3c3" />
+            <Icon name={rightIcon} size={18} color={C.textSecondary} />
           </TouchableOpacity>
         )}
 
@@ -99,10 +99,10 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute,
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityLabel={`Wallet points: ${points}`}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#EDBF3115', borderWidth: 1, borderColor: '#EDBF3140', borderRadius: 18, paddingVertical: 6, paddingHorizontal: 11 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#EDBF3115', borderWidth: 1, borderColor: '#EDBF3140', borderRadius: 18, paddingVertical: 8, paddingHorizontal: 12, minHeight: 36 }}
               >
-                <Icon name="wallet-outline" size={14} color={BRAND_COLOR} />
-                <CustomText fontType='primary' weight='Bold' style={{ color: BRAND_COLOR, fontSize: 12 }}>{points}</CustomText>
+                <Icon name="wallet-outline" size={14} color={C.primaryText} />
+                <CustomText fontType='primary' weight='Bold' style={{ color: C.primaryText, fontSize: 13 }}>{points}</CustomText>
               </TouchableOpacity>
             )}
             {/* The badge is a SIBLING of the round avatar, not a child: the
@@ -116,18 +116,18 @@ export default function TopBar({ title, showBack = false, rightIcon, rightRoute,
                 accessibilityRole="button"
                 accessibilityLabel={userName ? `Profile, ${userName}` : 'Profile'}
                 style={{
-                  width: 38, height: 38, borderRadius: 19,
-                  backgroundColor: '#1c1c1e',
-                  borderWidth: 1, borderColor: '#2c2c2e',
+                  width: 44, height: 44, borderRadius: 22,
+                  backgroundColor: C.surface,
+                  borderWidth: 1, borderColor: C.borderStrong,
                   alignItems: 'center', justifyContent: 'center',
                   overflow: 'hidden',
                 }}
               >
                 {avatar
                   ? <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%' }} />
-                  : <Icon name="person-outline" size={19} color={BRAND_COLOR} />}
+                  : <Icon name="person-outline" size={19} color={C.primaryText} />}
               </TouchableOpacity>
-              <VerificationBadge size="sm" ringColor="#000" status={verificationStatus} />
+              <VerificationBadge size="sm" ringColor={C.background} status={verificationStatus} />
             </View>
           </View>
         )}

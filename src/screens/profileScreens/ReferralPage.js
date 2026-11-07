@@ -1,11 +1,20 @@
 import React, { useCallback, useState } from 'react';
-import { View, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, Share, TouchableHighlight } from 'react-native';
+import {
+  View,
+  ActivityIndicator,
+  ScrollView,
+  RefreshControl,
+  Share,
+  TouchableHighlight,
+} from 'react-native';
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import { notify } from '../../utils/utils';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import CustomText from '../../components/CustomText';
+
+import { C, themedStyleSheet } from '../../theme';
 
 // Refer & Earn. The shareable code and the referral list both come from the
 // referral module's dashboard (GET /referral/history → getReferralOverview).
@@ -56,7 +65,7 @@ export default function ReferralPage() {
   if (loading) {
     return (
       <View style={styles.centerFill}>
-        <ActivityIndicator size="large" color={BRAND_COLOR} />
+        <ActivityIndicator size="large" color={C.primaryText} />
       </View>
     );
   }
@@ -75,12 +84,12 @@ export default function ReferralPage() {
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingBottom: 32 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={BRAND_COLOR} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primaryText} />}
     >
       {/* Hero */}
       <View style={styles.hero}>
         <View style={styles.heroIcon}>
-          <Icon name="people-outline" size={24} color={BRAND_COLOR} />
+          <Icon name="people-outline" size={24} color={C.primaryText} />
         </View>
         <CustomText fontType="primary" weight="SemiBold" style={styles.heroTitle}>Refer & Earn</CustomText>
         <CustomText fontType="primary" weight="Medium" style={styles.heroSubtitle}>
@@ -94,13 +103,13 @@ export default function ReferralPage() {
           {/* selectable so the code can be long-pressed to copy; the button
               opens the OS share sheet (which also offers Copy). */}
           <CustomText fontType="primary" weight="Bold" style={styles.codeValue} selectable>{code}</CustomText>
-          <TouchableHighlight underlayColor="#b38f1f" style={styles.shareBtn} onPress={share}>
+          <TouchableHighlight underlayColor={C.primary} style={styles.shareBtn} onPress={share}>
             <CustomText fontType="primary" weight="Bold" style={styles.shareBtnText}>Share code</CustomText>
           </TouchableHighlight>
         </View>
       ) : (
         <View style={styles.lockedCard}>
-          <Icon name="lock-closed-outline" size={20} color="#a3a3a3" />
+          <Icon name="lock-closed-outline" size={20} color={C.textSecondary} />
           <CustomText fontType="primary" weight="SemiBold" style={styles.lockedTitle}>
             Your code unlocks after verification
           </CustomText>
@@ -164,37 +173,31 @@ const Stat = ({ label, value }) => (
   </View>
 );
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  centerFill: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000', padding: 24 },
-  errorText: { color: '#e3e3e3', fontSize: 14, textAlign: 'center', maxWidth: '75%', letterSpacing: 0.05 },
-
-  hero: { backgroundColor: '#1c1c1e', paddingVertical: 24, paddingHorizontal: 16, alignItems: 'center' },
-  heroIcon: { width: 48, height: 48, borderRadius: 56, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  heroTitle: { color: '#e3e3e3', fontSize: 16, textAlign: 'center', letterSpacing: 0.05 },
-  heroSubtitle: { color: '#a3a3a3', fontSize: 12, textAlign: 'center', letterSpacing: -0.05, marginTop: 4 },
-
-  codeCard: { backgroundColor: '#151515', margin: 16, borderRadius: 12, paddingVertical: 24, paddingHorizontal: 16, alignItems: 'center', borderWidth: 1, borderColor: '#252525' },
-  codeLabel: { color: '#808080', fontSize: 11, letterSpacing: 1, marginBottom: 8 },
-  codeValue: { color: BRAND_COLOR, fontSize: 30, letterSpacing: 4, marginBottom: 16 },
-  shareBtn: { backgroundColor: BRAND_COLOR, paddingVertical: 12, paddingHorizontal: 32, borderRadius: 24 },
-  shareBtnText: { color: '#000', fontSize: 12, letterSpacing: -0.05, textTransform: 'uppercase' },
-
-  lockedCard: { backgroundColor: '#151515', margin: 16, borderRadius: 12, paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center', borderWidth: 1, borderColor: '#252525' },
-  lockedTitle: { color: '#e3e3e3', fontSize: 14, textAlign: 'center', marginTop: 12 },
-  lockedSubtitle: { color: '#a3a3a3', fontSize: 12, textAlign: 'center', lineHeight: 18, marginTop: 6, maxWidth: '90%' },
-
+const styles = themedStyleSheet(C => ({
+  container: { flex: 1, backgroundColor: C.background },
+  centerFill: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.background, padding: 24 },
+  errorText: { color: C.text, fontSize: 14, textAlign: 'center', maxWidth: '75%', letterSpacing: 0.05 },
+  hero: { backgroundColor: C.surface, paddingVertical: 24, paddingHorizontal: 16, alignItems: 'center' },
+  heroIcon: { width: 48, height: 48, borderRadius: 56, backgroundColor: C.background, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  heroTitle: { color: C.text, fontSize: 16, textAlign: 'center', letterSpacing: 0.05 },
+  heroSubtitle: { color: C.textSecondary, fontSize: 12, textAlign: 'center', letterSpacing: -0.05, marginTop: 4 },
+  codeCard: { backgroundColor: C.surfaceLow, margin: 16, borderRadius: 12, paddingVertical: 24, paddingHorizontal: 16, alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  codeLabel: { color: C.textTertiary, fontSize: 11, letterSpacing: 1, marginBottom: 8 },
+  codeValue: { color: C.primaryText, fontSize: 30, letterSpacing: 4, marginBottom: 16 },
+  shareBtn: { backgroundColor: C.primary, paddingVertical: 12, paddingHorizontal: 32, borderRadius: 24 },
+  shareBtnText: { color: C.onPrimary, fontSize: 12, letterSpacing: -0.05, textTransform: 'uppercase' },
+  lockedCard: { backgroundColor: C.surfaceLow, margin: 16, borderRadius: 12, paddingVertical: 24, paddingHorizontal: 20, alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  lockedTitle: { color: C.text, fontSize: 14, textAlign: 'center', marginTop: 12 },
+  lockedSubtitle: { color: C.textSecondary, fontSize: 12, textAlign: 'center', lineHeight: 18, marginTop: 6, maxWidth: '90%' },
   statsRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 10, marginBottom: 8 },
-  stat: { flex: 1, backgroundColor: '#151515', borderRadius: 10, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: '#252525' },
-  statValue: { color: '#efefef', fontSize: 18 },
-  statLabel: { color: '#808080', fontSize: 10, marginTop: 4, textAlign: 'center' },
-
-  sectionTitle: { color: '#e3e3e3', fontSize: 14, paddingHorizontal: 16, marginTop: 20, marginBottom: 12 },
-  emptyText: { color: '#808080', fontSize: 13, paddingHorizontal: 16, lineHeight: 18 },
-
+  stat: { flex: 1, backgroundColor: C.surfaceLow, borderRadius: 10, paddingVertical: 14, alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  statValue: { color: C.text, fontSize: 18 },
+  statLabel: { color: C.textTertiary, fontSize: 10, marginTop: 4, textAlign: 'center' },
+  sectionTitle: { color: C.text, fontSize: 14, paddingHorizontal: 16, marginTop: 20, marginBottom: 12 },
+  emptyText: { color: C.textTertiary, fontSize: 13, paddingHorizontal: 16, lineHeight: 18 },
   list: { paddingHorizontal: 16, gap: 10 },
-  listItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#151515', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#252525' },
-  itemName: { color: '#efefef', fontSize: 14 },
-  itemStatus: { color: '#808080', fontSize: 11, marginTop: 3 },
-  itemPoints: { color: BRAND_COLOR, fontSize: 15 },
-});
+  listItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surfaceLow, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: C.border },
+  itemName: { color: C.text, fontSize: 14 },
+  itemStatus: { color: C.textTertiary, fontSize: 11, marginTop: 3 },
+  itemPoints: { color: C.primaryText, fontSize: 15 }
+}));

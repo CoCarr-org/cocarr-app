@@ -10,11 +10,13 @@ import BookingOfferScreen from '../screens/homeScreens/carinfo/BookingOfferScree
 import PremiumMembershipScreen from '../screens/profileScreens/PremiumMembership';
 import { CreateScheduleScreen } from '../screens/host/hostCarsScreens/CreateScheduleScreen';
 
+import { C } from '../theme';
+
 const Stack = createNativeStackNavigator();
 
 export function HostHomeStackNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:'#000'}}>
+    <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:C.background}}>
       <Stack.Screen name="HomeIndex" component={Hostome} />
       <Stack.Screen name="PremiumMembership" component={PremiumMembershipScreen}/>
       <Stack.Screen name="CarsListing" component={CarsListingScreen} />
@@ -22,7 +24,7 @@ export function HostHomeStackNavigator() {
       <Stack.Screen name="BookingOffers" options={{presentation: 'fullScreenModal',title:'Offers',headerShown:false}} component={BookingOfferScreen} />
       <Stack.Screen name="CreateSchedule" component={CreateScheduleScreen} />
       <Stack.Screen name="CityPicker" component={CityPickerScreen} options={{ presentation: 'modal' }} />
-      <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} /> 
+      <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} />
     </Stack.Navigator>
   );
 }

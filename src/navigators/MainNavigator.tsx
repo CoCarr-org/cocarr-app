@@ -50,6 +50,8 @@ import OnboardingWizardScreen from '../screens/profileScreens/OnboardingWizardSc
 import PanVerificationScreen from '../screens/profileScreens/PanVerificationScreen.js';
 import { useNavigation } from '@react-navigation/native';
 
+import { C } from '../theme';
+
 const Stack = createNativeStackNavigator();
 
 
@@ -143,8 +145,8 @@ export function MainNavigator() {
   // AppTabBar for the bottom one. Applying insets at this level too
   // double-counted them — that was the gap under the tab bar.
   return (
-    <View style={{flex:1, backgroundColor:'#000'}}>
-      
+    <View style={{flex:1, backgroundColor:C.background}}>
+
       <CityPickerScreen/>
       <ReviewScreen/>
       {/* One header for every pushed sub-page: safe-area aware, back chevron,

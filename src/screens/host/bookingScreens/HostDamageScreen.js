@@ -3,13 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, ActivityInd
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useSelector } from 'react-redux';
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../../utils/constants';
+import { API_URL } from '../../../utils/constants';
 import CustomText from '../../../components/CustomText';
 import { useNavigation } from '@react-navigation/native';
 import CenterHeader from '../../../components/CenterHeader';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { UnauthAxios, notify } from '../../../utils/utils';
+
+import { C, themedStyleSheet } from '../../../theme';
 
 const MAX_PHOTOS = 10;
 
@@ -51,7 +53,7 @@ const Dropdown = ({ label, placeholder, options, selected, onSelect }) => {
         <Text style={[styles.fieldValue, !selected && styles.fieldPlaceholder]} numberOfLines={1}>
           {selected ? selected.label : placeholder}
         </Text>
-        <Icon name="chevron-down" size={16} color="#8a8a8a" />
+        <Icon name="chevron-down" size={16} color={C.textTertiary} />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)} statusBarTranslucent>
@@ -69,10 +71,10 @@ const Dropdown = ({ label, placeholder, options, selected, onSelect }) => {
                   onPress={() => { onSelect(option); setOpen(false); }}
                   style={[styles.sheetRow, active && styles.sheetRowActive]}
                 >
-                  <CustomText fontType="primary" weight={active ? 'Bold' : 'Regular'} style={[styles.sheetRowText, active && { color: BRAND_COLOR }]}>
+                  <CustomText fontType="primary" weight={active ? 'Bold' : 'Regular'} style={[styles.sheetRowText, active && { color: C.primaryText }]}>
                     {option.label}
                   </CustomText>
-                  {active && <Icon name="checkmark-circle" size={18} color={BRAND_COLOR} />}
+                  {active && <Icon name="checkmark-circle" size={18} color={C.primaryText} />}
                 </TouchableOpacity>
               );
             })}
@@ -196,7 +198,7 @@ export function HostDamageScreen({ route }) {
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
         <View style={styles.notice}>
-          <Icon name="information-circle-outline" size={16} color={BRAND_COLOR} />
+          <Icon name="information-circle-outline" size={16} color={C.primaryText} />
           <CustomText fontType="primary" weight="Regular" numberOfLines={3} style={styles.noticeText}>
             Add the damaged part, type, a short description and clear photos as evidence.
           </CustomText>
@@ -227,7 +229,7 @@ export function HostDamageScreen({ route }) {
               maxLength={300}
               style={styles.textarea}
               placeholder="Describe what happened…"
-              placeholderTextColor="#757575"
+              placeholderTextColor={C.textTertiary}
               value={data.damageDescription}
               onChangeText={(value) => setData((prev) => ({ ...prev, damageDescription: value }))}
             />
@@ -244,7 +246,7 @@ export function HostDamageScreen({ route }) {
           {data.damageImage.length === 0 ? (
             // Empty state: a full-width dropzone instead of a lone tiny square.
             <TouchableOpacity activeOpacity={0.8} onPress={selectImages} style={styles.dropzone}>
-              <Icon name="camera-outline" size={28} color="#8a8a8a" />
+              <Icon name="camera-outline" size={28} color={C.textTertiary} />
               <CustomText fontType="primary" weight="SemiBold" style={styles.dropzoneTitle}>Add photos</CustomText>
               <CustomText fontType="primary" weight="Regular" style={styles.dropzoneSub}>Up to {MAX_PHOTOS} photos as evidence</CustomText>
             </TouchableOpacity>
@@ -254,13 +256,13 @@ export function HostDamageScreen({ route }) {
                 <View key={index} style={styles.photoTile}>
                   <Image source={{ uri: image.uri }} style={styles.photoImg} />
                   <TouchableOpacity onPress={() => handleRemoveImage(index)} style={styles.removeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Icon name="close" size={14} color="#fff" />
+                    <Icon name="close" size={14} color={C.text} />
                   </TouchableOpacity>
                 </View>
               ))}
               {data.damageImage.length < MAX_PHOTOS && (
                 <TouchableOpacity activeOpacity={0.8} onPress={selectImages} style={styles.addTile}>
-                  <Icon name="add" size={26} color="#8a8a8a" />
+                  <Icon name="add" size={26} color={C.textTertiary} />
                   <CustomText fontType="primary" weight="SemiBold" style={styles.addTileText}>Add</CustomText>
                 </TouchableOpacity>
               )}
@@ -277,85 +279,95 @@ export function HostDamageScreen({ route }) {
           style={[styles.submitBtn, (!isValid || submitting) && styles.submitBtnDisabled]}
         >
           {submitting
-            ? <ActivityIndicator color="#000" />
-            : <CustomText fontType="primary" weight="Bold" style={[styles.submitText, (!isValid) && { color: '#8a8a8a' }]}>Submit Damage Report</CustomText>}
+            ? <ActivityIndicator color={C.onPrimary} />
+            : <CustomText fontType="primary" weight="Bold" style={[styles.submitText, (!isValid) && { color: C.textTertiary }]}>Submit Damage Report</CustomText>}
         </TouchableOpacity>
       </View>
     </GestureHandlerRootView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+const styles = themedStyleSheet(C => ({
+  container: { flex: 1, backgroundColor: C.background },
 
   notice: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
     backgroundColor: '#EDBF3110', borderWidth: 1, borderColor: '#EDBF3122',
     borderRadius: 10, padding: 12, marginBottom: 22,
   },
-  noticeText: { color: '#c9c9c9', fontSize: 12, flex: 1, lineHeight: 17 },
+
+  noticeText: { color: C.textSecondary, fontSize: 12, flex: 1, lineHeight: 17 },
 
   fieldLabel: {
-    color: '#8a8a8a', fontSize: 11, textTransform: 'uppercase',
+    color: C.textTertiary, fontSize: 11, textTransform: 'uppercase',
     letterSpacing: 0.4, marginBottom: 8,
   },
+
   field: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#141416', borderWidth: 1, borderColor: '#26262a',
+    backgroundColor: C.surfaceLow, borderWidth: 1, borderColor: C.border,
     borderRadius: 10, paddingVertical: 14, paddingHorizontal: 14,
   },
-  fieldValue: { color: '#efefef', fontSize: 14, flex: 1, marginRight: 8 },
-  fieldPlaceholder: { color: '#757575' },
 
+  fieldValue: { color: C.text, fontSize: 14, flex: 1, marginRight: 8 },
+  fieldPlaceholder: { color: C.textTertiary },
   modalOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+
   sheet: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
-    backgroundColor: '#161618', borderTopLeftRadius: 18, borderTopRightRadius: 18,
+    backgroundColor: C.surfaceLow, borderTopLeftRadius: 18, borderTopRightRadius: 18,
     paddingHorizontal: 16, paddingBottom: 28,
   },
-  sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: '#3a3a40', marginTop: 10, marginBottom: 8 },
-  sheetTitle: { color: '#f0f0f2', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, paddingHorizontal: 4 },
+
+  sheetHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: C.surfaceHighest, marginTop: 10, marginBottom: 8 },
+  sheetTitle: { color: C.text, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6, paddingHorizontal: 4 },
+
   sheetRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 15, paddingHorizontal: 12, borderRadius: 10,
-    borderBottomWidth: 1, borderBottomColor: '#202024',
+    borderBottomWidth: 1, borderBottomColor: C.border,
   },
+
   sheetRowActive: { backgroundColor: '#EDBF310F' },
-  sheetRowText: { color: '#e3e3e3', fontSize: 14 },
+  sheetRowText: { color: C.text, fontSize: 14 },
 
   textareaWrap: {
-    backgroundColor: '#141416', borderWidth: 1, borderColor: '#26262a', borderRadius: 10,
+    backgroundColor: C.surfaceLow, borderWidth: 1, borderColor: C.border, borderRadius: 10,
     paddingHorizontal: 12, paddingTop: 10, paddingBottom: 26,
   },
-  textarea: { color: '#efefef', fontSize: 14, textAlignVertical: 'top', minHeight: 90, padding: 0 },
-  charCount: { position: 'absolute', right: 12, bottom: 8, color: '#757575', fontSize: 11 },
 
+  textarea: { color: C.text, fontSize: 14, textAlignVertical: 'top', minHeight: 90, padding: 0 },
+  charCount: { position: 'absolute', right: 12, bottom: 8, color: C.textTertiary, fontSize: 11 },
   photoHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  photoCount: { color: BRAND_COLOR, fontSize: 12 },
+  photoCount: { color: C.primaryText, fontSize: 12 },
+
   dropzone: {
-    marginTop: 6, borderWidth: 1, borderColor: '#3a3a40', borderStyle: 'dashed',
-    borderRadius: 12, backgroundColor: '#101012', paddingVertical: 26,
+    marginTop: 6, borderWidth: 1, borderColor: C.borderStrong, borderStyle: 'dashed',
+    borderRadius: 12, backgroundColor: C.surfaceLow, paddingVertical: 26,
     alignItems: 'center', justifyContent: 'center', gap: 4,
   },
-  dropzoneTitle: { color: '#d3d3d3', fontSize: 13, marginTop: 4 },
-  dropzoneSub: { color: '#757575', fontSize: 11 },
 
+  dropzoneTitle: { color: C.textSecondary, fontSize: 13, marginTop: 4 },
+  dropzoneSub: { color: C.textTertiary, fontSize: 11 },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 6 },
-  photoTile: { width: '31.5%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#141416', overflow: 'hidden' },
+  photoTile: { width: '31.5%', aspectRatio: 1, borderRadius: 10, backgroundColor: C.surfaceLow, overflow: 'hidden' },
+
   addTile: {
-    width: '31.5%', aspectRatio: 1, borderRadius: 10, backgroundColor: '#101012',
-    borderWidth: 1, borderColor: '#3a3a40', borderStyle: 'dashed',
+    width: '31.5%', aspectRatio: 1, borderRadius: 10, backgroundColor: C.surfaceLow,
+    borderWidth: 1, borderColor: C.borderStrong, borderStyle: 'dashed',
     alignItems: 'center', justifyContent: 'center', gap: 2,
   },
-  addTileText: { color: '#8a8a8a', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.2 },
+
+  addTileText: { color: C.textTertiary, fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.2 },
   photoImg: { width: '100%', height: '100%' },
+
   removeBtn: {
     position: 'absolute', top: 5, right: 5, width: 22, height: 22, borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center',
   },
 
-  footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#1c1c1e', backgroundColor: '#000' },
-  submitBtn: { backgroundColor: BRAND_COLOR, borderRadius: 10, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
-  submitBtnDisabled: { backgroundColor: '#2a2a2c' },
-  submitText: { color: '#000', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.3 },
-});
+  footer: { padding: 16, borderTopWidth: 1, borderTopColor: C.border, backgroundColor: C.background },
+  submitBtn: { backgroundColor: C.primary, borderRadius: 10, paddingVertical: 15, alignItems: 'center', justifyContent: 'center' },
+  submitBtnDisabled: { backgroundColor: C.surfaceHigh },
+  submitText: { color: C.onPrimary, fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.3 }
+}));

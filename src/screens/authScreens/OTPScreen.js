@@ -4,20 +4,22 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
   Image,
-  Dimensions
+  Dimensions,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';
 import auth from '@react-native-firebase/auth';
 import { login } from '../../store/authSlice';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
+
+import { C, themedStyleSheet } from '../../theme';
+import BrandLogo from '../../components/BrandLogo';
 
 const { width } = Dimensions.get('window');
 const inputWidth = (width - 100 - 60) / 4; // 100 for padding, 60 for hyphens (20 * 3)
@@ -146,14 +148,10 @@ export function OTPScreen({ navigation, route }) {
         <View style={styles.topContainer}>
           {/* Back to the mobile-number step. */}
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Go back">
-            <Icon name="chevron-back" size={24} color="#e3e3e3" />
+            <Icon name="chevron-back" size={24} color={C.text} />
           </TouchableOpacity>
 
-          <Image
-            source={require('../../images/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
+          <BrandLogo height={64} style={styles.logo} />
 
           <Text style={styles.title}>Enter OTP to Verify</Text>
 
@@ -196,7 +194,7 @@ export function OTPScreen({ navigation, route }) {
               same OTP. Disabled while a request is in flight. */}
           <TouchableOpacity
             style={[styles.button,
-              { backgroundColor: otp.every(digit => digit !== '') && !isSubmitting ? '#EDBF31' : '#454545' }]}
+              { backgroundColor: otp.every(digit => digit !== '') && !isSubmitting ? C.primary : C.surfaceHighest }]}
             disabled={!otp.every(digit => digit !== '') || isSubmitting}
             onPress={() => handleSubmit(otp.join(''))}
           >
@@ -208,20 +206,23 @@ export function OTPScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   safeArea: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: C.background,
   },
+
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: C.background,
     padding: 20,
     justifyContent: 'space-between',
   },
+
   topContainer: {
     flex: 1,
   },
+
   backButton: {
     width: 40,
     height: 40,
@@ -229,68 +230,79 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     justifyContent: 'center',
   },
+
   logo: {
-    height: 40,
-    width: 80,
-    marginBottom: 48,
+    marginBottom: 40,
+    marginLeft: -6,
   },
+
   resendRow: {
     marginTop: 22,
   },
+
   resendMuted: {
-    color: '#959595',
+    color: C.textTertiary,
     fontSize: 12,
   },
+
   resendLink: {
-    color: BRAND_COLOR,
+    color: C.primaryText,
     fontSize: 13,
     fontWeight: '600',
   },
+
   bottomContainer: {
     paddingBottom: 24,
   },
+
   title: {
     fontSize: 14,                           // Larger font size for prominence
     fontWeight: '500',                      // Semi-bold text
-    color: '#efefef',                          // White color for readability
+    color: C.text,                          // White color for readability
     marginBottom: 2, 
   },
+
   subtitle: {
     fontSize: 12,
-    color: '#959595',
+    color: C.textTertiary,
     marginBottom: 24,
   },
+
   otpContainer: {
     flexDirection: 'row',
     // justifyContent: 'center',
     alignItems: 'center',
     marginTop: 12,
   },
+
   otpInput: {
     width: inputWidth,
     height: inputWidth,
     borderWidth: 1,
-    borderColor: '#252525',
+    borderColor: C.border,
     borderRadius: 7,
     textAlign: 'center',
     fontSize: 24,
-    color: '#fff',
-    backgroundColor: '#151515',
+    color: C.text,
+    backgroundColor: C.surfaceLow,
   },
+
   hyphen: {
-    color: '#959595',
+    color: C.textTertiary,
     fontSize: 24,
     paddingHorizontal: 10,
   },
+
   button: {
     paddingVertical: 14,
     borderRadius: 7,
     alignItems: 'center',
   },
+
   buttonText: {
-    color: '#000',
+    color: C.onPrimary,
     fontSize: 14,
     textTransform:'uppercase',
     fontWeight: '600',
-  },
-});
+  }
+}));

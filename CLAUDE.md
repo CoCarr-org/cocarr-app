@@ -64,3 +64,13 @@ Shared helpers mirror the web app and must stay in step: `utils/indianStates.js`
 
 ## New-user login
 `MainNavigator.tsx`'s `fetchLastBooking()` called `/booking/last-booking`, which returns bare `null` (not `{booking, review}`) for an account with zero finished bookings — reading `.review` off that threw on every brand-new user's first login (caught, but surfaced a misleading "Error fetching last booking" alert). Fixed to guard on `response.data` being non-null and stopped alerting on this non-critical background fetch.
+
+## Design system, theming, UX laws
+Light **and** dark mode, gold brand. Read `docs/design/DESIGN_SYSTEM.md` before touching UI; review against `docs/design/UX_LAWS.md`.
+- **No hex values in screens.** Colours come from `C` / `themedStyleSheet((C) => …)` in `src/theme/`. Add new tokens to both palettes and run `node scripts/check-contrast.js`.
+- **Never copy `C.x` into a module-level constant** — it freezes to the scheme active at import. Colour lookup tables must be functions (`src/theme/status.js`, `badgeFor()` in `VerificationBadge.js`).
+- Gold fill = `C.primary`; gold text/icon = `C.primaryText` (darker in light mode); text on gold = `C.onPrimary`.
+- Logo: `<BrandLogo />` (picks the light/dark artwork). Don't use `images/logo.png` for new UI.
+- `notify()` is a non-blocking toast on both platforms; use `Alert` only for decisions (confirm cancel / log out).
+- `CustomText` uses the system font with real weights. Inter was never bundled — don't reintroduce `fontFamily: 'Inter-*'`.
+- Design skills for Claude are in `.claude/skills/` (design-critique, accessibility-audit, interaction-design, ux-writing, design-systems, ios-screens, ios-review, …) and `/review-screen`, `/onboarding`, `/paywall` commands in `.claude/commands/`. Licences in `docs/design/licenses/`.

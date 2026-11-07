@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import ActionSheet, { ScrollView } from 'react-native-actions-sheet';
 import CustomText from '../../components/CustomText';
 import axios from 'axios';
 import { addHoursToDate, formatDate, showToast } from '../../utils/utils';
 import { API_URL } from '../../utils/constants';
 import RazorpayCheckout from 'react-native-razorpay';
+
+import { C, themedStyleSheet } from '../../theme';
 
 export default function ExtensionPopup({ setShowPaymentResult, setShow, show, booking,getBookingInfo }) {
   const [data, setData] = useState({ dateTime: '', hours: '' });
@@ -76,7 +78,7 @@ export default function ExtensionPopup({ setShowPaymentResult, setShow, show, bo
       },
         key: 'rzp_test_Z3US7Xs7SFtOHg', // Replace with your Razorpay key
         amount: amount * 100, 
-        theme: { color: '#EDBF31' }
+        theme: { color: C.primaryText }
       };
 
       const paymentData = await RazorpayCheckout.open(options);
@@ -128,7 +130,7 @@ export default function ExtensionPopup({ setShowPaymentResult, setShow, show, bo
   return (
     <ActionSheet
       ref={actionSheetRef}
-      containerStyle={{backgroundColor:'#1c1c1e'}}
+      containerStyle={{backgroundColor:C.surface}}
       isVisible={show}
       onClose={onClose}
     >
@@ -174,110 +176,129 @@ export default function ExtensionPopup({ setShowPaymentResult, setShow, show, bo
             </ScrollView>
           </>
         ) : (
-          <ActivityIndicator size='large' color='#EDBF31' style={styles.loader} />
+          <ActivityIndicator size='large' color={C.primaryText} style={styles.loader} />
         )}
       </View>
     </ActionSheet>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   modalContainer: {
     padding: 24,
   },
+
   header: {
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#2c2c2e',
+    borderBottomColor: C.borderStrong,
   },
+
   headerText: {
     fontSize: 14,
     textTransform:'uppercase',
-    color: '#a3a3a3',
+    color: C.textSecondary,
     textAlign: 'center',
   },
+
   contentContainer: {
     paddingVertical: 24,
   },
+
   formGroup: {
     flexDirection:'column',
     marginBottom: 16,
   },
+
   label: {
     fontSize: 10,
-    color: '#a3a3a3',
+    color: C.textSecondary,
     textTransform:'uppercase',
     letterSpacing:.15,
     marginBottom: 2,
   },
+
   value: {
     fontSize: 12,
-    color: '#e3e3e3',
+    color: C.text,
   },
+
   confirmButton: {
-    backgroundColor: '#151515',
+    backgroundColor: C.surfaceLow,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 24,
   },
+
   confirmButtonDisabled: {
-    backgroundColor: '#757575',
+    backgroundColor: C.disabled,
   },
+
   buttonText: {
     fontSize: 12,
     textTransform:'uppercase',
     textAlign:'center',
-    color: '#EDBF31',
+    color: C.primaryText,
   },
+
   loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   relativeContainer:{
     position:'relative',
     marginTop:12
   },
+
   optionContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     // justifyContent: 'space-between',
   },
+
   option: {
     padding: 12,
     paddingHorizontal:12,
     // borderRadius: 6,
-    backgroundColor: '#2c2c2e',
+    backgroundColor: C.surfaceHigh,
   },
+
   optionText: {
     fontSize: 12,
   },
+
   selectedOption: {
-    backgroundColor: '#EDBF31',
+    backgroundColor: C.primary,
   },
+
   unselectedOption: {
-    backgroundColor: '#2c2c2e',
+    backgroundColor: C.surfaceHigh,
   },
+
   customButton: {
     padding: 12,
     borderRadius: 6,
     borderTopLeftRadius:0,
     borderBottomLeftRadius:0,
-    backgroundColor: '#2c2c2e',
+    backgroundColor: C.surfaceHigh,
   },
+
   customText: {
     fontSize: 12,
-    color: '#e3e3e3',
+    color: C.text,
   },
+
   input: {
     fontSize: 14,
-    backgroundColor:'#151515',
+    backgroundColor:C.surfaceLow,
     padding:12,
     borderRadius:6,
-    color: '#e3e3e3',
-  },
-});
+    color: C.text,
+  }
+}));
 
 
 const TimeTab = ({ options, value, onChange }) => {
@@ -298,7 +319,7 @@ const TimeTab = ({ options, value, onChange }) => {
                   value === item.value ? styles.selectedOption : styles.unselectedOption
                 ]}
               >
-                <CustomText fontType='primary' weight='Bold' style={[styles.optionText,value === item.value ? {color:'#000'} : {color:'#fff'}]}>{item.label}</CustomText>
+                <CustomText fontType='primary' weight='Bold' style={[styles.optionText,value === item.value ? {color:C.onPrimary} : {color:C.text}]}>{item.label}</CustomText>
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.customButton} onPress={() => setCustom(true)}>

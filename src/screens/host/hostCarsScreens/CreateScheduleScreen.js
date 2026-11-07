@@ -1,15 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, Platform, FlatList, TouchableHighlight, ToastAndroid, Image } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Modal,
+  Platform,
+  FlatList,
+  TouchableHighlight,
+  ToastAndroid,
+  Image,
+  Alert
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Calendar } from 'react-native-calendars';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { setDates, setSelectedCity, setShowCityLocation, setShowCityPicker } from '../../../store/bookingSlice';
 import CustomText from '../../../components/CustomText';
-import { API_URL, BRAND_COLOR } from '../../../utils/constants';
+import { API_URL } from '../../../utils/constants';
 import axios from 'axios';
 import { getCurrentLocation, photoUrl, notify } from '../../../utils/utils';
 import ActionSheet, { ScrollView } from 'react-native-actions-sheet';
+
+import { C, themedStyleSheet } from '../../../theme';
 
 export function CreateScheduleScreen({ route }) {
     const vehicleId = route.params?.vehicleId || '';
@@ -47,15 +60,15 @@ export function CreateScheduleScreen({ route }) {
       headerTitle: 'Create Schedule',
       headerTitleAlign: 'center',
       headerTitleStyle: {
-        color: '#efefef',
+        color: C.text,
         fontSize: 13,
         fontWeight: '500',
       },
-      headerLeft: () => <TouchableOpacity onPress={() => navigation.goBack()}><Icon name="chevron-back" size={20} color="#a3a3a3" /></TouchableOpacity>,
+      headerLeft: () => <TouchableOpacity onPress={() => navigation.goBack()}><Icon name="chevron-back" size={20} color={C.textSecondary} /></TouchableOpacity>,
       headerStyle: {
-        backgroundColor: '#000',
+        backgroundColor: C.background,
       },
-      headerTintColor: '#fff',
+      headerTintColor: C.text,
     })
 
     const now = new Date();
@@ -79,15 +92,15 @@ export function CreateScheduleScreen({ route }) {
     
     marked[startStr] = {
       startingDay: true,
-      color: '#EDBF31',
-      textColor: '#000'
+      color: C.primaryText,
+      textColor: C.onPrimary
     };
     
     if (startStr !== endStr) {
       marked[endStr] = {
         endingDay: true,
-        color: '#EDBF31',
-        textColor: '#000'
+        color: C.primaryText,
+        textColor: C.onPrimary
       };
       
       // Mark dates in between
@@ -97,8 +110,8 @@ export function CreateScheduleScreen({ route }) {
       while (currentDate < end) {
         const dateStr = currentDate.toISOString().split('T')[0];
         marked[dateStr] = {
-          color: '#EDBF31',
-          textColor: '#000'
+          color: C.primaryText,
+          textColor: C.onPrimary
         };
         currentDate.setDate(currentDate.getDate() + 1);
       }
@@ -116,8 +129,8 @@ export function CreateScheduleScreen({ route }) {
       setMarkedDates({
         [day.dateString]: {
           startingDay: true,
-          color: '#EDBF31',
-          textColor: '#000'
+          color: C.primaryText,
+          textColor: C.onPrimary
         }
       });
     } else {
@@ -131,8 +144,8 @@ export function CreateScheduleScreen({ route }) {
         setMarkedDates({
           [day.dateString]: {
             startingDay: true,
-            color: '#EDBF31',
-            textColor: '#000'
+            color: C.primaryText,
+            textColor: C.onPrimary
           }
         });
       }
@@ -275,252 +288,266 @@ export function CreateScheduleScreen({ route }) {
   
 
   return (
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-        
-        <TouchableOpacity onPress={() => carsPickerRef.current?.show()} style={{flexDirection:'row',  alignContent:"center",paddingHorizontal:16,paddingVertical:12,backgroundColor:'#1c1c1e',borderRadius:10,padding:12,width:'100%',marginBottom:12}}>
-        <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',alignContent:"center",width:'100%'}}>
-            <View>
-                <CustomText fontType='primary' weight='Bold' style={{color:'#757575', fontSize:9,marginBottom:2,textTransform:'uppercase'}}>Selected Car</CustomText>
-                <CustomText fontType='primary' weight='Bold' style={{color:'#e3e3e3', fontSize:11,textTransform:'uppercase'}}>{cars.find(car => car.id === scheduleInfo.vehicleId)?.vehicleName || '-'}</CustomText>
-            </View>
-            <View style={{flexDirection:'row', alignItems:'center', justifyContent:'center'}}>
-                <Icon name="chevron-down" size={16} color="#757575" />
-            </View>
-        </View>
-      </TouchableOpacity>
-
-          <Calendar
-            style={styles.calendar}
-            theme={{
-              calendarBackground: '#1c1c1e',
-              
-              textSectionTitleColor: '#fff',
-              dayTextColor: '#fff',
-              textSectionTitleColor:' #fff',
-              todayTextColor: '#EDBF31',
-              selectedDayTextColor: '#000',
-              monthTextColor: '#fff',
-              textDayFontFamily: 'Inter-Medium',
-              textMonthFontFamily: 'Inter-Medium',
-              textDayHeaderFontFamily: 'Inter-SemiBold',
-              textDayHeaderColor: '#a3a3a3',
-              textDayHeaderFontSize: 12,
-              textDayHeaderTextTransform: 'uppercase',
-              textDayFontSize: 13,
-              textMonthFontSize: 12,
-              monthFontTextTransform: 'uppercase',
-              textDisabledColor: '#444',
-              arrowColor: '#EDBF31'
-            }}
-            minDate={new Date().toISOString().split('T')[0]}
-            markingType={'period'}
-            markedDates={Object.keys(markedDates).reduce((acc, date) => {
-              acc[date] = {
-                ...markedDates[date],
-                ...(startDate && endDate && startDate.toDateString() === endDate.toDateString() ? { borderRadius: 8 } : {})
-              };
-              return acc;
-            }, {})}
-            onDayPress={onDayPress}
-          />
-
-        <View style={{flex: 1,flexDirection: 'column'}}>
-          <View style={styles.timePickerContainer}>
-            <CustomText fontType='primary' weight='ExtraBold' style={styles.timePickerLabel}>Start Time</CustomText>
-            <View style={{overflow: 'hidden',backgroundColor: '#1c1c1e',borderRadius: 8,padding: 8,paddingHorizontal: 0}}>
-
-            <FlatList
-              horizontal
-              data={startTimeSlots}
-              keyExtractor={(item) => item.value.toString()}
-              // style={{}}
-              // snapToOffsets={[...Array(startTimeSlots.length).fill(100)]}
-              renderItem={({ item }) => (
-                <TouchableOpacity onPress={() => setStartTime(item.value)} style={{backgroundColor: item.value === startTime ? '#EDBF311e' : '#1c1c1e',borderRadius: 24,marginHorizontal: 5}}>
-                  <CustomText weight='Medium' style={[
-                    styles.timeSlot,
-                    item.value === startTime && styles.selectedTimeSlot
-                  ]}>
-                    {item.label}
-                  </CustomText>
-                </TouchableOpacity>
-              )}
-              // snapToAlignment="center"
-              decelerationRate="fast"
-              // snapToInterval={50}
-              showsHorizontalScrollIndicator={false}
-              />
-              </View>
+    <View style={styles.modalContainer}>
+      <View style={styles.modalContent}>
+      
+      <TouchableOpacity onPress={() => carsPickerRef.current?.show()} style={{flexDirection:'row',  alignContent:"center",paddingHorizontal:16,paddingVertical:12,backgroundColor:C.surface,borderRadius:10,padding:12,width:'100%',marginBottom:12}}>
+      <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center',alignContent:"center",width:'100%'}}>
+          <View>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.textTertiary, fontSize: 11,marginBottom:2,textTransform:'uppercase'}}>Selected Car</CustomText>
+              <CustomText fontType='primary' weight='Bold' style={{color:C.text, fontSize:11,textTransform:'uppercase'}}>{cars.find(car => car.id === scheduleInfo.vehicleId)?.vehicleName || '-'}</CustomText>
           </View>
-
-          <View style={styles.timePickerContainer}>
-            <CustomText fontType='Primary' weight='ExtraBold' style={styles.timePickerLabel}>End Time</CustomText>
-            <View style={{overflow: 'hidden',backgroundColor: '#1c1c1e',borderRadius: 8,padding: 8,paddingHorizontal: 0}}>
-
-            <FlatList
-              horizontal
-              data={endTimeSlots}
-              style={{height: 36}}
-              keyExtractor={(item) => item.value.toString()}
-              // style={{height: 100}}
-              // snapToOffsets={[...Array(startTimeSlots.length).fill(100)]}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={{backgroundColor: item.value === endTime ? '#EDBF311e' : '#1c1c1e',borderRadius: 24,marginHorizontal: 5}} onPress={() => setEndTime(item.value)}>
-                  <Text style={[
-                    styles.timeSlot,
-                    item.value === endTime && styles.selectedTimeSlot
-                  ]}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              // snapToAlignment=""
-              decelerationRate="fast"
-              // snapToInterval={100}
-              showsHorizontalScrollIndicator={false}
-              />
-              </View>
+          <View style={{flexDirection:'row', alignItems:'center', justifyContent:'center'}}>
+              <Icon name="chevron-down" size={16} color={C.textTertiary} />
           </View>
-
-          </View>
-            
-     
-
-          <TouchableOpacity 
-            style={[
-              styles.confirmButton,
-              (!startDate || !endDate || !startTime || !endTime || !scheduleInfo.vehicleId) && styles.confirmButtonDisabled
-            ]} 
-            onPress={handleConfirm}
-            disabled={!startDate || !endDate || !startTime || !endTime || !scheduleInfo.vehicleId}
-          >
-            <CustomText weight='Bold' style={styles.confirmButtonText}>Create Schedule</CustomText>
-          </TouchableOpacity>
-        </View>
-        <ActionSheet ref={carsPickerRef} containerStyle={{backgroundColor:'#1c1c1e',height:'50%'}} height={'50%'} safeAreaInsets={{bottom:0}}>
-            <ScrollView style={{paddingVertical:24}}>
-            {
-            cars.length > 0 && cars.map((car, index) => (
-            <TouchableHighlight underlayColor='#090909' style={{borderRadius:8,paddingHorizontal:12,paddingVertical:4}} key={index} onPress={() => handleCarSelect(car)}>
-                <View style={{flexDirection:'row', justifyContent:'flex-start', alignItems:'center',alignContent:"center",width:'100%',marginVertical:8}}>
-                    <View>
-                        {car.images[0]?.url ? (
-                          <Image source={{uri:photoUrl(car.images[0].url)}} style={{width:48, height:48, borderRadius:4,backgroundColor:'#2c2c2e',position:'relative'}}/>
-                        ) : null}
-                    </View>
-                    <View style={{flexDirection:'column', justifyContent:'center', alignItems:'center',paddingLeft:12}}>
-                        <CustomText fontType='primary' weight='SemiBold' style={{color:'#959595', fontSize:11,letterSpacing:-.15}}>{car.vehicleNumber}</CustomText>
-                        <CustomText fontType='primary' weight='SemiBold' style={{color:'#fff', fontSize:11,letterSpacing:-.15}}>{car.vehicleName}</CustomText>
-                    </View>
-                </View>
-            </TouchableHighlight>
-            ))
-            }
-            </ScrollView>
-        </ActionSheet>
-
       </View>
+    </TouchableOpacity>
+
+        <Calendar
+          style={styles.calendar}
+          theme={{
+            calendarBackground: C.surface,
+            
+            textSectionTitleColor: C.text,
+            dayTextColor: C.text,
+            textSectionTitleColor:C.text,
+            todayTextColor: C.primaryText,
+            selectedDayTextColor: C.onPrimary,
+            monthTextColor: C.text,
+            textDayHeaderColor: C.textSecondary,
+            textDayHeaderFontSize: 12,
+            textDayHeaderTextTransform: 'uppercase',
+            textDayFontSize: 13,
+            textMonthFontSize: 12,
+            monthFontTextTransform: 'uppercase',
+            textDisabledColor: C.textDisabled,
+            arrowColor: C.primaryText
+          }}
+          minDate={new Date().toISOString().split('T')[0]}
+          markingType={'period'}
+          markedDates={Object.keys(markedDates).reduce((acc, date) => {
+            acc[date] = {
+              ...markedDates[date],
+              ...(startDate && endDate && startDate.toDateString() === endDate.toDateString() ? { borderRadius: 8 } : {})
+            };
+            return acc;
+          }, {})}
+          onDayPress={onDayPress}
+        />
+
+      <View style={{flex: 1,flexDirection: 'column'}}>
+        <View style={styles.timePickerContainer}>
+          <CustomText fontType='primary' weight='ExtraBold' style={styles.timePickerLabel}>Start Time</CustomText>
+          <View style={{overflow: 'hidden',backgroundColor: C.surface,borderRadius: 8,padding: 8,paddingHorizontal: 0}}>
+
+          <FlatList
+            horizontal
+            data={startTimeSlots}
+            keyExtractor={(item) => item.value.toString()}
+            // style={{}}
+            // snapToOffsets={[...Array(startTimeSlots.length).fill(100)]}
+            renderItem={({ item }) => (
+              <TouchableOpacity onPress={() => setStartTime(item.value)} style={{backgroundColor: item.value === startTime ? '#EDBF311e' : C.surface,borderRadius: 24,marginHorizontal: 5}}>
+                <CustomText weight='Medium' style={[
+                  styles.timeSlot,
+                  item.value === startTime && styles.selectedTimeSlot
+                ]}>
+                  {item.label}
+                </CustomText>
+              </TouchableOpacity>
+            )}
+            // snapToAlignment="center"
+            decelerationRate="fast"
+            // snapToInterval={50}
+            showsHorizontalScrollIndicator={false}
+            />
+            </View>
+        </View>
+
+        <View style={styles.timePickerContainer}>
+          <CustomText fontType='Primary' weight='ExtraBold' style={styles.timePickerLabel}>End Time</CustomText>
+          <View style={{overflow: 'hidden',backgroundColor: C.surface,borderRadius: 8,padding: 8,paddingHorizontal: 0}}>
+
+          <FlatList
+            horizontal
+            data={endTimeSlots}
+            style={{height: 36}}
+            keyExtractor={(item) => item.value.toString()}
+            // style={{height: 100}}
+            // snapToOffsets={[...Array(startTimeSlots.length).fill(100)]}
+            renderItem={({ item }) => (
+              <TouchableOpacity style={{backgroundColor: item.value === endTime ? '#EDBF311e' : C.surface,borderRadius: 24,marginHorizontal: 5}} onPress={() => setEndTime(item.value)}>
+                <Text style={[
+                  styles.timeSlot,
+                  item.value === endTime && styles.selectedTimeSlot
+                ]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            )}
+            // snapToAlignment=""
+            decelerationRate="fast"
+            // snapToInterval={100}
+            showsHorizontalScrollIndicator={false}
+            />
+            </View>
+        </View>
+
+        </View>
+          
+   
+
+        <TouchableOpacity 
+          style={[
+            styles.confirmButton,
+            (!startDate || !endDate || !startTime || !endTime || !scheduleInfo.vehicleId) && styles.confirmButtonDisabled
+          ]} 
+          onPress={handleConfirm}
+          disabled={!startDate || !endDate || !startTime || !endTime || !scheduleInfo.vehicleId}
+        >
+          <CustomText weight='Bold' style={styles.confirmButtonText}>Create Schedule</CustomText>
+        </TouchableOpacity>
+      </View>
+      <ActionSheet ref={carsPickerRef} containerStyle={{backgroundColor:C.surface,height:'50%'}} height={'50%'} safeAreaInsets={{bottom:0}}>
+          <ScrollView style={{paddingVertical:24}}>
+          {
+          cars.length > 0 && cars.map((car, index) => (
+          <TouchableHighlight underlayColor={C.background} style={{borderRadius:8,paddingHorizontal:12,paddingVertical:4}} key={index} onPress={() => handleCarSelect(car)}>
+              <View style={{flexDirection:'row', justifyContent:'flex-start', alignItems:'center',alignContent:"center",width:'100%',marginVertical:8}}>
+                  <View>
+                      {car.images[0]?.url ? (
+                        <Image source={{uri:photoUrl(car.images[0].url)}} style={{width:48, height:48, borderRadius:4,backgroundColor:C.surfaceHigh,position:'relative'}}/>
+                      ) : null}
+                  </View>
+                  <View style={{flexDirection:'column', justifyContent:'center', alignItems:'center',paddingLeft:12}}>
+                      <CustomText fontType='primary' weight='SemiBold' style={{color:C.textTertiary, fontSize:11,letterSpacing:-.15}}>{car.vehicleNumber}</CustomText>
+                      <CustomText fontType='primary' weight='SemiBold' style={{color:C.text, fontSize:11,letterSpacing:-.15}}>{car.vehicleName}</CustomText>
+                  </View>
+              </View>
+          </TouchableHighlight>
+          ))
+          }
+          </ScrollView>
+      </ActionSheet>
+
+    </View>
   );
 }
 
 
 
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   modalContainer: {
     flex: 1,
     // backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
+
   modalContent: {
-    backgroundColor: '#000',
+    backgroundColor: C.background,
     // height: '100%',
     flex: 1,
     paddingHorizontal:20,
     paddingVertical:12
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     // marginBottom: 20,
   },
+
   headerText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#fff',
+    color: C.text,
   },
+
   closeButton: {
     padding: 5,
   },
+
   calendar: {
     marginBottom: 12,
     borderRadius: 10,
     borderWidth: 1,
     // height: 30,
-    borderColor: '#000',
+    borderColor: C.background,
   },
+
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
   },
+
   timeSection: {
     // flex: 1,
     marginHorizontal: 5,
   },
+
   label: {
     fontSize: 14,
-    color: '#a3a3a3',
+    color: C.textSecondary,
     marginBottom: 10,
   },
+
   pickerButton: {
-    backgroundColor: '#2C2C2E',
+    backgroundColor: C.surfaceHigh,
     padding: 15,
     borderRadius: 10,
   },
+
   pickerButtonText: {
-    color: '#fff',
+    color: C.text,
     fontSize: 16,
     textAlign: 'center',
   },
+
   confirmButton: {
-    backgroundColor: '#EDBF31',
+    backgroundColor: C.primary,
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
   },
+
   confirmButtonDisabled: {
-    backgroundColor: '#4C4C4E',
+    backgroundColor: C.surfaceHighest,
   },
+
   confirmButtonText: {
-    color: '#000',
+    color: C.onPrimary,
     textTransform: 'uppercase',
     fontSize: 12,
   },
+
   timePickerContainer: {
     marginBottom: 20,
     width: '100%',
   },
+
   timePickerLabel: {
-    color: '#757575',
+    color: C.textTertiary,
     fontSize: 11,
     textTransform: 'uppercase',
     marginBottom: 10,
   },
+
   timeSlot: {
     // borderWidth: 1,
     // borderColor: '#2C2C2E',
-    color: '#a3a3a3',
+    color: C.textSecondary,
     // backgroundColor: '#2C2C2E',
     padding: 10,
     borderRadius: 5,
     fontSize: 12,
     marginHorizontal: 5,
   },
+
   selectedTimeSlot: {
-    color: BRAND_COLOR,
-  },
-});
+    color: C.primaryText,
+  }
+}));
 

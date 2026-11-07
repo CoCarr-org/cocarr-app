@@ -7,11 +7,13 @@ import { CreateScheduleScreen } from '../screens/host/hostCarsScreens/CreateSche
 import { CreateScheduleBlockScreen } from '../screens/host/hostCarsScreens/CreateScheduleBlock';
 import { HostCarInfoScreen } from '../screens/host/hostCarsScreens/HostCarInfoScreen';
 
+import { C } from '../theme';
+
 const Stack = createNativeStackNavigator();
 
 export function HostCarsNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:'#000'}}>
+    <Stack.Navigator screenOptions={{ headerShown: false ,statusBarColor:C.background}}>
       <Stack.Screen name="HostCars" component={HostCarsScreen} />
       <Stack.Screen name="HostCarInfo" component={HostCarInfoScreen}/>
       <Stack.Screen name="ScheduleInfo" component={ScheduleInfoScreen}/>

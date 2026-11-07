@@ -7,17 +7,22 @@ import axios from "axios";
 import { API_URL } from "./constants";
 
 
+import { C } from '../theme';
+
+
 // Uploaded images live in a private bucket, so linking straight to the bucket
 // URL returns 403. Route those through the API's image proxy (GET /image/:key).
 // Local picker URIs and other hosts are returned untouched.
-// ToastAndroid is Android-only — calling it on iOS throws
-// "ToastAndroid is not supported on this platform". Use this everywhere
-// instead: a toast on Android, a lightweight alert on iOS.
-export const notify = (message) => {
+// Use this everywhere instead of ToastAndroid (Android-only; throws on iOS).
+// Non-blocking toast on both platforms. On iOS this used to be Alert.alert,
+// a modal the user had to dismiss for every "Saved" and every background-fetch
+// error. `type` picks the accent: 'info' (default), 'success' or 'error'.
+// Messages that start with "Error" or "Failed" default to 'error'.
+export const notify = (message, type) => {
   if (!message) return;
   const text = String(message);
-  if (Platform.OS === 'android') ToastAndroid.show(text, ToastAndroid.SHORT);
-  else Alert.alert('', text);
+  const kind = type || (/^(error|failed|could not|unable)/i.test(text) ? 'error' : 'info');
+  Toast.show({ type: kind, text1: text, position: 'top', visibilityTime: kind === 'error' ? 4500 : 2800 });
 };
 
 // Object keys are UUIDs. Older uploads were stored as `<endpoint>/<bucket><uuid>`
@@ -249,12 +254,12 @@ export const showToast = (type, text1, text2) => {
       padding: 4,
     },
     text1Style: {
-      color: 'white',
+      color: C.text,
       fontSize: 16,
       fontWeight: 'bold',
     },
     text2Style: {
-      color: 'white',
+      color: C.text,
       fontSize: 14,
     },
   });

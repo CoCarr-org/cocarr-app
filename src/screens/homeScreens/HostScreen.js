@@ -3,12 +3,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StatusBar, TouchableOpacity, Image, ScrollView, FlatList, ToastAndroid, RefreshControl, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { API_URL, BRAND_COLOR } from '../../utils/constants';
+import { API_URL } from '../../utils/constants';
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { formatDate, notify } from '../../utils/utils';
 import { styles } from '../../style';
 import { updateUserRole, setHostStatus } from '../../store/authSlice';
+
+import { C } from '../../theme';
 
 // import Logo from '../../images/logo.png';
 // import { BottomSheet, BottomSheetView } from '@gorhom/bottom-sheet';
@@ -79,15 +81,15 @@ export default function HostScreen() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={BRAND_COLOR} />
+      <View style={{ flex: 1, backgroundColor: C.background, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color={C.primaryText} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: '#000' }}
+      style={{ flex: 1, backgroundColor: C.background }}
       contentContainerStyle={{ paddingTop: insets.top }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={checkHostRegistered} />}
     >
@@ -95,7 +97,7 @@ export default function HostScreen() {
           its own way back to the renting shell. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }}>
         <TouchableOpacity onPress={() => navigator.goBack()} style={{ padding: 6 }}>
-          <Icon name="chevron-back" size={22} color="#e3e3e3" />
+          <Icon name="chevron-back" size={22} color={C.text} />
         </TouchableOpacity>
       </View>
 
@@ -133,7 +135,7 @@ export default function HostScreen() {
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24, marginBottom: 40, paddingVertical: 20, alignContent: "center" }}>
-        <Text style={{ color: '#efefef', fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
+        <Text style={{ color: C.text, fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
           Why Choose Cocarr?
         </Text>
       </View>
@@ -227,7 +229,7 @@ export default function HostScreen() {
 //               ))
 //             )}
 //           </ScrollView>
-         
+
 //         </View>
 //   )
 // }
@@ -242,16 +244,16 @@ const FaqBlock = () => {
 
   const renderItem = ({ item }) => {
     return (
-      <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1c1c1e' }}>
-        <Text style={{ color: '#fff', fontSize: 14, fontWeight: '500', marginBottom: 4 }}>{item.question}</Text>
-        <Text style={{ color: '#a3a3a3', fontSize: 12, fontWeight: '400' }}>{item.answer}</Text>
+      <View style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}>
+        <Text style={{ color: C.text, fontSize: 14, fontWeight: '500', marginBottom: 4 }}>{item.question}</Text>
+        <Text style={{ color: C.textSecondary, fontSize: 12, fontWeight: '400' }}>{item.answer}</Text>
       </View>
-    )
+    );
   }
   return (
     <View style={{ flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 40, paddingHorizontal: 24 }}>
       <View style={{ flexDirection: 'column', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 20, marginBottom: 32 }}>
-        <Text style={{ color: '#e3e3e3', fontSize: 16, fontWeight: '500', marginBottom: 1 }}>
+        <Text style={{ color: C.text, fontSize: 16, fontWeight: '500', marginBottom: 1 }}>
           FAQ
         </Text>
       </View>
@@ -260,5 +262,5 @@ const FaqBlock = () => {
         renderItem={renderItem}
       />
     </View>
-  )
+  );
 }

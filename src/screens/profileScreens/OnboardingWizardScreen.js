@@ -11,12 +11,14 @@ import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/nativ
 import { useDispatch } from 'react-redux';
 import { updateProfile } from '../../store/authSlice';
 import CustomText from '../../components/CustomText';
-import { API_URL, BRAND_COLOR, BYPASS_AADHAAR_VERIFY } from '../../utils/constants';
+import { API_URL, BYPASS_AADHAAR_VERIFY } from '../../utils/constants';
 import { notify, photoUrl, requestCameraPermission } from '../../utils/utils';
 import { ALL_STATES } from '../../utils/indianStates';
 import {
   validateDateOfBirth, maxDateOfBirth, minDateOfBirth, toLocalIsoDate,
 } from '../../utils/age';
+
+import { C, themedStyleSheet } from '../../theme';
 
 // Onboarding wizard — and the one place profile details are viewed or edited.
 // Mirrors the web app's OnboardingWizardPage; keep the two in step.
@@ -104,7 +106,7 @@ const Field = ({
       value={value}
       onChangeText={onChange}
       placeholder={placeholder}
-      placeholderTextColor='#6b6b73'
+      placeholderTextColor={C.textMuted}
       keyboardType={keyboardType}
       maxLength={maxLength}
       autoCapitalize={autoCapitalize}
@@ -125,7 +127,7 @@ const PickerField = ({ label, value, placeholder, onPress, required, error }) =>
       <CustomText fontType='primary' style={value ? styles.pickerValue : styles.pickerPlaceholder}>
         {value || placeholder}
       </CustomText>
-      <Icon name='chevron-down' size={16} color='#6b6b73' />
+      <Icon name='chevron-down' size={16} color={C.textMuted} />
     </TouchableOpacity>
     {error ? <CustomText fontType='primary' style={styles.fieldError}>{error}</CustomText> : null}
   </View>
@@ -138,7 +140,7 @@ const StateModal = ({ visible, onClose, onSelect, selected }) => (
         <View style={styles.modalHead}>
           <CustomText fontType='primary' weight='Bold' style={styles.modalTitle}>Select state</CustomText>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Icon name='close' size={22} color='#9a9aa2' />
+            <Icon name='close' size={22} color={C.textSecondary} />
           </TouchableOpacity>
         </View>
         <FlatList
@@ -147,7 +149,7 @@ const StateModal = ({ visible, onClose, onSelect, selected }) => (
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.stateRow} onPress={() => { onSelect(item); onClose(); }}>
               <CustomText fontType='primary' style={styles.stateText}>{item}</CustomText>
-              {selected === item ? <Icon name='checkmark' size={18} color={BRAND_COLOR} /> : null}
+              {selected === item ? <Icon name='checkmark' size={18} color={C.primaryText} /> : null}
             </TouchableOpacity>
           )}
         />
@@ -163,7 +165,7 @@ const DocCapture = ({ label, uri, onPress, required }) => (
       <Image source={{ uri }} style={styles.docPreview} resizeMode='cover' />
     ) : (
       <>
-        <Icon name='camera-outline' size={22} color='#757575' />
+        <Icon name='camera-outline' size={22} color={C.textTertiary} />
         <CustomText fontType='primary' style={styles.docText}>
           {label}{required ? ' *' : ''}
         </CustomText>
@@ -307,10 +309,10 @@ const ReviewList = ({ rows }) => {
 const DocStatus = ({ doc }) => {
   const status = doc?.status || (doc?.submitted ? 'pending' : 'missing');
   const map = {
-    verified: ['#0f2a1c', '#6ee6b0', 'Verified'],
-    pending: ['#241f0c', BRAND_COLOR, 'Awaiting review'],
-    rejected: ['#2b1212', '#f87171', 'Rejected'],
-    missing: ['#1e1e22', '#9a9aa2', 'Not submitted'],
+    verified: [C.successSoft, C.success, 'Verified'],
+    pending: [C.primarySoft, C.primaryText, 'Awaiting review'],
+    rejected: [C.dangerSoft, C.danger, 'Rejected'],
+    missing: [C.surfaceHigh, C.textTertiary, 'Not submitted'],
   };
   const [bg, fg, text] = map[status] || map.missing;
   return (
@@ -1097,7 +1099,7 @@ const OnboardingWizardScreen = () => {
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.centered}><ActivityIndicator color={BRAND_COLOR} /></View>
+        <View style={styles.centered}><ActivityIndicator color={C.primaryText} /></View>
       </View>
     );
   }
@@ -1132,7 +1134,7 @@ const OnboardingWizardScreen = () => {
             disabled={busy}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
-            <Icon name='chevron-back' size={24} color='#e3e3e3' />
+            <Icon name='chevron-back' size={24} color={C.text} />
           </TouchableOpacity>
         ) : (
           // Keeps the title optically centred when there is no chevron.
@@ -1489,7 +1491,7 @@ const OnboardingWizardScreen = () => {
                     <Image source={{ uri: selfie }} style={styles.selfieImage} resizeMode='cover' />
                   ) : (
                     <>
-                      <Icon name='camera-outline' size={30} color='#757575' />
+                      <Icon name='camera-outline' size={30} color={C.textTertiary} />
                       <CustomText fontType='primary' style={styles.docText}>
                         Tap to take a selfie
                       </CustomText>
@@ -1760,8 +1762,8 @@ const OnboardingWizardScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+const styles = themedStyleSheet(C => ({
+  container: { flex: 1, backgroundColor: C.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 16, paddingBottom: 48 },
 
@@ -1771,145 +1773,155 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: Platform.OS === 'ios' ? 52 : 16,
     paddingBottom: 12,
-    backgroundColor: '#000',
+    backgroundColor: C.background,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1e1e22',
+    borderBottomColor: C.border,
   },
+
   headerBack: { width: 36, alignItems: 'flex-start', justifyContent: 'center' },
   headerBackSpacer: { width: 36 },
   headerTitleWrap: { flex: 1, alignItems: 'center' },
-  headerTitle: { color: '#f0f0f2', fontSize: 16, letterSpacing: -0.2 },
-  headerSub: { color: '#8a8a8a', fontSize: 11, marginTop: 2 },
-
+  headerTitle: { color: C.text, fontSize: 16, letterSpacing: -0.2 },
+  headerSub: { color: C.textTertiary, fontSize: 11, marginTop: 2 },
   rail: { flexDirection: 'row', marginBottom: 18 },
   railItem: { flex: 1, alignItems: 'center' },
+
   railDot: {
     width: 26, height: 26, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#1e1e22',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface,
   },
-  railDotCurrent: { backgroundColor: BRAND_COLOR },
-  railDotDone: { backgroundColor: '#1f9d55' },
-  railDotText: { fontSize: 12, color: '#6b6b73' },
-  railDotTextOn: { color: '#000' },
-  railLabel: { fontSize: 11, color: '#6b6b73', marginTop: 5 },
-  railLabelOn: { color: '#fff' },
 
-  h2: { fontSize: 17, color: '#fff', marginBottom: 8 },
+  railDotCurrent: { backgroundColor: C.primary },
+  railDotDone: { backgroundColor: C.success },
+  railDotText: { fontSize: 12, color: C.textMuted },
+  railDotTextOn: { color: C.onPrimary },
+  railLabel: { fontSize: 11, color: C.textMuted, marginTop: 5 },
+  railLabelOn: { color: C.text },
+  h2: { fontSize: 17, color: C.text, marginBottom: 8 },
 
   // Preview stacks five read-only sections. Each is boxed and separated so the
   // Edit under one cannot read as belonging to the next.
   previewSection: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#26262c',
+    borderColor: C.border,
     borderRadius: 10,
     padding: 14,
     marginBottom: 14,
   },
+
   previewEdit: { marginTop: 10, alignSelf: 'flex-start' },
-  hint: { fontSize: 13, color: '#9a9aa2', marginBottom: 14, lineHeight: 19 },
-  footnote: { fontSize: 11, color: '#6b6b73', marginTop: 2 },
-  error: { fontSize: 13, color: '#f87171', marginBottom: 12 },
-  ok: { fontSize: 13, color: '#6ee6b0', marginBottom: 12 },
-
+  hint: { fontSize: 13, color: C.textSecondary, marginBottom: 14, lineHeight: 19 },
+  footnote: { fontSize: 11, color: C.textMuted, marginTop: 2 },
+  error: { fontSize: 13, color: C.danger, marginBottom: 12 },
+  ok: { fontSize: 13, color: C.success, marginBottom: 12 },
   field: { marginBottom: 14 },
-  fieldLabel: { fontSize: 12, color: '#9a9aa2', marginBottom: 6 },
-  fieldError: { fontSize: 11, color: '#f87171', marginTop: 4 },
-  req: { color: '#f87171' },
-  input: {
-    backgroundColor: '#141418',
-    borderWidth: 1, borderColor: '#26262c', borderRadius: 8,
-    paddingHorizontal: 12, paddingVertical: 10,
-    color: '#fff', fontSize: 14,
-  },
-  inputError: { borderColor: '#f87171' },
-  inputLocked: { backgroundColor: '#0e0e11', color: '#6b6b73' },
-  pickerInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pickerValue: { color: '#fff', fontSize: 14 },
-  pickerPlaceholder: { color: '#6b6b73', fontSize: 14 },
+  fieldLabel: { fontSize: 12, color: C.textSecondary, marginBottom: 6 },
+  fieldError: { fontSize: 11, color: C.danger, marginTop: 4 },
+  req: { color: C.danger },
 
+  input: {
+    backgroundColor: C.surfaceLow,
+    borderWidth: 1, borderColor: C.border, borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 10,
+    color: C.text, fontSize: 14,
+  },
+
+  inputError: { borderColor: C.danger },
+  inputLocked: { backgroundColor: C.surfaceLow, color: C.textMuted },
+  pickerInput: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pickerValue: { color: C.text, fontSize: 14 },
+  pickerPlaceholder: { color: C.textMuted, fontSize: 14 },
   docRow: { flexDirection: 'row', gap: 12, marginBottom: 8 },
+
   docBox: {
     flex: 1, height: 112, borderRadius: 8,
-    borderWidth: 1, borderColor: '#26262c', borderStyle: 'dashed',
-    backgroundColor: '#141418',
+    borderWidth: 1, borderColor: C.border, borderStyle: 'dashed',
+    backgroundColor: C.surfaceLow,
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  docPreview: { width: '100%', height: '100%' },
-  docText: { fontSize: 11, color: '#757575', marginTop: 6 },
 
+  docPreview: { width: '100%', height: '100%' },
+  docText: { fontSize: 11, color: C.textTertiary, marginTop: 6 },
   selfieWrap: { alignItems: 'center', marginVertical: 8 },
+
   selfieFrame: {
     width: 200, height: 200, borderRadius: 100,
-    borderWidth: 2, borderColor: BRAND_COLOR,
-    backgroundColor: '#141418',
+    borderWidth: 2, borderColor: C.primary,
+    backgroundColor: C.surfaceLow,
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
+
   selfieImage: { width: '100%', height: '100%' },
 
   primaryBtn: {
-    backgroundColor: BRAND_COLOR, borderRadius: 8,
+    backgroundColor: C.primary, borderRadius: 8,
     paddingVertical: 14, alignItems: 'center', marginTop: 18,
   },
-  primaryBtnText: { color: '#000', fontSize: 15 },
+
+  primaryBtnText: { color: C.onPrimary, fontSize: 15 },
   linkBtn: { alignItems: 'center', paddingVertical: 14 },
-  linkText: { color: BRAND_COLOR, fontSize: 14 },
-
+  linkText: { color: C.primaryText, fontSize: 14 },
   banner: { borderRadius: 10, padding: 14, marginTop: 16 },
-  bannerOk: { backgroundColor: '#0f2a1c' },
-  bannerWarn: { backgroundColor: '#2a1d0c' },
-  bannerError: { backgroundColor: '#2b1212' },
-  bannerTitle: { fontSize: 14, color: '#fff', marginBottom: 5 },
-  bannerBody: { fontSize: 12.5, color: '#c9c9d1', lineHeight: 19, marginBottom: 6 },
-
+  bannerOk: { backgroundColor: C.successSoft },
+  bannerWarn: { backgroundColor: C.warningSoft },
+  bannerError: { backgroundColor: C.dangerSoft },
+  bannerTitle: { fontSize: 14, color: C.text, marginBottom: 5 },
+  bannerBody: { fontSize: 12.5, color: C.textSecondary, lineHeight: 19, marginBottom: 6 },
   ocrRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, paddingVertical: 4 },
-  ocrLabel: { fontSize: 12, color: '#8f8f98' },
-  ocrValue: { fontSize: 12.5, color: '#fff', flexShrink: 1, textAlign: 'right' },
-  ocrMismatch: { fontSize: 12.5, color: '#ffb4a8', lineHeight: 19, marginTop: 8 },
-  ocrToggle: { fontSize: 12.5, color: BRAND_COLOR, marginTop: 10 },
-
+  ocrLabel: { fontSize: 12, color: C.textTertiary },
+  ocrValue: { fontSize: 12.5, color: C.text, flexShrink: 1, textAlign: 'right' },
+  ocrMismatch: { fontSize: 12.5, color: C.danger, lineHeight: 19, marginTop: 8 },
+  ocrToggle: { fontSize: 12.5, color: C.primaryText, marginTop: 10 },
   headerAction: { width: 44, alignItems: 'flex-end', justifyContent: 'center' },
-  headerActionText: { color: BRAND_COLOR, fontSize: 14 },
+  headerActionText: { color: C.primaryText, fontSize: 14 },
 
   reviewHead: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
   },
-  reviewList: { backgroundColor: '#141418', borderRadius: 10, paddingHorizontal: 14, marginTop: 6 },
+
+  reviewList: { backgroundColor: C.surfaceLow, borderRadius: 10, paddingHorizontal: 14, marginTop: 6 },
+
   reviewRow: {
     flexDirection: 'row', justifyContent: 'space-between', gap: 16,
-    paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#1e1e22',
+    paddingVertical: 11, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border,
   },
-  reviewLabel: { fontSize: 12, color: '#9a9aa2' },
-  reviewValue: { fontSize: 13, color: '#fff', flexShrink: 1, textAlign: 'right' },
-  reviewEmpty: { color: '#6b6b73', fontStyle: 'italic' },
 
+  reviewLabel: { fontSize: 12, color: C.textSecondary },
+  reviewValue: { fontSize: 13, color: C.text, flexShrink: 1, textAlign: 'right' },
+  reviewEmpty: { color: C.textMuted, fontStyle: 'italic' },
   pill: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
   pillText: { fontSize: 10.5, letterSpacing: 0.4 },
-
   reviewImgWrap: { flex: 1 },
+
   reviewImg: {
     width: '100%', aspectRatio: 3 / 2, borderRadius: 8,
-    borderWidth: 1, borderColor: '#26262c', backgroundColor: '#141418',
+    borderWidth: 1, borderColor: C.border, backgroundColor: C.surfaceLow,
   },
-  reviewImgEmpty: { alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed' },
-  reviewImgCaption: { fontSize: 11, color: '#6b6b73', textAlign: 'center', marginTop: 5 },
 
+  reviewImgEmpty: { alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed' },
+  reviewImgCaption: { fontSize: 11, color: C.textMuted, textAlign: 'center', marginTop: 5 },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+
   modalSheet: {
-    backgroundColor: '#141418', borderTopLeftRadius: 16, borderTopRightRadius: 16,
+    backgroundColor: C.surfaceLow, borderTopLeftRadius: 16, borderTopRightRadius: 16,
     maxHeight: '75%', paddingBottom: 24,
   },
+
   modalHead: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 18, paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#26262c',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border,
   },
-  modalTitle: { color: '#fff', fontSize: 15 },
+
+  modalTitle: { color: C.text, fontSize: 15 },
+
   stateRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 18, paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#1e1e22',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border,
   },
-  stateText: { color: '#e3e3e3', fontSize: 14 },
-});
+
+  stateText: { color: C.text, fontSize: 14 }
+}));
 
 export default OnboardingWizardScreen;

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { Provider, useSelector } from 'react-redux';
 import { persistor, store } from './src/store/store';
 import { MainNavigator } from './src/navigators/MainNavigator';
@@ -11,11 +11,19 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import axios from 'axios';
 import BootSplash from 'react-native-bootsplash';
-import Toast, { BaseToast } from 'react-native-toast-message';
+import Toast from 'react-native-toast-message';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { HostNavigator } from './src/navigators/HostNavigator';
 import { API_URL } from './src/utils/constants';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ErrorBoundary from './src/components/ErrorBoundary';
+
+import { C, ThemeProvider, useTheme } from './src/theme';
+
+// Navigation state lives outside the tree so a light/dark switch (which
+// remounts everything under ThemeProvider) returns the user to the same screen
+// instead of the first tab.
+let savedNavState;
 
 function RootNavigator() {
   const [initializing, setInitializing] = useState(false);
@@ -175,10 +183,29 @@ function RootNavigator() {
     return unsubscribeOnMessage;
   }, []);
 
-  if (initializing) return <ActivityIndicator size="large" color="#EDBF31" />;
+  const { colors, scheme } = useTheme();
+  // React Navigation paints its own card/background colours; without this the
+  // stack shows a white flash between screens in dark mode and a black one in light.
+  const navTheme = {
+    ...(scheme === 'dark' ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(scheme === 'dark' ? DarkTheme : DefaultTheme).colors,
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.background,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.danger,
+    },
+  };
+
+  if (initializing) return <ActivityIndicator size="large" color={C.primaryText} />;
 
   return (
     <NavigationContainer ref={navigationRef}
+      theme={navTheme}
+      initialState={savedNavState}
+      onStateChange={(state) => { savedNavState = state; }}
       linking={{
         prefixes: ['cocarrApp://', 'https://www.cocarr.com'],
         config: {
@@ -204,34 +231,43 @@ export default function App() {
           without a provider above it, which is what TopBar and AppTabBar use to
           size themselves around the notch and the home indicator. */}
       <SafeAreaProvider>
-        <PersistGate loading={<ActivityIndicator size="large" color="#EDBF31" />} persistor={persistor}>
-          <ErrorBoundary>
-            <RootNavigator />
-          </ErrorBoundary>
-          <Toast config={toastConfig} />
+        <PersistGate loading={<ActivityIndicator size="large" color={C.primaryText} />} persistor={persistor}>
+          <ThemeProvider>
+            <ErrorBoundary>
+              <RootNavigator />
+            </ErrorBoundary>
+            <Toast config={toastConfig} />
+          </ThemeProvider>
         </PersistGate>
       </SafeAreaProvider>
     </Provider>
   );
 }
 
+// Toasts: a surface card with a coloured accent bar and icon, so they read in
+// both modes and the message text is never white-on-green (~2.4:1).
+const ToastCard = ({ text1, text2, accent, icon }) => (
+  <View
+    accessibilityRole="alert"
+    style={{
+      width: '92%', flexDirection: 'row', alignItems: 'center', gap: 12,
+      backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border,
+      paddingVertical: 12, paddingHorizontal: 14,
+      borderLeftWidth: 4, borderLeftColor: accent,
+      shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 12, shadowOffset: { width: 0, height: 6 },
+      elevation: 6,
+    }}
+  >
+    <Ionicons name={icon} size={20} color={accent} />
+    <View style={{ flex: 1 }}>
+      {!!text1 && <Text style={{ color: C.text, fontSize: 14, fontWeight: '600' }}>{text1}</Text>}
+      {!!text2 && <Text style={{ color: C.textSecondary, fontSize: 13, marginTop: 2 }}>{text2}</Text>}
+    </View>
+  </View>
+);
+
 const toastConfig = {
-  success: (props) => (
-    <BaseToast
-      {...props}
-      style={{ borderLeftWidth: 0, backgroundColor: 'green', padding: 4, borderRadius: 10, width: '90%' }}
-    >
-      <Text style={{ color: 'white', fontSize: 14 }}>{props.text1}</Text>
-      <Text style={{ color: 'white', fontSize: 12 }}>{props.text2}</Text>
-    </BaseToast>
-  ),
-  error: (props) => (
-    <BaseToast
-      {...props}
-      style={{ borderLeftWidth: 0, backgroundColor: '#ef0000', padding: 4, borderRadius: 6, width: '90%' }}
-    >
-      <Text style={{ color: 'white', fontSize: 14 }}>{props.text1}</Text>
-      <Text style={{ color: 'white', fontSize: 12 }}>{props.text2}</Text>
-    </BaseToast>
-  ),
+  success: (props) => <ToastCard {...props} accent={C.success} icon="checkmark-circle" />,
+  error: (props) => <ToastCard {...props} accent={C.danger} icon="alert-circle" />,
+  info: (props) => <ToastCard {...props} accent={C.primaryText} icon="information-circle" />,
 };

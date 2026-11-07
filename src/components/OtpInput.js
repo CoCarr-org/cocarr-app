@@ -1,5 +1,7 @@
 import React, { useRef } from 'react';
-import { View, TextInput, StyleSheet } from 'react-native';
+import { View, TextInput } from 'react-native';
+
+import { C, themedStyleSheet } from '../theme';
 
 const OtpInput = ({ length = 6, value = '', onChange }) => {
   const inputRefs = useRef([]);
@@ -43,31 +45,32 @@ const OtpInput = ({ length = 6, value = '', onChange }) => {
           keyboardType="numeric"
           maxLength={1}
           selectTextOnFocus
-          placeholderTextColor="#757575"
+          placeholderTextColor={C.textTertiary}
         />
       ))}
     </View>
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   container: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginBottom: 18
   },
+
   input: {
-    backgroundColor: '#1c1c1e',
+    backgroundColor: C.surface,
     padding: 10,
     paddingHorizontal: 8,
     borderRadius: 5,
     marginHorizontal: 4,
     width: '13%',
     textAlign: 'center',
-    color: '#fff', 
+    color: C.text, 
     fontSize: 18,
     fontWeight: 'bold'
   }
-});
+}));
 
 export default OtpInput;

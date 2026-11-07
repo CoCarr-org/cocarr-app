@@ -1,7 +1,9 @@
 import React from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+
+import { C, themedStyleSheet } from '../../theme';
 
 export const PaymentSuccessScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
@@ -10,12 +12,12 @@ export const PaymentSuccessScreen = ({ navigation, route }) => {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.successIcon}>
-        <Icon name="checkmark-circle" size={80} color="#EDBF31" />
+        <Icon name="checkmark-circle" size={80} color={C.primaryText} />
       </View>
-      
+
       <Text style={styles.title}>Payment Successful!</Text>
       <Text style={styles.subtitle}>Your booking has been confirmed</Text>
-      
+
       <View style={styles.detailsContainer}>
         <Text style={styles.detailText}>
           Booking ID: {bookingDetails.paymentId.slice(-8)}
@@ -31,7 +33,7 @@ export const PaymentSuccessScreen = ({ navigation, route }) => {
       >
         <Text style={styles.buttonText}>View Booking</Text>
       </TouchableOpacity>
-      
+
       <TouchableOpacity 
         style={[styles.button, styles.homeButton]}
         onPress={() => navigation.navigate('HomeIndex')}
@@ -44,59 +46,68 @@ export const PaymentSuccessScreen = ({ navigation, route }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: C.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
+
   successIcon: {
     marginBottom: 20,
   },
+
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: C.text,
     marginBottom: 10,
   },
+
   subtitle: {
     fontSize: 16,
-    color: '#808080',
+    color: C.textTertiary,
     marginBottom: 30,
   },
+
   detailsContainer: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: C.surface,
     padding: 20,
     borderRadius: 12,
     width: '100%',
     marginBottom: 30,
   },
+
   detailText: {
-    color: '#fff',
+    color: C.text,
     fontSize: 16,
     marginBottom: 10,
   },
+
   button: {
-    backgroundColor: '#EDBF31',
+    backgroundColor: C.primary,
     padding: 16,
     borderRadius: 8,
     width: '100%',
     alignItems: 'center',
     marginBottom: 12,
   },
+
   buttonText: {
-    color: '#000',
+    color: C.onPrimary,
     fontSize: 16,
     fontWeight: '600',
   },
+
   homeButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#EDBF31',
+    borderColor: C.primary,
   },
+
   homeButtonText: {
-    color: '#EDBF31',
-  },
-}); 
+    color: C.primaryText,
+  }
+})); 

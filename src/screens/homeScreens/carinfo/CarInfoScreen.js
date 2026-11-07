@@ -1,8 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { View, Text, FlatList, StyleSheet, Image, ActivityIndicator, Platform, TouchableOpacity, ScrollView, Linking, ToastAndroid, Alert, Dimensions } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  ActivityIndicator,
+  Platform,
+  TouchableOpacity,
+  ScrollView,
+  Linking,
+  ToastAndroid,
+  Alert,
+  Dimensions,
+} from 'react-native';
 import axios from 'axios';
-import { API_URL, BRAND_COLOR } from '../../../utils/constants';
+import { API_URL } from '../../../utils/constants';
 import { Link, useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -11,6 +24,8 @@ import { convertToUnixTimestamp, formatDate, notify } from '../../../utils/utils
 import ActionSheet from 'react-native-actions-sheet';
 import RazorpayCheckout from 'react-native-razorpay';
 import CustomText from '../../../components/CustomText';
+
+import { C, themedStyleSheet } from '../../../theme';
 
 export function CarsInfoScreen({route}) {
   const insets = useSafeAreaInsets();
@@ -114,7 +129,7 @@ export function CarsInfoScreen({route}) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#EDBF31" />
+        <ActivityIndicator size="large" color={C.primaryText} />
       </View>
     );
   }
@@ -159,7 +174,7 @@ export function CarsInfoScreen({route}) {
       },
         key: 'rzp_test_Z3US7Xs7SFtOHg', // Replace with your Razorpay key
         amount: amount * 100, 
-        theme: { color: '#EDBF31' }
+        theme: { color: C.primaryText }
       };
 
       const paymentData = await RazorpayCheckout.open(options);
@@ -220,17 +235,17 @@ export function CarsInfoScreen({route}) {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setDeliveryType('self')}
-            style={{flex:1,paddingVertical:14,borderRadius:8,borderWidth:1,alignItems:'center',borderColor: deliveryType==='self' ? BRAND_COLOR : '#252525', backgroundColor: deliveryType==='self' ? '#EDBF3113' : '#1c1c1e'}}
+            style={{flex:1,paddingVertical:14,borderRadius:8,borderWidth:1,alignItems:'center',borderColor: deliveryType==='self' ? C.primary : C.border, backgroundColor: deliveryType==='self' ? '#EDBF3113' : C.surface}}
           >
-            <Text style={{color: deliveryType==='self' ? BRAND_COLOR : '#fff', fontWeight:'600', fontSize:13}}>Self Pickup</Text>
+            <Text style={{color: deliveryType==='self' ? C.primaryText : C.text, fontWeight:'600', fontSize:13}}>Self Pickup</Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
             disabled={!isDeliveryAvailable}
             onPress={() => isDeliveryAvailable && setDeliveryType('driver')}
-            style={{flex:1,paddingVertical:14,borderRadius:8,borderWidth:1,alignItems:'center',opacity: isDeliveryAvailable ? 1 : 0.45, borderColor: deliveryType==='driver' ? BRAND_COLOR : '#252525', backgroundColor: deliveryType==='driver' ? '#EDBF3113' : '#1c1c1e'}}
+            style={{flex:1,paddingVertical:14,borderRadius:8,borderWidth:1,alignItems:'center',opacity: isDeliveryAvailable ? 1 : 0.45, borderColor: deliveryType==='driver' ? C.primary : C.border, backgroundColor: deliveryType==='driver' ? '#EDBF3113' : C.surface}}
           >
-            <Text style={{color: deliveryType==='driver' ? BRAND_COLOR : '#fff', fontWeight:'600', fontSize:13}}>
+            <Text style={{color: deliveryType==='driver' ? C.primaryText : C.text, fontWeight:'600', fontSize:13}}>
               {isDeliveryAvailable ? 'Doorstep Delivery' : 'Delivery Unavailable'}
             </Text>
           </TouchableOpacity>
@@ -242,11 +257,11 @@ export function CarsInfoScreen({route}) {
         <Text style={styles.vehicleInfoBlockText}>{stripHtml(vehicle.description)}</Text>
       </View>
       
-      <View style={{...styles.vehicleInfoBlock,borderTopWidth:1,borderColor:'#252525'}}>
+      <View style={{...styles.vehicleInfoBlock,borderTopWidth:1,borderColor:C.border}}>
         <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
           <Text style={styles.vehicleInfoBlockTitle}>Pickup and Dropoff</Text>
           <TouchableOpacity onPress={openPickupInMaps}>
-            <Text style={{...styles.vehicleInfoBlockText,color:BRAND_COLOR,textDecorationLine:'underline'}}>Open in maps</Text>
+            <Text style={{...styles.vehicleInfoBlockText,color:C.primaryText,textDecorationLine:'underline'}}>Open in maps</Text>
           </TouchableOpacity>
         </View>
         {pickupLat != null && pickupLng != null ? (
@@ -288,14 +303,14 @@ export function CarsInfoScreen({route}) {
               height: 18,
               borderRadius: 2,
               borderWidth: 1,
-              borderColor: termsAndConditions ? BRAND_COLOR : '#757575',
-              backgroundColor: termsAndConditions ? BRAND_COLOR : 'transparent',
+              borderColor: termsAndConditions ? C.primary : C.outline,
+              backgroundColor: termsAndConditions ? C.primary : 'transparent',
               marginRight: 8,
               justifyContent: 'center',
               alignItems: 'center'
             }}>
               {termsAndConditions && (
-                <Icon name="checkmark" size={14} color="#000" />
+                <Icon name="checkmark" size={14} color={C.onPrimary} />
               )}
             </View>
             <CustomText fontType='primary' weight='Medium' numberOfLines={2} style={[
@@ -311,7 +326,7 @@ export function CarsInfoScreen({route}) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate('TermsAndConditions')}
           >
-          <CustomText fontType='primary' weight='Medium' style={[styles.blockSecText,{color:'#EDBF31',textDecorationLine:'underline',marginLeft:24}]}>Read Terms and Conditions</CustomText>
+          <CustomText fontType='primary' weight='Medium' style={[styles.blockSecText,{color:C.primaryText,textDecorationLine:'underline',marginLeft:24}]}>Read Terms and Conditions</CustomText>
 
           </TouchableOpacity>
         </View>
@@ -319,48 +334,48 @@ export function CarsInfoScreen({route}) {
 {/* </Text> */}
       </View>
       </ScrollView>
-      <View style={{backgroundColor:'#000',borderTopWidth:1,borderColor:'#1c1c1e',flexDirection:'column',justifyContent:'space-between',alignItems:'center'}}>
+      <View style={{backgroundColor:C.background,borderTopWidth:1,borderColor:C.border,flexDirection:'column',justifyContent:'space-between',alignItems:'center'}}>
         <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center',paddingTop:12,width:'100%',paddingHorizontal:16}}>
         {vehicleSummary ? <View style={{flexDirection:'column',justifyContent:'center'}}>
        
-        <Text style={{color:'#efefef',fontSize:15,fontWeight:'500'}}>{vehicle.isAvailable ? `Rs.${selectedOffer ? getTotalAmount() - parseFloat(selectedOffer.offerAmount) : getTotalAmount()}` : 'Sold Out'}</Text>
+        <Text style={{color:C.text,fontSize:15,fontWeight:'500'}}>{vehicle.isAvailable ? `Rs.${selectedOffer ? getTotalAmount() - parseFloat(selectedOffer.offerAmount) : getTotalAmount()}` : 'Sold Out'}</Text>
         {vehicle.isAvailable ? <TouchableOpacity activeOpacity={0.7} onPress={() => actionRef.current && actionRef.current.show()}>
-        <Text style={{...styles.priceButtonText, color:'#EDBF31', textDecorationLine:'underline'}}>View price breakup</Text>
+        <Text style={{...styles.priceButtonText, color:C.primaryText, textDecorationLine:'underline'}}>View price breakup</Text>
         </TouchableOpacity> : null}
-        </View> : <ActivityIndicator color="#EDBF31" size="small"/>}
+        </View> : <ActivityIndicator color={C.primaryText} size="small"/>}
         
         <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
 
           <TouchableOpacity 
-            style={{...styles.paymentButton,backgroundColor:vehicle.isAvailable && termsAndConditions ? '#EDBF31' : '#252525'}} 
+            style={{...styles.paymentButton,backgroundColor:vehicle.isAvailable && termsAndConditions ? C.primary : C.surface}} 
             onPress={()=>navigation.navigate('CarPayment',{vehicleId:vehicleId,startDateTime:startDateTime,endDateTime:endDateTime})}
             disabled={!vehicle.isAvailable || !termsAndConditions}
           >
-            <Text style={{...styles.paymentButtonText,color:vehicle.isAvailable ? '#000' : '#757575'}}>
+            <Text style={{...styles.paymentButtonText,color:vehicle.isAvailable ? C.onPrimary : C.textTertiary}}>
               {vehicle.isAvailable ? 'Proceed to Booking' : 'Sold Out'}
             </Text>
           </TouchableOpacity>
         </View>
       </View>
       </View>
-          <FilterModal actionRef={actionRef} vehicleSummary={vehicleSummary} selectedOffer={selectedOffer} deliveryType={deliveryType} vehicle={vehicle} />
-          {showPaymentResult ? <PaymentResultPopup response={showPaymentResult} /> : null}
+      <FilterModal actionRef={actionRef} vehicleSummary={vehicleSummary} selectedOffer={selectedOffer} deliveryType={deliveryType} vehicle={vehicle} />
+      {showPaymentResult ? <PaymentResultPopup response={showPaymentResult} /> : null}
     </View>
   );
 }
 
 const PaymentResultPopup = ({response}) => {
   return (
-    <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:'#000',position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:1000}}>
+    <View style={{flex:1,justifyContent:'center',alignItems:'center',backgroundColor:C.background,position:'absolute',top:0,left:0,right:0,bottom:0,zIndex:1000}}>
       {!response.loading ? <View style={{alignItems:'center',justifyContent:'center'}}>
         <View style={{borderRadius:24,padding:12}}>
-          <Icon name={response.status === 'success' ? "checkmark-circle" : "close-circle-outline"} size={80} color={response.status === 'success' ? BRAND_COLOR : response.status === 'failed' ? '#ff0000' : '#a3a3a3'} />
+          <Icon name={response.status === 'success' ? "checkmark-circle" : "close-circle-outline"} size={80} color={response.status === 'success' ? C.primaryText : response.status === 'failed' ? C.danger : C.textSecondary} />
         </View>
-        <CustomText fontType='primary' weight='Medium' style={{color:response.status === 'success' ? BRAND_COLOR : response.status === 'failed' ? '#ff0000' : '#a3a3a3',fontSize:16,textAlign:'center',maxWidth:'70%',marginHorizontal:'auto',marginTop:20}}>{response ? response.status === 'success' ? 'Payment Successful' : 'Payment Failed' : 'Payment Result'}</CustomText>
-        <CustomText fontType='primary' weight='Medium' style={{color:'#a3a3a3',fontSize:13,textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',marginTop:8}}>{response.message}</CustomText>
-      </View> : <ActivityIndicator size="large" color={BRAND_COLOR} />}
+        <CustomText fontType='primary' weight='Medium' style={{color:response.status === 'success' ? C.primaryText : response.status === 'failed' ? C.danger : C.textSecondary,fontSize:16,textAlign:'center',maxWidth:'70%',marginHorizontal:'auto',marginTop:20}}>{response ? response.status === 'success' ? 'Payment Successful' : 'Payment Failed' : 'Payment Result'}</CustomText>
+        <CustomText fontType='primary' weight='Medium' style={{color:C.textSecondary,fontSize:13,textAlign:'center',maxWidth:'75%',marginHorizontal:'auto',marginTop:8}}>{response.message}</CustomText>
+      </View> : <ActivityIndicator size="large" color={C.primaryText} />}
     </View>
-  )
+  );
 }
 
 
@@ -368,7 +383,7 @@ const PaymentResultPopup = ({response}) => {
 const FilterModal = ({actionRef,vehicleSummary,selectedOffer,deliveryType,vehicle}) => {
   return (
     <View>
-      <ActionSheet ref={actionRef} containerStyle={{backgroundColor:'#1C1C1E'}} overlayColor='#000' defaultOverlayOpacity={0.85}>
+      <ActionSheet ref={actionRef} containerStyle={{backgroundColor:C.surface}} overlayColor='#000' defaultOverlayOpacity={0.85}>
               <View style={{paddingVertical:24,paddingHorizontal:24}}>
                 <Text style={styles.sortTitle}>Price Breakup</Text>
                 <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
@@ -389,12 +404,12 @@ const FilterModal = ({actionRef,vehicleSummary,selectedOffer,deliveryType,vehicl
                 </View>
                 {selectedOffer ? <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
                   <Text style={styles.summaryText}>Offer Discount</Text>
-                  <Text style={{...styles.summaryText,color:'#00ff00'}}>-Rs.{selectedOffer?.offerAmount}</Text>
+                  <Text style={{...styles.summaryText,color:C.success}}>-Rs.{selectedOffer?.offerAmount}</Text>
                 </View> : null}
               </View>
             </ActionSheet>
     </View>
-  )
+  );
 }
 
 
@@ -403,237 +418,258 @@ const HeaderBlock = ({vehicle,navigation,startDateTime,endDateTime}) => {
     <View style={styles.headerBlock}>
       <View style={styles.headerBlockLeft}>
           <TouchableOpacity style={{padding:4,paddingLeft:0}} onPress={() => navigation.goBack()}>
-          <Icon name="chevron-back" size={20} color="#a3a3a3" />
+          <Icon name="chevron-back" size={20} color={C.textSecondary} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.navigate('DatePicker')} style={styles.headerBlockContent}>
           <Text style={styles.blockSecText}>{vehicle.brand?.name} {vehicle.vehicleName}</Text>
           <Text style={styles.headerPrimaryText}>{formatDate(startDateTime,'long')} - {formatDate(endDateTime,'long')}</Text>
         </TouchableOpacity>
       </View>
-        <TouchableOpacity style={{padding:4}}>
-          <Icon name="share-outline" size={20} color="#a3a3a3" />
-        </TouchableOpacity>
+      <TouchableOpacity style={{padding:4}}>
+        <Icon name="share-outline" size={20} color={C.textSecondary} />
+      </TouchableOpacity>
     </View>
-  )
+  );
 }
 
 const CarImageBlock = ({vehicle}) => {
   return (
     <View style={styles.listContainer}>
-        
-    <View style={{flexDirection: 'row', gap: 8, height: 140}}>
-      {/* Left large image */}
-      <View style={{flex: 1}}>
-        {vehicle.images && vehicle.images[0] && (
-          <Image 
-            source={{uri: vehicle.images[0].url}}
-            style={{
-              flex: 1,
-              borderRadius: 12,
-              backgroundColor: '#1C1C1E'
-            }}
-            resizeMode="cover"
-          />
-        )}
-      </View>
 
-      {/* Right 2x2 grid */}
-      <View style={{flex: 1, gap: 8}}>
-        <View style={{flex: 1, flexDirection: 'row', gap: 8}}>
-          {/* Top row */}
-          <View style={{flex: 1}}>
-            {vehicle.images && vehicle.images[1] && (
-              <View style={{flex:1,borderRadius:6,backgroundColor:'#1C1C1E'}}>
-              <Image
-                source={{uri: vehicle.images[1].url}}
-                style={{
-                  flex: 1,
-                  borderRadius: 6,
-                  backgroundColor: '#1C1C1E'
-                }}
+      <View style={{flexDirection: 'row', gap: 8, height: 140}}>
+        {/* Left large image */}
+        <View style={{flex: 1}}>
+          {vehicle.images && vehicle.images[0] && (
+            <Image 
+              source={{uri: vehicle.images[0].url}}
+              style={{
+                flex: 1,
+                borderRadius: 12,
+                backgroundColor: C.surface
+              }}
+              resizeMode="cover"
+            />
+          )}
+        </View>
+
+        {/* Right 2x2 grid */}
+        <View style={{flex: 1, gap: 8}}>
+          <View style={{flex: 1, flexDirection: 'row', gap: 8}}>
+            {/* Top row */}
+            <View style={{flex: 1}}>
+              {vehicle.images && vehicle.images[1] && (
+                <View style={{flex:1,borderRadius:6,backgroundColor:C.surface}}>
+                <Image
+                  source={{uri: vehicle.images[1].url}}
+                  style={{
+                    flex: 1,
+                    borderRadius: 6,
+                    backgroundColor: C.surface
+                  }}
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
+            </View>
+            <View style={{flex: 1}}>
+              {vehicle.images && vehicle.images[2] && (
+                <Image
+                  source={{uri: vehicle.images[2].url}}
+                  style={{
+                    flex: 1,
+                    borderRadius: 6,
+                    backgroundColor: C.surface
+                  }}
                   resizeMode="cover"
                 />
-              </View>
-            )}
+              )}
+            </View>
           </View>
-          <View style={{flex: 1}}>
-            {vehicle.images && vehicle.images[2] && (
-              <Image
-                source={{uri: vehicle.images[2].url}}
-                style={{
-                  flex: 1,
-                  borderRadius: 6,
-                  backgroundColor: '#1C1C1E'
-                }}
-                resizeMode="cover"
-              />
-            )}
-          </View>
-        </View>
-        
-        <View style={{flex: 1, flexDirection: 'row', gap: 8}}>
-          {/* Bottom row */}
-          <View style={{flex: 1}}>
-            {vehicle.images && vehicle.images[3] && (
-              <Image
-                source={{uri: vehicle.images[3].url}}
-                style={{
-                  flex: 1,
-                  borderRadius: 6,
-                  backgroundColor: '#1C1C1E'
-                }}
-                resizeMode="cover"
-              />
-            )}
-          </View>
-          <View style={{flex: 1}}>
-            {vehicle.images && vehicle.images[4] && (
-              <TouchableOpacity 
-                style={{
-                  flex: 1,
-                  borderRadius: 6,
-                  backgroundColor: '#1C1C1E',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}
-              >
-                <Text style={{color: '#a3a3a3', fontSize: 12, fontWeight: '500'}}>
-                  +{vehicle.images.length - 4} more
-                </Text>
-              </TouchableOpacity>
-            )}
+          
+          <View style={{flex: 1, flexDirection: 'row', gap: 8}}>
+            {/* Bottom row */}
+            <View style={{flex: 1}}>
+              {vehicle.images && vehicle.images[3] && (
+                <Image
+                  source={{uri: vehicle.images[3].url}}
+                  style={{
+                    flex: 1,
+                    borderRadius: 6,
+                    backgroundColor: C.surface
+                  }}
+                  resizeMode="cover"
+                />
+              )}
+            </View>
+            <View style={{flex: 1}}>
+              {vehicle.images && vehicle.images[4] && (
+                <TouchableOpacity 
+                  style={{
+                    flex: 1,
+                    borderRadius: 6,
+                    backgroundColor: C.surface,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                >
+                  <Text style={{color: C.textSecondary, fontSize: 12, fontWeight: '500'}}>
+                    +{vehicle.images.length - 4} more
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       </View>
     </View>
-    </View>
-  )
+  );
 }
-const styles = StyleSheet.create({
+const styles = themedStyleSheet(C => ({
   container: {
     flex: 1,
     justifyContent:'flex-start',
-    backgroundColor: '#050505',
+    backgroundColor: C.background,
     paddingTop: 24,
     
   },
+
   headerBlock: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 12,
   },
+
   headerBlockLeft: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
+
   headerPrimaryText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#a3a3a3',
+    color: C.textSecondary,
   },
+
   listContainer: {
     // backgroundColor:'#1C1C1E',
     paddingHorizontal:16,
     paddingVertical:8,
   },
+
   vehicleItem: {
     flexDirection: 'column',
     marginBottom: 16,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: C.surface,
     borderRadius: 8,
     paddingVertical:8,
     paddingHorizontal:8,
     overflow: 'hidden',
   },
+
   vehicleImage: {
     borderRadius:12,
     width: 320,
     height: 180,
   },
+
   vehicleInfo: {
     // flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 16,
     // justifyContent: 'center',
   },
+
   vehicleInfoBlock: {
     paddingVertical: 24,
     paddingHorizontal: 16,
   },
+
   vehicleInfoBlockTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#454545',
+    color: C.textDisabled,
     textTransform:'uppercase',
     marginBottom: 6,
   },
+
   vehicleInfoBlockText: {
     fontSize: 13,
-    color: '#c3c3c3',
+    color: C.textSecondary,
   },
+
   vehicleSecBlock: {
     paddingVertical: 24,
     paddingBottom:32,
     paddingHorizontal: 16,
     borderTopWidth: 1,
-    borderColor: '#252525',
+    borderColor: C.border,
   },
+
   blockSecText: {
     fontSize: 12,
-    color: '#a3a3a3',
+    color: C.textSecondary,
     lineHeight: 18,
   },
+
   vehicleName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#efefef',
+    color: C.text,
     marginBottom: 2,
   },
+
   vehicleYear: {
     fontSize: 13,
-    color: '#a3a3a3',
+    color: C.textSecondary,
   },
+
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: C.background,
   },
+
   errorText: {
-    color: '#FF3B30',
+    color: C.danger,
     fontSize: 18,
   },
+
   priceButtonText: {
-    color: '#a3a3a3',
+    color: C.textSecondary,
     fontSize: 11,
     fontWeight: '400',
   },
+
   sortTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#656565',
+    color: C.textMuted,
     textTransform:'uppercase',
     marginBottom: 6,
   },
+
   summaryText: {
     fontSize: 14,
     paddingVertical:12,
-    color: '#efefef',
+    color: C.text,
   },
+
   paymentButton: {
-    backgroundColor: '#EDBF31',
+    backgroundColor: C.primary,
     padding: 20,
     paddingVertical:16,
     borderRadius: 24,
     alignItems: 'center',
     // marginTop: 20,
   },
+
   paymentButtonText: {
-    color: '#000',
+    color: C.onPrimary,
     fontSize: 13,
     fontWeight: '600',
-  },
-});
+  }
+}));
